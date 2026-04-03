@@ -1,6 +1,19 @@
-# Facility Flow | Smart Campus Operations Hub
+# IT3030 PAF Assignment 2026 – FacilityFlow - Smart Campus Operations Hub
 
-Facility Flow is a premium Authentication & Authorization module (Module E) designed for a university Smart Campus ecosystem. It provides a secure, role-based infrastructure for students, staff, and administrators.
+## Facility Flow | Smart Campus Operations Hub
+
+Facility Flow is a Smart Campus Operations Hub designed for a university Smart Campus ecosystem. It provides a secure, role-based infrastructure for students, staff, and administrators.
+
+This repository contains components from all 4 team members.
+
+## 👥 Team Contributions
+
+| Member | Module / Responsibility | Endpoints / Components |
+| :--- | :--- | :--- |
+| Member 1 | Facilities catalogue | `/api/resources` endpoints, Resource UI |
+| Member 2 | Booking workflow | `/api/bookings`, conflict check, Booking UI |
+| Member 3 | Incident tickets | `/api/tickets`, attachments, Technician updates |
+| Member 4 | Notifications & OAuth | `/api/notifications`, OAuth integration, role management |
 
 ---
 
@@ -12,15 +25,17 @@ Facility Flow is a premium Authentication & Authorization module (Module E) desi
 - **Auth Strategy**: Google OAuth 2.0 with custom `prompt=select_account` integration.
 - **Database**: MongoDB (NoSQL) for scalable campus records.
 - **Token**: Stateless JSON Web Tokens (JWT) for secure API authorization.
-- **Utilities**: Lombok, Jakarta Annotations, JJWT.
+- **Utilities**: Lombok, Jakarta Annotations, JJWT 0.11.5.
 
-### Frontend (React)
+### Frontend (React + Vite)
 - **Framework**: React 18
+- **Build Tool**: Vite 5.2 (Fast HMR & Optimized Builds)
 - **Navigation**: React Router 6 (with Protected Role-Based Routing)
-- **Styling**: Vanilla CSS with a **Royal Blue (#4169E1)** theme.
+- **Styling**: Tailwind CSS 3.4 with **Royal Blue (#4169E1)** design system.
 - **Icons**: Lucide React for a crisp, modern UI.
 - **State Management**: React Context API for global Authentication and User Role state.
 - **API Client**: Axios with interceptors for automatic JWT attachment.
+- **Token Handling**: JWT Decode for client-side role extraction.
 
 ---
 
@@ -61,7 +76,7 @@ To enable Google Login:
 3. Run the backend:
    ```powershell
    cd backend
-   ./mvnw spring-boot:run
+   mvn spring-boot:run
    ```
    *Server starts on port **8092**.*
 
