@@ -1,24 +1,46 @@
-// src/App.jsx
-import React from "react";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import Redirect from './pages/Redirect';
+import Dashboard from './pages/Dashboard';
+import AdminPage from './pages/AdminPage';
+import TechDashboard from './pages/TechDashboard';
+import Unauthorized from './pages/Unauthorized';
+import './index.css';
 
 function App() {
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="w-64 bg-blue-800 text-white p-4">
-        <h1 className="text-lg font-bold mb-4">Smart Campus</h1>
-        <button className="block px-4 py-2 mb-2 hover:bg-blue-700">Dashboard</button>
-        <button className="block px-4 py-2 mb-2 hover:bg-blue-700">Bookings</button>
-        <button className="block px-4 py-2 mb-2 hover:bg-blue-700">Tickets</button>
-        <button className="block px-4 py-2 mb-2 hover:bg-blue-700">Notifications</button>
-      </div>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/oauth2/redirect" element={<Redirect />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+          
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
 
-      {/* Main content */}
-      <div className="flex-1 p-6">
-        <h1 className="text-2xl font-bold">Welcome to Smart Campus</h1>
-        <p>Main content goes here.</p>
-      </div>
-    </div>
+          <Route path="/admin" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <AdminPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/tech/tasks" element={
+            <ProtectedRoute allowedRoles={['TECHNICIAN']}>
+              <TechDashboard />
+            </ProtectedRoute>
+          } />
+
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
