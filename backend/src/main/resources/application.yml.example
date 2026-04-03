@@ -1,0 +1,21 @@
+spring:
+  data:
+    mongodb:
+      uri: mongodb+srv://<username>:<password>@cluster0.pxssz.mongodb.net/<dbname>?retryWrites=true&w=majority
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: <your_google_client_id>
+            client-secret: <your_google_client_secret>
+            scope:
+              - email
+              - profile
+
+jwt:
+  secret: "<your_very_long_random_hex_secret>"
+  expiration: 86400000 # 1 day in ms
+
+server:
+  port: 8092
