@@ -14,7 +14,7 @@ const Redirect = () => {
 
     if (token) {
       login(token);
-      navigate('/');
+      navigate('/dashboard');
     } else {
       navigate('/login');
     }

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
+import Home from './pages/Home';
 import Redirect from './pages/Redirect';
 import Dashboard from './pages/Dashboard';
 import AdminPage from './pages/AdminPage';
@@ -15,11 +16,12 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/oauth2/redirect" element={<Redirect />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
           
-          <Route path="/" element={
+          <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
