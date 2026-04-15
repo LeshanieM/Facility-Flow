@@ -1,0 +1,432 @@
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  AlertCircle,
+  Bell,
+  ClipboardList,
+  FilePlus2,
+  LayoutDashboard,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  Wrench,
+} from 'lucide-react';
+import Layout from '../../../components/Layout';
+import { useAuth } from '../../../context/AuthContext';
+import EmptyState from '../components/EmptyState';
+import QuickActions from '../components/QuickActions';
+import SectionHeader from '../components/SectionHeader';
+import SummaryCard from '../components/SummaryCard';
+import RequestForm from '../components/RequestForm';
+import NotificationList from '../components/NotificationList';
+import RequestList from '../components/RequestList';
+import RequestDetailsPanel from '../components/RequestDetailsPanel';
+import SkeletonBlock from '../components/SkeletonBlock';
+import SurfaceCard from '../components/SurfaceCard';
+import TabNavigation from '../components/TabNavigation';
+import ToastStack from '../components/ToastStack';
+import { useStudentMaintenanceDashboard } from '../hooks/useStudentMaintenanceDashboard';
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const getDisplayName = (user) => {
+  const subject = user?.name || user?.sub || user?.email || 'there';
+  return String(subject).split('@')[0];
+};
+
+const StudentStaffMaintenanceModule = () => {
+  const { user } = useAuth();
+  const formRef = useRef(null);
+  const [filters, setFilters] = useState({ query: '', status: 'ALL' });
+  const [activeTab, setActiveTab] = useState('overview');
+
+  const {
+    summary,
+    requests,
+    notifications,
+    selectedRequest,
+    selectedRequestId,
+    setSelectedRequestId,
+    formValues,
+    formErrors,
+    updateField,
+    submitRequest,
+    hasRequests,
+    isBootstrapping,
+    isRefreshing,
+    isSubmitting,
+    isDetailLoading,
+    pageError,
+    submitMessage,
+    submitError,
+    toasts,
+    refreshDashboard,
+  } = useStudentMaintenanceDashboard();
+
+  const filteredRequests = useMemo(() => {
+    const query = filters.query.trim().toLowerCase();
+
+    return requests.filter((request) => {
+      const matchesQuery =
+        !query ||
+        request.title?.toLowerCase().includes(query) ||
+        request.location?.toLowerCase().includes(query) ||
+        request.category?.toLowerCase().includes(query);
+
+      const matchesStatus = filters.status === 'ALL' || request.status === filters.status;
+      return matchesQuery && matchesStatus;
+    });
+  }, [filters, requests]);
+
+  const recentActivity = useMemo(() => {
+    return [...requests]
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 3);
+  }, [requests]);
+
+  const handleNewRequest = () => {
+    setActiveTab('new-request');
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} /> },
+    { id: 'new-request', label: 'New Request', icon: <FilePlus2 size={16} /> },
+    { id: 'my-requests', label: 'My Requests', icon: <ClipboardList size={16} /> },
+    { id: 'updates', label: 'Updates', icon: <Bell size={16} /> },
+  ];
+
+  return (
+    <Layout>
+      <ToastStack toasts={toasts} />
+
+      <div className="space-y-8 text-slate-900">
+        <SurfaceCard className="p-7 sm:p-9" tone="hero">
+          <SectionHeader
+            eyebrow="Student and Staff Portal"
+            icon={<ShieldCheck size={14} />}
+            title={`${getGreeting()}, ${getDisplayName(user)}.`}
+            description="Submit campus incidents, monitor maintenance progress, and stay updated through one clean dashboard designed for everyday university use."
+            actions={
+              <button
+                type="button"
+                onClick={refreshDashboard}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700"
+              >
+                {isRefreshing ? <RefreshCw className="animate-spin" size={18} /> : <RefreshCw size={18} />}
+                Refresh data
+              </button>
+            }
+          />
+
+          <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)]">
+            <div className="min-w-0 rounded-[26px] border border-white/80 bg-white/80 p-5 shadow-sm">
+              <h2 className="text-2xl font-black tracking-tight text-slate-900">
+                Incident ticketing and maintenance dashboard
+              </h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+                Follow a simple flow: submit a request, track status changes, and review updates from the facilities team without unnecessary clutter.
+              </p>
+            </div>
+
+            <QuickActions
+              onNewRequest={handleNewRequest}
+              onRefresh={refreshDashboard}
+              isRefreshing={isRefreshing}
+              filters={filters}
+              setFilters={setFilters}
+            />
+          </div>
+        </SurfaceCard>
+
+        {pageError && (
+          <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
+            <AlertCircle className="mt-0.5 shrink-0" size={18} />
+            <span>{pageError}</span>
+          </div>
+        )}
+
+        {!isBootstrapping && (
+          <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+        )}
+
+        {isBootstrapping ? (
+          <>
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <SurfaceCard key={index} className="p-6">
+                  <SkeletonBlock className="h-7 w-28" />
+                  <SkeletonBlock className="mt-5 h-10 w-20" />
+                  <SkeletonBlock className="mt-4 h-4 w-40" />
+                </SurfaceCard>
+              ))}
+            </section>
+
+            <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
+              <SurfaceCard className="p-8">
+                <div className="space-y-4">
+                  <SkeletonBlock className="h-7 w-56" />
+                  <SkeletonBlock className="h-4 w-full max-w-xl" />
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <SkeletonBlock className="h-14 w-full" />
+                    <SkeletonBlock className="h-14 w-full" />
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <SkeletonBlock className="h-14 w-full" />
+                    <SkeletonBlock className="h-14 w-full" />
+                  </div>
+                  <SkeletonBlock className="h-40 w-full" />
+                </div>
+              </SurfaceCard>
+
+              <SurfaceCard className="p-8" tone="muted">
+                <div className="space-y-4">
+                  <SkeletonBlock className="h-7 w-40" />
+                  <SkeletonBlock className="h-24 w-full" />
+                  <SkeletonBlock className="h-24 w-full" />
+                </div>
+              </SurfaceCard>
+            </div>
+          </>
+        ) : (
+          <>
+            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <SummaryCard
+                label="Total requests"
+                value={summary.totalSubmitted}
+                hint="All issues you have submitted"
+                accentClass="bg-slate-100 text-slate-700"
+              />
+              <SummaryCard
+                label="Pending"
+                value={summary.pending}
+                hint="Waiting for approval or review"
+                accentClass="bg-amber-50 text-amber-700"
+              />
+              <SummaryCard
+                label="In Progress"
+                value={requests.filter((request) => request.status === 'IN_PROGRESS').length}
+                hint="Currently being worked on"
+                accentClass="bg-orange-50 text-orange-700"
+              />
+              <SummaryCard
+                label="Completed"
+                value={summary.completed}
+                hint="Resolved requests"
+                accentClass="bg-emerald-50 text-emerald-700"
+              />
+            </section>
+
+            {activeTab === 'overview' && (
+              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.8fr)]">
+                <div className="space-y-8">
+                  <SurfaceCard className="p-6 sm:p-7">
+                    <SectionHeader
+                      eyebrow="Start Here"
+                      icon={<FilePlus2 size={14} />}
+                      title="Your workflow at a glance"
+                      description="Submit a request, track progress from the request list, and review updates as technicians and administrators respond."
+                    />
+
+                    <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                      {[
+                        {
+                          step: '1',
+                          title: 'Submit',
+                          description: 'Create a clear incident or maintenance ticket with the exact location and issue details.',
+                        },
+                        {
+                          step: '2',
+                          title: 'Track',
+                          description: 'Monitor progress through pending, approved, in progress, and completed stages.',
+                        },
+                        {
+                          step: '3',
+                          title: 'Review updates',
+                          description: 'Check notifications, recent movement, and request details for the latest context.',
+                        },
+                      ].map((item) => (
+                        <div key={item.step} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                            {item.step}
+                          </span>
+                          <h3 className="mt-4 text-lg font-bold text-slate-900">{item.title}</h3>
+                          <p className="mt-2 text-sm leading-6 text-slate-500">{item.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </SurfaceCard>
+
+                  <RequestDetailsPanel request={selectedRequest} isLoading={isDetailLoading} />
+                </div>
+
+                <div className="space-y-8">
+                  <NotificationList notifications={notifications} isLoading={false} />
+
+                  <SurfaceCard className="p-6 sm:p-7" tone="muted">
+                    <SectionHeader
+                      eyebrow="Recent Activity"
+                      icon={<RefreshCw size={14} />}
+                      title="Latest request movement"
+                      description="A quick look at the most recently updated tickets."
+                    />
+
+                    {recentActivity.length === 0 ? (
+                      <div className="mt-6">
+                        <EmptyState
+                          compact
+                          icon={<Wrench size={20} />}
+                          title="No activity yet"
+                          description="Activity appears here once your tickets begin moving through the workflow."
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-6 space-y-3">
+                        {recentActivity.map((request) => (
+                          <button
+                            key={request.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedRequestId(request.id);
+                              setActiveTab('my-requests');
+                            }}
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="font-semibold text-slate-800">{request.title}</p>
+                                <p className="mt-1 text-sm text-slate-500">{request.location}</p>
+                              </div>
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                                {request.status === 'IN_PROGRESS' ? 'In Progress' : request.status}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </SurfaceCard>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'new-request' && (
+              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+                <div ref={formRef}>
+                  <RequestForm
+                    values={formValues}
+                    errors={formErrors}
+                    onChange={updateField}
+                    onSubmit={submitRequest}
+                    isSubmitting={isSubmitting}
+                    submitMessage={submitMessage}
+                    submitError={submitError}
+                  />
+                </div>
+
+                <SurfaceCard className="p-6 sm:p-7" tone="muted">
+                  <SectionHeader
+                    eyebrow="Submission Tips"
+                    icon={<ShieldCheck size={14} />}
+                    title="How to create a strong ticket"
+                    description="A few simple details help the maintenance team act faster and reduce follow-up questions."
+                  />
+
+                  <div className="mt-6 space-y-4">
+                    {[
+                      'Use a specific title that names the issue and place.',
+                      'Add the exact building, floor, room, or nearby landmark.',
+                      'Explain whether the issue affects safety, teaching, access, or equipment use.',
+                      'Attach a photo if it will help someone understand the issue remotely.',
+                    ].map((tip) => (
+                      <div key={tip} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-600">
+                        {tip}
+                      </div>
+                    ))}
+                  </div>
+                </SurfaceCard>
+              </div>
+            )}
+
+            {activeTab === 'my-requests' && (
+              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
+                <RequestList
+                  requests={filteredRequests}
+                  selectedRequestId={selectedRequestId}
+                  onSelect={setSelectedRequestId}
+                  isLoading={false}
+                />
+
+                <RequestDetailsPanel request={selectedRequest} isLoading={isDetailLoading} />
+              </div>
+            )}
+
+            {activeTab === 'updates' && (
+              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]">
+                <NotificationList notifications={notifications} isLoading={false} />
+
+                <SurfaceCard className="p-6 sm:p-7" tone="muted">
+                  <SectionHeader
+                    eyebrow="Recent Activity"
+                    icon={<RefreshCw size={14} />}
+                    title="Latest request movement"
+                    description="Use this tab to stay updated on the tickets that changed most recently."
+                  />
+
+                  {recentActivity.length === 0 ? (
+                    <div className="mt-6">
+                      <EmptyState
+                        compact
+                        icon={<Wrench size={20} />}
+                        title="No activity yet"
+                        description="Activity appears here once your tickets begin moving through the workflow."
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-6 space-y-3">
+                      {recentActivity.map((request) => (
+                        <button
+                          key={request.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedRequestId(request.id);
+                            setActiveTab('my-requests');
+                          }}
+                          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-slate-800">{request.title}</p>
+                              <p className="mt-1 text-sm text-slate-500">{request.location}</p>
+                            </div>
+                            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                              {request.status === 'IN_PROGRESS' ? 'In Progress' : request.status}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </SurfaceCard>
+              </div>
+            )}
+
+            {!hasRequests && (
+              <EmptyState
+                icon={<Wrench size={22} />}
+                title="Start by submitting your first request"
+                description="Once you submit an incident or maintenance ticket, your request list, details panel, and updates will all appear here from the live backend APIs."
+              />
+            )}
+          </>
+        )}
+      </div>
+    </Layout>
+  );
+};
+
+export default StudentStaffMaintenanceModule;

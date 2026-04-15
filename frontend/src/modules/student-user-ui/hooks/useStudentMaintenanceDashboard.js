@@ -1,0 +1,216 @@
+import { useEffect, useMemo, useState } from 'react';
+import {
+  createMaintenanceRequest,
+  getDashboardSummary,
+  getMyRequests,
+  getNotifications,
+  getRequestDetails,
+} from '../api/studentMaintenanceApi';
+
+const initialForm = {
+  title: '',
+  description: '',
+  location: '',
+  category: '',
+  priority: 'Medium',
+  attachment: null,
+};
+
+const normalizeSummary = (summary) => ({
+  totalSubmitted: summary?.totalSubmitted ?? 0,
+  pending: summary?.pending ?? 0,
+  approved: summary?.approved ?? 0,
+  completed: summary?.completed ?? 0,
+});
+
+const extractErrorMessage = (error, fallbackMessage) => {
+  const data = error?.response?.data;
+
+  if (typeof data === 'string') return data;
+  if (data?.message) return data.message;
+  if (Array.isArray(data?.errors) && data.errors.length > 0) {
+    return data.errors[0]?.message || fallbackMessage;
+  }
+
+  return fallbackMessage;
+};
+
+export const useStudentMaintenanceDashboard = () => {
+  const [summary, setSummary] = useState(() => normalizeSummary());
+  const [requests, setRequests] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [formValues, setFormValues] = useState(initialForm);
+  const [formErrors, setFormErrors] = useState({});
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [pageError, setPageError] = useState('');
+  const [submitMessage, setSubmitMessage] = useState('');
+  const [submitError, setSubmitError] = useState('');
+  const [toasts, setToasts] = useState([]);
+
+  const pushToast = (tone, title, message = '') => {
+    const id = `${tone}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setToasts((current) => [...current, { id, tone, title, message }]);
+
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((toast) => toast.id !== id));
+    }, 3200);
+  };
+
+  const hasRequests = requests.length > 0;
+
+  const loadDashboard = async ({ background = false } = {}) => {
+    if (background) {
+      setIsRefreshing(true);
+    } else {
+      setIsBootstrapping(true);
+      setPageError('');
+    }
+
+    try {
+      const [summaryData, requestsData, notificationsData] = await Promise.all([
+        getDashboardSummary(),
+        getMyRequests(),
+        getNotifications(),
+      ]);
+
+      setSummary(normalizeSummary(summaryData));
+      setRequests(Array.isArray(requestsData) ? requestsData : []);
+      setNotifications(Array.isArray(notificationsData) ? notificationsData : []);
+
+      if (!selectedRequestId && Array.isArray(requestsData) && requestsData.length > 0) {
+        setSelectedRequestId(requestsData[0].id);
+      }
+    } catch (error) {
+      const message = extractErrorMessage(error, 'Unable to load your incident ticketing and maintenance dashboard right now.');
+      setPageError(message);
+      pushToast('error', 'Dashboard unavailable', message);
+    } finally {
+      setIsBootstrapping(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedRequestId) {
+      setSelectedRequest(null);
+      return;
+    }
+
+    const loadDetails = async () => {
+      setIsDetailLoading(true);
+
+      try {
+        const detail = await getRequestDetails(selectedRequestId);
+        setSelectedRequest(detail);
+      } catch (error) {
+        setSelectedRequest(null);
+        const message = extractErrorMessage(error, 'Unable to load the selected request details.');
+        setPageError(message);
+        pushToast('error', 'Request details unavailable', message);
+      } finally {
+        setIsDetailLoading(false);
+      }
+    };
+
+    loadDetails();
+  }, [selectedRequestId]);
+
+  const validateForm = () => {
+    const nextErrors = {};
+
+    if (!formValues.title.trim()) nextErrors.title = 'Title is required.';
+    if (!formValues.description.trim()) nextErrors.description = 'Description is required.';
+    if (formValues.description.trim().length > 0 && formValues.description.trim().length < 20) {
+      nextErrors.description = 'Please provide at least 20 characters for the description.';
+    }
+    if (!formValues.location.trim()) nextErrors.location = 'Location is required.';
+    if (!formValues.category) nextErrors.category = 'Category is required.';
+    if (!formValues.priority) nextErrors.priority = 'Priority is required.';
+
+    setFormErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const updateField = (field, value) => {
+    setFormValues((current) => ({
+      ...current,
+      [field]: value,
+    }));
+
+    setFormErrors((current) => ({
+      ...current,
+      [field]: '',
+    }));
+  };
+
+  const submitRequest = async (event) => {
+    event.preventDefault();
+    setSubmitError('');
+    setSubmitMessage('');
+
+    if (!validateForm()) return;
+
+    setIsSubmitting(true);
+
+    try {
+      const createdRequest = await createMaintenanceRequest(formValues);
+      setSubmitMessage('Incident or maintenance ticket submitted successfully.');
+      setFormValues(initialForm);
+      setSelectedRequestId(createdRequest?.id || selectedRequestId);
+      pushToast('success', 'Request submitted', 'Your ticket has been saved and added to your dashboard.');
+      await loadDashboard({ background: true });
+    } catch (error) {
+      const message = extractErrorMessage(error, 'We could not submit your incident or maintenance ticket.');
+      setSubmitError(message);
+      pushToast('error', 'Submission failed', message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const requestCards = useMemo(() => {
+    return requests.map((request) => ({
+      id: request.id,
+      title: request.title,
+      location: request.location,
+      category: request.category,
+      priority: request.priority,
+      status: request.status,
+      createdAt: request.createdAt,
+      updatedAt: request.updatedAt,
+      description: request.description,
+    }));
+  }, [requests]);
+
+  return {
+    summary,
+    requests: requestCards,
+    notifications,
+    selectedRequest,
+    selectedRequestId,
+    setSelectedRequestId,
+    formValues,
+    formErrors,
+    updateField,
+    submitRequest,
+    hasRequests,
+    isBootstrapping,
+    isRefreshing,
+    isSubmitting,
+    isDetailLoading,
+    pageError,
+    submitMessage,
+    submitError,
+    toasts,
+    refreshDashboard: () => loadDashboard({ background: true }),
+  };
+};

@@ -10,6 +10,7 @@ import {
   CircleUser,
   History,
   Map,
+  BellRing,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -27,6 +28,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
         ],
         USER: [
             { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
+            { name: 'Incident Ticketing', icon: <BellRing size={20} />, path: '/maintenance' },
             { name: 'Bookings', icon: <Calendar size={20} />, path: '/bookings' },
             { name: 'Map', icon: <Map size={20} />, path: '/map' },
             { name: 'Profile', icon: <CircleUser size={20} />, path: '/profile' },

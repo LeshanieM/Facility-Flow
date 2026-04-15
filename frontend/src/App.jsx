@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import AdminPage from './pages/AdminPage';
 import TechDashboard from './pages/TechDashboard';
 import Unauthorized from './pages/Unauthorized';
+import { StudentStaffMaintenanceModule } from './modules/student-user-ui';
 import './index.css';
 
 function App() {
@@ -24,6 +25,12 @@ function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/maintenance" element={
+            <ProtectedRoute allowedRoles={['USER']}>
+              <StudentStaffMaintenanceModule />
             </ProtectedRoute>
           } />
 
