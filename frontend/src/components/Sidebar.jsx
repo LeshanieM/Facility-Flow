@@ -23,6 +23,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
         ADMIN: [
             { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
             { name: 'Users', icon: <Users size={20} />, path: '/admin' },
+            { name: 'Incidents', icon: <BellRing size={20} />, path: '/admin/incidents' },
             { name: 'Logs', icon: <History size={20} />, path: '/logs' },
             { name: 'Security', icon: <ShieldCheck size={20} />, path: '/security' },
         ],
