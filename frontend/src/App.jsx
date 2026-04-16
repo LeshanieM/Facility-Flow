@@ -10,6 +10,7 @@ import AdminPage from './pages/AdminPage';
 import TechDashboard from './pages/TechDashboard';
 import Unauthorized from './pages/Unauthorized';
 import { StudentStaffMaintenanceModule } from './modules/student-user-ui';
+import AdminMaintenancePage from './modules/admin-user-ui/pages/AdminMaintenancePage';
 import './index.css';
 
 function App() {
@@ -37,6 +38,12 @@ function App() {
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <AdminPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/incidents" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <AdminMaintenancePage />
             </ProtectedRoute>
           } />
 

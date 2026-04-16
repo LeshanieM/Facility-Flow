@@ -27,6 +27,7 @@ public class IncidentService {
     private final IncidentRepository incidentRepository;
     private final IncidentActivityLogRepository activityLogRepository;
     private final SlaService slaService;
+    private final com.smartcampus.repository.UserRepository userRepository;
 
     @Transactional
     public TicketResponse createIncident(CreateTicketRequest request, User user) {
@@ -65,6 +66,12 @@ public class IncidentService {
 
     public List<TicketResponse> getUserTickets(String userId) {
         return incidentRepository.findBySubmittedById(userId).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    public List<TicketResponse> getAllTickets() {
+        return incidentRepository.findAll().stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
@@ -125,6 +132,26 @@ public class IncidentService {
         return toResponse(saved);
     }
 
+    @Transactional
+    public TicketResponse assignTechnician(String id, String technicianId, User admin) {
+        Incident incident = findById(id);
+        User technician = userRepository.findById(technicianId)
+                .orElseThrow(() -> new ResourceNotFoundException("Technician user not found"));
+
+        ActivityAction assignmentAction =
+                incident.getAssignedTechnician() == null ? ActivityAction.ASSIGNED : ActivityAction.REASSIGNED;
+        incident.setAssignedTechnician(technician);
+
+        // Status updates upon assigning depending on logic
+        // As requested: It stays OPEN, or if it was PENDING_REVIEW it remains so.
+        // It becomes IN_PROGRESS once technician views/accepts it. Wait, the user said
+        // "it should be in_progress after the technician view and accept it". So we do NOT change status here.
+
+        Incident saved = incidentRepository.save(incident);
+        logActivity(id, admin, assignmentAction, "Assigned technician: " + technician.getName());
+        return toResponse(saved);
+    }
+
     private Incident findById(String id) {
         return incidentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Incident not found"));
@@ -161,11 +188,11 @@ public class IncidentService {
             incident.getAdminNotes(),
             incident.getTechnicianNotes(),
             incident.getResolutionSummary(),
-            incident.getSlaResponseDeadline(),
-            incident.getSlaResolutionDeadline(),
+            incident.getSlaResponseDeadline() != null ? incident.getSlaResponseDeadline().toString() : null,
+            incident.getSlaResolutionDeadline() != null ? incident.getSlaResolutionDeadline().toString() : null,
             incident.getSlaStatus(),
-            incident.getCreatedAt(),
-            incident.getUpdatedAt()
+            incident.getCreatedAt() != null ? incident.getCreatedAt().toString() : Instant.now().toString(),
+            incident.getUpdatedAt() != null ? incident.getUpdatedAt().toString() : Instant.now().toString()
         );
     }
 }

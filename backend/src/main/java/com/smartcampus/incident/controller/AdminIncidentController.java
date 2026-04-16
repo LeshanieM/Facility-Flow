@@ -22,6 +22,11 @@ public class AdminIncidentController {
     private final IncidentService incidentService;
     private final UserRepository userRepository;
 
+    @GetMapping
+    public ResponseEntity<java.util.List<TicketResponse>> getAllTickets() {
+        return ResponseEntity.ok(incidentService.getAllTickets());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponse> getTicketById(@PathVariable String id) {
         return ResponseEntity.ok(incidentService.getTicketById(id));
@@ -35,6 +40,17 @@ public class AdminIncidentController {
         
         User admin = getUser(principal);
         TicketResponse response = incidentService.updateStatus(id, request.getStatus(), admin);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/assign")
+    public ResponseEntity<TicketResponse> assignTechnician(
+            @PathVariable String id,
+            @Valid @RequestBody com.smartcampus.incident.dto.IncidentRequests.AssignTechnicianRequest request,
+            Principal principal) {
+        
+        User admin = getUser(principal);
+        TicketResponse response = incidentService.assignTechnician(id, request.getTechnicianId(), admin);
         return ResponseEntity.ok(response);
     }
 

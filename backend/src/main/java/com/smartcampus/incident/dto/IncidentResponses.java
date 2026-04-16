@@ -30,11 +30,11 @@ public class IncidentResponses {
         private String adminNotes;
         private String technicianNotes;
         private String resolutionSummary;
-        private Instant slaResponseDeadline;
-        private Instant slaResolutionDeadline;
+        private String slaResponseDeadline;
+        private String slaResolutionDeadline;
         private SlaStatus slaStatus;
-        private Instant createdAt;
-        private Instant updatedAt;
+        private String createdAt;
+        private String updatedAt;
     }
 
     @Data
