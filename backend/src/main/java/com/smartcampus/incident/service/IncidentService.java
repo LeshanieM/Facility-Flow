@@ -76,6 +76,12 @@ public class IncidentService {
                 .collect(Collectors.toList());
     }
 
+    public List<TicketResponse> getTechnicianTickets(String technicianId) {
+        return incidentRepository.findByAssignedTechnicianId(technicianId).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     public TicketResponse getTicketById(String id) {
         return toResponse(findById(id));
     }
@@ -119,11 +125,13 @@ public class IncidentService {
         
         if (newStatus == IncidentStatus.IN_PROGRESS && incident.getFirstResponseAt() == null) {
             incident.setFirstResponseAt(Instant.now());
-            incident.setResponseDurationMinutes(ChronoUnit.MINUTES.between(incident.getCreatedAt(), Instant.now()));
+            Instant startForResponse = incident.getCreatedAt() != null ? incident.getCreatedAt() : Instant.now();
+            incident.setResponseDurationMinutes(ChronoUnit.MINUTES.between(startForResponse, Instant.now()));
         }
-        if (newStatus == IncidentStatus.RESOLVED) {
+        if (newStatus == IncidentStatus.RESOLVED || newStatus == IncidentStatus.COMPLETED) {
             incident.setResolvedAt(Instant.now());
-            incident.setResolutionDurationMinutes(ChronoUnit.MINUTES.between(incident.getCreatedAt(), Instant.now()));
+            Instant startForResolution = incident.getCreatedAt() != null ? incident.getCreatedAt() : Instant.now();
+            incident.setResolutionDurationMinutes(ChronoUnit.MINUTES.between(startForResolution, Instant.now()));
         }
 
         slaService.evaluateSlaBreach(incident);

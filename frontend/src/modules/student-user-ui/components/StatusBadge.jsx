@@ -5,6 +5,7 @@ const statusStyles = {
   APPROVED: 'border-sky-200 bg-sky-50 text-sky-700',
   IN_PROGRESS: 'border-orange-200 bg-orange-50 text-orange-700',
   COMPLETED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  BLOCKED: 'border-red-200 bg-red-50 text-red-700',
   REJECTED: 'border-rose-200 bg-rose-50 text-rose-700',
 };
 
@@ -13,6 +14,7 @@ const statusLabels = {
   APPROVED: 'Approved',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',
+  BLOCKED: 'Blocked',
   REJECTED: 'Rejected',
 };
 

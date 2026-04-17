@@ -8,6 +8,8 @@ const getStatusBadge = (status) => {
         case 'OPEN': return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Open</span>;
         case 'IN_PROGRESS': return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase">In Progress</span>;
         case 'RESOLVED': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Resolved</span>;
+        case 'COMPLETED': return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Completed</span>;
+        case 'BLOCKED': return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Blocked</span>;
         case 'CLOSED': return <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold uppercase">Closed</span>;
         case 'REJECTED': return <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Rejected</span>;
         default: return <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold uppercase">{status}</span>;
@@ -260,6 +262,8 @@ export const AdminMaintenancePage = () => {
                                             <option value="OPEN">Keep Open</option>
                                             <option value="IN_PROGRESS">Force In Progress</option>
                                             <option value="RESOLVED">Mark Resolved</option>
+                                            <option value="BLOCKED">Mark Blocked</option>
+                                            <option value="COMPLETED">Mark Completed</option>
                                             <option value="CLOSED">Archive / Close</option>
                                             <option value="REJECTED">Reject Request</option>
                                         </select>
