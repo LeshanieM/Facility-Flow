@@ -120,7 +120,7 @@ const RequestDetailsPanel = ({ request, isLoading }) => {
             <p className="text-sm font-semibold">Assigned technician</p>
           </div>
           <p className="mt-3 text-sm text-slate-600">
-            {request.assignedTechnician?.name || request.assignedTechnician?.email || 'Not assigned yet'}
+            {request.assignedTechnicianName || 'Not assigned yet'}
           </p>
         </div>
 

@@ -9,11 +9,14 @@ import {
   RefreshCw,
   ShieldCheck,
   Wrench,
+  Type,
+  MapPin,
+  AlertTriangle,
+  Camera,
 } from 'lucide-react';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
 import EmptyState from '../components/EmptyState';
-import QuickActions from '../components/QuickActions';
 import SectionHeader from '../components/SectionHeader';
 import SummaryCard from '../components/SummaryCard';
 import RequestForm from '../components/RequestForm';
@@ -88,6 +91,23 @@ const StudentStaffMaintenanceModule = () => {
       .slice(0, 3);
   }, [requests]);
 
+  const displaySummary = useMemo(() => {
+    const totalSubmitted = requests.length;
+    const pending = requests.filter((request) =>
+      request.status === 'OPEN' || request.status === 'PENDING_REVIEW'
+    ).length;
+    const completed = requests.filter((request) =>
+      ['RESOLVED', 'COMPLETED', 'CLOSED'].includes(request.status)
+    ).length;
+
+    return {
+      ...summary,
+      totalSubmitted,
+      pending,
+      completed,
+    };
+  }, [requests, summary]);
+
   const handleNewRequest = () => {
     setActiveTab('new-request');
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -123,8 +143,8 @@ const StudentStaffMaintenanceModule = () => {
             }
           />
 
-          <div className="mt-8 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)]">
-            <div className="min-w-0 rounded-[26px] border border-white/80 bg-white/80 p-5 shadow-sm">
+          <div className="mt-8">
+            <div className="rounded-[26px] border border-white/80 bg-white/80 p-5 shadow-sm">
               <h2 className="text-2xl font-black tracking-tight text-slate-900">
                 Incident ticketing and maintenance dashboard
               </h2>
@@ -132,14 +152,6 @@ const StudentStaffMaintenanceModule = () => {
                 Follow a simple flow: submit a request, track status changes, and review updates from the facilities team without unnecessary clutter.
               </p>
             </div>
-
-            <QuickActions
-              onNewRequest={handleNewRequest}
-              onRefresh={refreshDashboard}
-              isRefreshing={isRefreshing}
-              filters={filters}
-              setFilters={setFilters}
-            />
           </div>
         </SurfaceCard>
 
@@ -194,128 +206,76 @@ const StudentStaffMaintenanceModule = () => {
           </>
         ) : (
           <>
-            <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard
-                label="Total requests"
-                value={summary.totalSubmitted}
-                hint="All issues you have submitted"
-                accentClass="bg-slate-100 text-slate-700"
-              />
-              <SummaryCard
-                label="Pending"
-                value={summary.pending}
-                hint="Waiting for approval or review"
-                accentClass="bg-amber-50 text-amber-700"
-              />
-              <SummaryCard
-                label="In Progress"
-                value={requests.filter((request) => request.status === 'IN_PROGRESS').length}
-                hint="Currently being worked on"
-                accentClass="bg-orange-50 text-orange-700"
-              />
-              <SummaryCard
-                label="Completed"
-                value={summary.completed}
-                hint="Resolved requests"
-                accentClass="bg-emerald-50 text-emerald-700"
-              />
-            </section>
-
             {activeTab === 'overview' && (
-              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.8fr)]">
-                <div className="space-y-8">
-                  <SurfaceCard className="p-6 sm:p-7">
-                    <SectionHeader
-                      eyebrow="Start Here"
-                      icon={<FilePlus2 size={14} />}
-                      title="Your workflow at a glance"
-                      description="Submit a request, track progress from the request list, and review updates as technicians and administrators respond."
-                    />
+              <div className="space-y-8">
+                <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <SummaryCard
+                    label="Total requests"
+                    value={displaySummary.totalSubmitted}
+                    hint="All issues you have submitted"
+                    accentClass="bg-slate-100 text-slate-700"
+                  />
+                  <SummaryCard
+                    label="Pending"
+                    value={displaySummary.pending}
+                    hint="Waiting for approval or review"
+                    accentClass="bg-amber-50 text-amber-700"
+                  />
+                  <SummaryCard
+                    label="In Progress"
+                    value={requests.filter((request) => request.status === 'IN_PROGRESS').length}
+                    hint="Currently being worked on"
+                    accentClass="bg-orange-50 text-orange-700"
+                  />
+                  <SummaryCard
+                    label="Completed"
+                    value={displaySummary.completed}
+                    hint="Resolved requests"
+                    accentClass="bg-emerald-50 text-emerald-700"
+                  />
+                </section>
 
-                    <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-                      {[
-                        {
-                          step: '1',
-                          title: 'Submit',
-                          description: 'Create a clear incident or maintenance ticket with the exact location and issue details.',
-                        },
-                        {
-                          step: '2',
-                          title: 'Track',
-                          description: 'Monitor progress through pending, approved, in progress, and completed stages.',
-                        },
-                        {
-                          step: '3',
-                          title: 'Review updates',
-                          description: 'Check notifications, recent movement, and request details for the latest context.',
-                        },
-                      ].map((item) => (
-                        <div key={item.step} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
-                          <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
-                            {item.step}
-                          </span>
-                          <h3 className="mt-4 text-lg font-bold text-slate-900">{item.title}</h3>
-                          <p className="mt-2 text-sm leading-6 text-slate-500">{item.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </SurfaceCard>
+                <SurfaceCard className="p-6 sm:p-7">
+                  <SectionHeader
+                    eyebrow="Start Here"
+                    icon={<FilePlus2 size={14} />}
+                    title="Your workflow at a glance"
+                    description="Submit a request, track progress from the request list, and review updates as technicians and administrators respond."
+                  />
 
-                  <RequestDetailsPanel request={selectedRequest} isLoading={isDetailLoading} />
-                </div>
-
-                <div className="space-y-8">
-                  <NotificationList notifications={notifications} isLoading={false} />
-
-                  <SurfaceCard className="p-6 sm:p-7" tone="muted">
-                    <SectionHeader
-                      eyebrow="Recent Activity"
-                      icon={<RefreshCw size={14} />}
-                      title="Latest request movement"
-                      description="A quick look at the most recently updated tickets."
-                    />
-
-                    {recentActivity.length === 0 ? (
-                      <div className="mt-6">
-                        <EmptyState
-                          compact
-                          icon={<Wrench size={20} />}
-                          title="No activity yet"
-                          description="Activity appears here once your tickets begin moving through the workflow."
-                        />
+                  <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {[
+                      {
+                        step: '1',
+                        title: 'Submit',
+                        description: 'Create a clear incident or maintenance ticket with the exact location and issue details.',
+                      },
+                      {
+                        step: '2',
+                        title: 'Track',
+                        description: 'Monitor progress through pending, approved, in progress, and completed stages.',
+                      },
+                      {
+                        step: '3',
+                        title: 'Review updates',
+                        description: 'Check notifications, recent movement, and request details for the latest context.',
+                      },
+                    ].map((item) => (
+                      <div key={item.step} className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                          {item.step}
+                        </span>
+                        <h3 className="mt-4 text-lg font-bold text-slate-900">{item.title}</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-500">{item.description}</p>
                       </div>
-                    ) : (
-                      <div className="mt-6 space-y-3">
-                        {recentActivity.map((request) => (
-                          <button
-                            key={request.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedRequestId(request.id);
-                              setActiveTab('my-requests');
-                            }}
-                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition duration-200 hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                <p className="font-semibold text-slate-800">{request.title}</p>
-                                <p className="mt-1 text-sm text-slate-500">{request.location}</p>
-                              </div>
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                                {request.status === 'IN_PROGRESS' ? 'In Progress' : request.status}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </SurfaceCard>
-                </div>
+                    ))}
+                  </div>
+                </SurfaceCard>
               </div>
             )}
 
             {activeTab === 'new-request' && (
-              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)]">
+              <div className="mx-auto max-w-[1000px]">
                 <div ref={formRef}>
                   <RequestForm
                     values={formValues}
@@ -327,28 +287,6 @@ const StudentStaffMaintenanceModule = () => {
                     submitError={submitError}
                   />
                 </div>
-
-                <SurfaceCard className="p-6 sm:p-7" tone="muted">
-                  <SectionHeader
-                    eyebrow="Submission Tips"
-                    icon={<ShieldCheck size={14} />}
-                    title="How to create a strong ticket"
-                    description="A few simple details help the maintenance team act faster and reduce follow-up questions."
-                  />
-
-                  <div className="mt-6 space-y-4">
-                    {[
-                      'Use a specific title that names the issue and place.',
-                      'Add the exact building, floor, room, or nearby landmark.',
-                      'Explain whether the issue affects safety, teaching, access, or equipment use.',
-                      'Attach a photo if it will help someone understand the issue remotely.',
-                    ].map((tip) => (
-                      <div key={tip} className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-600">
-                        {tip}
-                      </div>
-                    ))}
-                  </div>
-                </SurfaceCard>
               </div>
             )}
 
@@ -359,6 +297,11 @@ const StudentStaffMaintenanceModule = () => {
                   selectedRequestId={selectedRequestId}
                   onSelect={setSelectedRequestId}
                   isLoading={false}
+                  filters={filters}
+                  setFilters={setFilters}
+                  onNewRequest={handleNewRequest}
+                  onRefresh={refreshDashboard}
+                  isRefreshing={isRefreshing}
                 />
 
                 <RequestDetailsPanel request={selectedRequest} isLoading={isDetailLoading} />

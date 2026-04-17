@@ -13,7 +13,7 @@ const initialForm = {
   location: '',
   category: '',
   priority: 'Medium',
-  attachment: null,
+  attachments: [],
 };
 
 const normalizeSummary = (summary) => ({
@@ -128,13 +128,25 @@ export const useStudentMaintenanceDashboard = () => {
     const nextErrors = {};
 
     if (!formValues.title.trim()) nextErrors.title = 'Title is required.';
-    if (!formValues.description.trim()) nextErrors.description = 'Description is required.';
-    if (formValues.description.trim().length > 0 && formValues.description.trim().length < 20) {
-      nextErrors.description = 'Please provide at least 20 characters for the description.';
-    }
+    // Description is now optional, no limits.
+
     if (!formValues.location.trim()) nextErrors.location = 'Location is required.';
     if (!formValues.category) nextErrors.category = 'Category is required.';
     if (!formValues.priority) nextErrors.priority = 'Priority is required.';
+
+    if (formValues.attachments && formValues.attachments.length > 3) {
+      nextErrors.attachments = 'You can upload a maximum of 3 files.';
+    }
+
+    if (formValues.attachments && formValues.attachments.length > 0) {
+      const MAX_SIZE = 10 * 1024 * 1024;
+      for (let i = 0; i < formValues.attachments.length; i++) {
+        if (formValues.attachments[i].size > MAX_SIZE) {
+          nextErrors.attachments = 'Each file must not exceed 10MB.';
+          break;
+        }
+      }
+    }
 
     setFormErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
@@ -146,10 +158,29 @@ export const useStudentMaintenanceDashboard = () => {
       [field]: value,
     }));
 
-    setFormErrors((current) => ({
-      ...current,
-      [field]: '',
-    }));
+    if (field === 'attachments') {
+      let errorMsg = '';
+      if (value && value.length > 3) {
+        errorMsg = 'You can upload a maximum of 3 files.';
+      } else {
+        const MAX_SIZE = 10 * 1024 * 1024;
+        for (let i = 0; i < (value || []).length; i++) {
+          if (value[i].size > MAX_SIZE) {
+            errorMsg = 'Each file must not exceed 10MB.';
+            break;
+          }
+        }
+      }
+      setFormErrors((current) => ({
+        ...current,
+        attachments: errorMsg,
+      }));
+    } else {
+      setFormErrors((current) => ({
+        ...current,
+        [field]: '',
+      }));
+    }
   };
 
   const submitRequest = async (event) => {

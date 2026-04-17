@@ -2,6 +2,7 @@ package com.smartcampus.incident.service;
 
 import com.smartcampus.entity.User;
 import com.smartcampus.incident.dto.IncidentRequests.*;
+import com.smartcampus.incident.dto.IncidentRequests.CreateTicketRequest;
 import com.smartcampus.incident.dto.IncidentResponses.*;
 import com.smartcampus.incident.enums.IncidentEnums.*;
 import com.smartcampus.incident.exception.IncidentExceptions.*;
@@ -39,8 +40,12 @@ public class IncidentService {
         }
 
         List<String> uploadedFiles = new ArrayList<>();
-        if (request.getAttachment() != null && !request.getAttachment().isEmpty()) {
-            uploadedFiles.add(request.getAttachment().getOriginalFilename());
+        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+            for (org.springframework.web.multipart.MultipartFile file : request.getAttachments()) {
+                if (file != null && !file.isEmpty()) {
+                    uploadedFiles.add(file.getOriginalFilename());
+                }
+            }
         }
 
         Incident incident = Incident.builder()
@@ -54,6 +59,8 @@ public class IncidentService {
             .status(IncidentStatus.OPEN)
             .submittedBy(user)
             .attachments(uploadedFiles)
+            .createdAt(Instant.now())
+            .updatedAt(Instant.now())
             .build();
 
         slaService.calculateDeadlines(incident);
@@ -76,6 +83,12 @@ public class IncidentService {
                 .collect(Collectors.toList());
     }
 
+    public List<TicketResponse> getTechnicianTickets(String technicianId) {
+        return incidentRepository.findByAssignedTechnicianId(technicianId).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     public TicketResponse getTicketById(String id) {
         return toResponse(findById(id));
     }
@@ -84,13 +97,13 @@ public class IncidentService {
         List<Incident> incidents = incidentRepository.findBySubmittedById(userId);
         long totalSubmitted = incidents.size();
         long pending = incidents.stream()
-            .filter(i -> i.getStatus() == IncidentStatus.OPEN || i.getStatus() == IncidentStatus.IN_PROGRESS || i.getStatus() == IncidentStatus.PENDING_REVIEW)
+            .filter(i -> i.getStatus() == IncidentStatus.OPEN || i.getStatus() == IncidentStatus.PENDING_REVIEW)
             .count();
         long approved = incidents.stream()
-            .filter(i -> i.getStatus() == IncidentStatus.IN_PROGRESS || i.getStatus() == IncidentStatus.RESOLVED)
+            .filter(i -> i.getStatus() == IncidentStatus.ASSIGNED || i.getStatus() == IncidentStatus.IN_PROGRESS)
             .count();
         long completed = incidents.stream()
-            .filter(i -> i.getStatus() == IncidentStatus.RESOLVED || i.getStatus() == IncidentStatus.CLOSED)
+            .filter(i -> i.getStatus() == IncidentStatus.RESOLVED || i.getStatus() == IncidentStatus.COMPLETED || i.getStatus() == IncidentStatus.CLOSED)
             .count();
         long rejected = incidents.stream().filter(i -> i.getStatus() == IncidentStatus.REJECTED).count();
         long overdue = incidents.stream().filter(i -> i.getSlaStatus() == SlaStatus.BREACHED).count();
@@ -108,6 +121,7 @@ public class IncidentService {
             throw new IllegalIncidentStateException("Incident cannot be cancelled in current status.");
         }
         incident.setStatus(IncidentStatus.CLOSED);
+        incident.setUpdatedAt(Instant.now());
         incidentRepository.save(incident);
         logActivity(id, user, ActivityAction.CLOSED, "User cancelled the incident.");
     }
@@ -119,14 +133,17 @@ public class IncidentService {
         
         if (newStatus == IncidentStatus.IN_PROGRESS && incident.getFirstResponseAt() == null) {
             incident.setFirstResponseAt(Instant.now());
-            incident.setResponseDurationMinutes(ChronoUnit.MINUTES.between(incident.getCreatedAt(), Instant.now()));
+            Instant startForResponse = incident.getCreatedAt() != null ? incident.getCreatedAt() : Instant.now();
+            incident.setResponseDurationMinutes(ChronoUnit.MINUTES.between(startForResponse, Instant.now()));
         }
-        if (newStatus == IncidentStatus.RESOLVED) {
+        if (newStatus == IncidentStatus.RESOLVED || newStatus == IncidentStatus.COMPLETED) {
             incident.setResolvedAt(Instant.now());
-            incident.setResolutionDurationMinutes(ChronoUnit.MINUTES.between(incident.getCreatedAt(), Instant.now()));
+            Instant startForResolution = incident.getCreatedAt() != null ? incident.getCreatedAt() : Instant.now();
+            incident.setResolutionDurationMinutes(ChronoUnit.MINUTES.between(startForResolution, Instant.now()));
         }
 
         slaService.evaluateSlaBreach(incident);
+        incident.setUpdatedAt(Instant.now());
         Incident saved = incidentRepository.save(incident);
         logActivity(id, user, ActivityAction.STATUS_CHANGED, "Status changed to " + newStatus);
         return toResponse(saved);
@@ -141,11 +158,7 @@ public class IncidentService {
         ActivityAction assignmentAction =
                 incident.getAssignedTechnician() == null ? ActivityAction.ASSIGNED : ActivityAction.REASSIGNED;
         incident.setAssignedTechnician(technician);
-
-        // Status updates upon assigning depending on logic
-        // As requested: It stays OPEN, or if it was PENDING_REVIEW it remains so.
-        // It becomes IN_PROGRESS once technician views/accepts it. Wait, the user said
-        // "it should be in_progress after the technician view and accept it". So we do NOT change status here.
+        incident.setUpdatedAt(Instant.now());
 
         Incident saved = incidentRepository.save(incident);
         logActivity(id, admin, assignmentAction, "Assigned technician: " + technician.getName());
@@ -169,8 +182,20 @@ public class IncidentService {
         activityLogRepository.save(log);
     }
 
+    private Instant getCreatedAtCorrected(Incident incident) {
+        if (incident.getCreatedAt() != null) {
+            return incident.getCreatedAt();
+        }
+        if (incident.getId() != null && org.bson.types.ObjectId.isValid(incident.getId())) {
+            return new org.bson.types.ObjectId(incident.getId()).getDate().toInstant();
+        }
+        return null;
+    }
+
     private TicketResponse toResponse(Incident incident) {
         slaService.evaluateSlaBreach(incident);
+        Instant actualCreatedAt = getCreatedAtCorrected(incident);
+        
         return new TicketResponse(
             incident.getId(),
             incident.getTicketId(),
@@ -191,8 +216,8 @@ public class IncidentService {
             incident.getSlaResponseDeadline() != null ? incident.getSlaResponseDeadline().toString() : null,
             incident.getSlaResolutionDeadline() != null ? incident.getSlaResolutionDeadline().toString() : null,
             incident.getSlaStatus(),
-            incident.getCreatedAt() != null ? incident.getCreatedAt().toString() : Instant.now().toString(),
-            incident.getUpdatedAt() != null ? incident.getUpdatedAt().toString() : Instant.now().toString()
+            actualCreatedAt != null ? actualCreatedAt.toString() : null,
+            incident.getUpdatedAt() != null ? incident.getUpdatedAt().toString() : null
         );
     }
 }

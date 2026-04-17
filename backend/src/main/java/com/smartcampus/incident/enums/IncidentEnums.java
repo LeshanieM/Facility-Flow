@@ -15,7 +15,9 @@ public class IncidentEnums {
         ASSIGNED,
         IN_PROGRESS,
         ON_HOLD,
+        BLOCKED,
         RESOLVED,
+        COMPLETED,
         CLOSED,
         REJECTED
     }

@@ -22,6 +22,12 @@ public class TechnicianIncidentController {
     private final IncidentService incidentService;
     private final UserRepository userRepository;
 
+    @GetMapping
+    public ResponseEntity<java.util.List<TicketResponse>> getAssignedTickets(Principal principal) {
+        User user = getUser(principal);
+        return ResponseEntity.ok(incidentService.getTechnicianTickets(user.getId()));
+    }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<TicketResponse> updateStatus(
             @PathVariable String id,
