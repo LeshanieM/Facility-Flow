@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardList, Loader2, MapPin } from 'lucide-react';
+import { ClipboardList, Loader2, MapPin, Search, Filter, Plus, RefreshCw } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
 import StatusBadge from './StatusBadge';
@@ -14,7 +14,7 @@ const formatDate = (value) => {
   }).format(new Date(value));
 };
 
-const RequestList = ({ requests, selectedRequestId, onSelect, isLoading }) => {
+const RequestList = ({ requests, selectedRequestId, onSelect, isLoading, filters, setFilters, onNewRequest, onRefresh, isRefreshing }) => {
   return (
     <SurfaceCard className="p-6 sm:p-7">
       <SectionHeader
@@ -23,6 +23,54 @@ const RequestList = ({ requests, selectedRequestId, onSelect, isLoading }) => {
         title="Submitted requests"
         description="Choose a ticket to review its full details, current status, and technician updates."
       />
+
+      <div className="mt-8 flex flex-col xl:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            value={filters.query}
+            onChange={(e) => setFilters(c => ({...c, query: e.target.value}))}
+            placeholder="Search tickets..."
+            className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 text-sm font-medium text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-400 transition"
+          />
+        </div>
+        
+        <div className="relative w-full xl:w-48 shrink-0">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters(c => ({...c, status: e.target.value}))}
+            className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-10 text-sm font-medium text-slate-800 appearance-none focus:outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-400 transition cursor-pointer"
+          >
+            <option value="ALL">All statuses</option>
+            <option value="PENDING">Pending</option>
+            <option value="APPROVED">Approved</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+
+        <div className="flex w-full xl:w-auto items-center gap-3 shrink-0">
+          <button 
+            type="button" 
+            onClick={onRefresh}
+            className="flex flex-1 xl:flex-none items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:border-blue-200 hover:text-blue-700 shadow-sm"
+          >
+            <RefreshCw size={16} className={isRefreshing ? 'animate-spin text-blue-600' : ''} />
+            <span className="xl:hidden">Refresh</span>
+          </button>
+          
+          <button
+            type="button"
+            onClick={onNewRequest}
+            className="flex flex-1 xl:flex-none items-center justify-center gap-1.5 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:bg-blue-700"
+          >
+            <Plus size={18} />
+            <span>New Ticket</span>
+          </button>
+        </div>
+      </div>
 
       {isLoading ? (
         <div className="mt-6 flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-sm text-slate-500">

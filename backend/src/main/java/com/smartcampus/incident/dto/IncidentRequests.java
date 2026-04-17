@@ -9,6 +9,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 public class IncidentRequests {
 
     @Data
@@ -16,12 +18,12 @@ public class IncidentRequests {
     @AllArgsConstructor
     public static class CreateTicketRequest {
         @NotBlank private String title;
-        @NotBlank private String description;
+        private String description;
         @NotBlank private String category;
         @NotBlank private String location;
         private String room;
         @NotBlank private String priority;
-        private MultipartFile attachment;
+        private List<MultipartFile> attachments;
     }
 
     @Data

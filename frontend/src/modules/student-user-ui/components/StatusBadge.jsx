@@ -2,6 +2,8 @@ import React from 'react';
 
 const statusStyles = {
   PENDING: 'border-amber-200 bg-amber-50 text-amber-700',
+  OPEN: 'border-amber-200 bg-amber-50 text-amber-700',
+  PENDING_REVIEW: 'border-amber-200 bg-amber-50 text-amber-700',
   APPROVED: 'border-sky-200 bg-sky-50 text-sky-700',
   IN_PROGRESS: 'border-orange-200 bg-orange-50 text-orange-700',
   COMPLETED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
@@ -11,6 +13,8 @@ const statusStyles = {
 
 const statusLabels = {
   PENDING: 'Pending',
+  OPEN: 'Pending',
+  PENDING_REVIEW: 'Pending Review',
   APPROVED: 'Approved',
   IN_PROGRESS: 'In Progress',
   COMPLETED: 'Completed',

@@ -42,8 +42,10 @@ export const createMaintenanceRequest = async (payload) => {
   formData.append('category', payload.category);
   formData.append('priority', payload.priority);
 
-  if (payload.attachment) {
-    formData.append('attachment', payload.attachment);
+  if (payload.attachments && payload.attachments.length > 0) {
+    payload.attachments.forEach(file => {
+      formData.append('attachments', file);
+    });
   }
 
   const response = await studentMaintenanceApi.post('/requests', formData, {
