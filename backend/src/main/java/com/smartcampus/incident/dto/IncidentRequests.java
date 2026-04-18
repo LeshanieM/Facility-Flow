@@ -67,4 +67,12 @@ public class IncidentRequests {
     public static class AddNoteRequest {
         @NotBlank private String note;
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AddCommentRequest {
+        @NotBlank private String message;
+        private boolean visibleToRequester;
+    }
 }

@@ -38,7 +38,7 @@ public class Incident {
     private PriorityLevel priority = PriorityLevel.MEDIUM;
     
     @Builder.Default
-    private IncidentStatus status = IncidentStatus.OPEN;
+    private IncidentStatus status = IncidentStatus.SUBMITTED;
 
     @DocumentReference(lazy = true)
     private User submittedBy;
@@ -47,6 +47,9 @@ public class Incident {
     private User assignedTechnician;
 
     private List<String> attachments; // e.g. Array of S3 URLs
+
+    @Builder.Default
+    private List<IncidentComment> comments = new java.util.ArrayList<>();
 
     private String rejectionReason;
     private String adminNotes;

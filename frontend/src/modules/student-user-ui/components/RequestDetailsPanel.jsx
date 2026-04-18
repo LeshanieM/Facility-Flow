@@ -5,10 +5,11 @@ import SectionHeader from './SectionHeader';
 import StatusBadge from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
 
-const timelineSteps = ['PENDING', 'APPROVED', 'IN_PROGRESS', 'COMPLETED'];
+const timelineSteps = ['SUBMITTED', 'UNDER_REVIEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 
 const statusStepIndex = (status) => {
   if (status === 'REJECTED') return 0;
+  if (status === 'ON_HOLD') return 3; // roughly at In_Progress
   return Math.max(timelineSteps.indexOf(status), 0);
 };
 
@@ -22,9 +23,8 @@ const formatDate = (value) => {
 };
 
 const getUpdates = (request) => {
-  if (Array.isArray(request?.comments) && request.comments.length > 0) return request.comments;
-  if (Array.isArray(request?.updates) && request.updates.length > 0) return request.updates;
-  return [];
+  const allComments = (request?.comments || []).filter(c => c.visibleToRequester);
+  return allComments;
 };
 
 const RequestDetailsPanel = ({ request, isLoading }) => {
@@ -93,20 +93,20 @@ const RequestDetailsPanel = ({ request, isLoading }) => {
           <Clock3 size={18} />
           <h4 className="text-lg font-bold">Status tracker</h4>
         </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
           {timelineSteps.map((step, index) => {
             const isComplete = request.status === 'REJECTED' ? index === 0 : index <= activeIndex;
-
+            const label = step.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
             return (
               <div
                 key={step}
-                className={`rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
+                className={`rounded-xl border px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition ${
                   isComplete
                     ? 'border-blue-200 bg-white text-blue-700 shadow-sm'
                     : 'border-slate-200 bg-slate-100 text-slate-400'
                 }`}
               >
-                {step === 'IN_PROGRESS' ? 'In Progress' : step.charAt(0) + step.slice(1).toLowerCase()}
+                {label}
               </div>
             );
           })}

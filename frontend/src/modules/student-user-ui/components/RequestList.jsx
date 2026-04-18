@@ -43,10 +43,13 @@ const RequestList = ({ requests, selectedRequestId, onSelect, isLoading, filters
             className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-10 text-sm font-medium text-slate-800 appearance-none focus:outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-400 transition cursor-pointer"
           >
             <option value="ALL">All statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="APPROVED">Approved</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="UNDER_REVIEW">Under Review</option>
+            <option value="ASSIGNED">Assigned</option>
             <option value="IN_PROGRESS">In Progress</option>
-            <option value="COMPLETED">Completed</option>
+            <option value="ON_HOLD">On Hold</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="CLOSED">Closed</option>
             <option value="REJECTED">Rejected</option>
           </select>
         </div>

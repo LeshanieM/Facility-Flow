@@ -52,6 +52,21 @@ public class StudentIncidentController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<TicketResponse> addComment(
+            @PathVariable String id,
+            @Valid @RequestBody com.smartcampus.incident.dto.IncidentRequests.AddCommentRequest request,
+            Principal principal) {
+        User user = getUser(principal);
+        return ResponseEntity.ok(incidentService.addComment(id, request, user));
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<java.util.List<com.smartcampus.incident.dto.IncidentResponses.ActivityLogResponse>> getHistory(
+            @PathVariable String id) {
+        return ResponseEntity.ok(incidentService.getActivityLogs(id));
+    }
+
     private User getUser(Principal principal) {
         if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth) {
             if (auth.getPrincipal() instanceof User) {

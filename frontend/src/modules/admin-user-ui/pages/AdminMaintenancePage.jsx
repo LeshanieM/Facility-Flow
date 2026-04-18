@@ -5,12 +5,13 @@ import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPl
 
 const getStatusBadge = (status) => {
     switch(status) {
-        case 'OPEN': return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Open</span>;
-        case 'IN_PROGRESS': return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase">In Progress</span>;
-        case 'RESOLVED': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Resolved</span>;
-        case 'COMPLETED': return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Completed</span>;
-        case 'BLOCKED': return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Blocked</span>;
-        case 'CLOSED': return <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-full text-xs font-bold uppercase">Closed</span>;
+        case 'SUBMITTED': return <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Submitted</span>;
+        case 'UNDER_REVIEW': return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Under Review</span>;
+        case 'ASSIGNED': return <span className="bg-sky-100 text-sky-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Assigned</span>;
+        case 'IN_PROGRESS': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold uppercase">In Progress</span>;
+        case 'ON_HOLD': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase">On Hold</span>;
+        case 'RESOLVED': return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Resolved</span>;
+        case 'CLOSED': return <span className="bg-slate-200 text-slate-500 px-3 py-1 rounded-full text-xs font-bold uppercase">Closed</span>;
         case 'REJECTED': return <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Rejected</span>;
         default: return <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold uppercase">{status}</span>;
     }
@@ -30,6 +31,7 @@ export const AdminMaintenancePage = () => {
     const { tickets, technicians, isLoading, error, changeStatus, assignTicket, refreshTickets } = useAdminMaintenanceDashboard();
     const [filter, setFilter] = useState('ALL');
     const [selectedTicket, setSelectedTicket] = useState(null);
+    const [pendingTechAssignment, setPendingTechAssignment] = useState('');
 
     const filteredTickets = tickets.filter(t => filter === 'ALL' || t.status === filter);
 
@@ -41,10 +43,11 @@ export const AdminMaintenancePage = () => {
         }
     };
 
-    const handleAssign = (technicianId) => {
-        if (!technicianId) return;
-        assignTicket(selectedTicket.id, technicianId);
-        setSelectedTicket(prev => ({ ...prev, assignedTechnicianName: technicians.find(t=>t.id===technicianId)?.name }));
+    const handleAssign = () => {
+        if (!pendingTechAssignment) return;
+        assignTicket(selectedTicket.id, pendingTechAssignment);
+        setSelectedTicket(prev => ({ ...prev, assignedTechnicianName: technicians.find(t=>t.id===pendingTechAssignment)?.name, status: 'ASSIGNED' }));
+        setPendingTechAssignment('');
     };
 
     const handleModalStatusChange = (e) => {
@@ -75,9 +78,13 @@ export const AdminMaintenancePage = () => {
                                 onChange={(e) => setFilter(e.target.value)}
                             >
                                 <option value="ALL">All Incidents</option>
-                                <option value="OPEN">Open</option>
+                                <option value="SUBMITTED">Submitted</option>
+                                <option value="UNDER_REVIEW">Under Review</option>
+                                <option value="ASSIGNED">Assigned</option>
                                 <option value="IN_PROGRESS">In Progress</option>
+                                <option value="ON_HOLD">On Hold</option>
                                 <option value="RESOLVED">Resolved</option>
+                                <option value="CLOSED">Closed</option>
                             </select>
                         </div>
                         <button onClick={refreshTickets} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors">
@@ -146,7 +153,15 @@ export const AdminMaintenancePage = () => {
                                                 {getStatusBadge(ticket.status)}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                {ticket.status === 'OPEN' && (
+                                                {ticket.status === 'SUBMITTED' && (
+                                                    <button 
+                                                        onClick={(e) => handleQuickAction(e, ticket.id, 'UNDER_REVIEW')}
+                                                        className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-md shadow-primary/20 hover:scale-105 transition-all"
+                                                    >
+                                                        Review
+                                                    </button>
+                                                )}
+                                                {ticket.status === 'ASSIGNED' && (
                                                     <button 
                                                         onClick={(e) => handleQuickAction(e, ticket.id, 'IN_PROGRESS')}
                                                         className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-md shadow-primary/20 hover:scale-105 transition-all"
@@ -194,11 +209,11 @@ export const AdminMaintenancePage = () => {
                                     </p>
                                 </div>
                                 <button 
-                                    onClick={() => setSelectedTicket(null)}
-                                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
-                                >
-                                    <X size={20} className="stroke-[3]" />
-                                </button>
+                                                    onClick={() => { setSelectedTicket(null); setPendingTechAssignment(''); }}
+                                                    className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
+                                                >
+                                                    <X size={20} className="stroke-[3]" />
+                                                </button>
                             </div>
 
                             {/* Modal Body */}
@@ -242,14 +257,21 @@ export const AdminMaintenancePage = () => {
                                         <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Technician Allocation</h3>
                                         <select 
                                             className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
-                                            value={technicians.find(t => t.name === selectedTicket.assignedTechnicianName)?.id || ''}
-                                            onChange={(e) => handleAssign(e.target.value)}
+                                            value={pendingTechAssignment || technicians.find(t => t.name === selectedTicket.assignedTechnicianName)?.id || ''}
+                                            onChange={(e) => setPendingTechAssignment(e.target.value)}
                                         >
                                             <option value="" disabled>Select a Campus Technician...</option>
                                             {technicians.map(tech => (
                                                 <option key={tech.id} value={tech.id}>{tech.name} ({tech.email})</option>
                                             ))}
                                         </select>
+                                        <button 
+                                            onClick={handleAssign}
+                                            disabled={!pendingTechAssignment}
+                                            className="w-full mt-2 bg-indigo-600 text-white text-sm font-bold py-2 rounded-xl disabled:opacity-50"
+                                        >
+                                            Save Assignment
+                                        </button>
                                     </div>
 
                                     <div className="flex-1 space-y-2">
@@ -259,12 +281,13 @@ export const AdminMaintenancePage = () => {
                                             value={selectedTicket.status}
                                             onChange={handleModalStatusChange}
                                         >
-                                            <option value="OPEN">Keep Open</option>
-                                            <option value="IN_PROGRESS">Force In Progress</option>
-                                            <option value="RESOLVED">Mark Resolved</option>
-                                            <option value="BLOCKED">Mark Blocked</option>
-                                            <option value="COMPLETED">Mark Completed</option>
-                                            <option value="CLOSED">Archive / Close</option>
+                                            <option value="SUBMITTED">Submitted</option>
+                                            <option value="UNDER_REVIEW">Under Review</option>
+                                            <option value="ASSIGNED">Assigned</option>
+                                            <option value="IN_PROGRESS">In Progress</option>
+                                            <option value="ON_HOLD">On Hold</option>
+                                            <option value="RESOLVED">Resolved</option>
+                                            <option value="CLOSED">Closed / Archive</option>
                                             <option value="REJECTED">Reject Request</option>
                                         </select>
                                     </div>

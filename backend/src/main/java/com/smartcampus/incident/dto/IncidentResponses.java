@@ -8,6 +8,7 @@ import lombok.Data;
 
 import java.time.Instant;
 import java.util.List;
+import com.smartcampus.incident.model.IncidentComment;
 
 public class IncidentResponses {
 
@@ -35,6 +36,7 @@ public class IncidentResponses {
         private SlaStatus slaStatus;
         private String createdAt;
         private String updatedAt;
+        private List<IncidentComment> comments;
     }
 
     @Data
@@ -46,5 +48,17 @@ public class IncidentResponses {
         private long completed;
         private long rejected;
         private long overdue;
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class ActivityLogResponse {
+        private String id;
+        private String incidentId;
+        private String actionType;
+        private String message;
+        private String performedByName;
+        private String performedByRole;
+        private String timestamp;
     }
 }

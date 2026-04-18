@@ -94,10 +94,10 @@ const StudentStaffMaintenanceModule = () => {
   const displaySummary = useMemo(() => {
     const totalSubmitted = requests.length;
     const pending = requests.filter((request) =>
-      request.status === 'OPEN' || request.status === 'PENDING_REVIEW'
+      request.status === 'SUBMITTED' || request.status === 'UNDER_REVIEW'
     ).length;
     const completed = requests.filter((request) =>
-      ['RESOLVED', 'COMPLETED', 'CLOSED'].includes(request.status)
+      ['RESOLVED', 'CLOSED'].includes(request.status)
     ).length;
 
     return {
@@ -347,7 +347,7 @@ const StudentStaffMaintenanceModule = () => {
                               <p className="mt-1 text-sm text-slate-500">{request.location}</p>
                             </div>
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                              {request.status === 'IN_PROGRESS' ? 'In Progress' : request.status}
+                              {request.status.replace(/_/g, ' ')}
                             </span>
                           </div>
                         </button>

@@ -9,6 +9,8 @@ const TechDashboard = () => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState(null);
+    const [commentText, setCommentText] = useState('');
+    const [visibleToRequester, setVisibleToRequester] = useState(true);
 
     const fetchTasks = async () => {
         try {
@@ -48,13 +50,30 @@ const TechDashboard = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'OPEN': return 'bg-blue-100 text-blue-800';
-            case 'IN_PROGRESS': return 'bg-amber-100 text-amber-800';
-            case 'RESOLVED': 
-            case 'COMPLETED': return 'bg-emerald-100 text-emerald-800';
-            case 'BLOCKED': return 'bg-red-100 text-red-800';
-            case 'CLOSED': return 'bg-slate-100 text-slate-800';
+            case 'SUBMITTED': return 'bg-slate-100 text-slate-800';
+            case 'UNDER_REVIEW': return 'bg-amber-100 text-amber-800';
+            case 'ASSIGNED': return 'bg-blue-100 text-blue-800';
+            case 'IN_PROGRESS': return 'bg-orange-100 text-orange-800';
+            case 'ON_HOLD': return 'bg-purple-100 text-purple-800';
+            case 'RESOLVED': return 'bg-emerald-100 text-emerald-800';
+            case 'CLOSED': return 'bg-slate-200 text-slate-800';
+            case 'REJECTED': return 'bg-red-100 text-red-800';
             default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const addComment = async (id) => {
+        if (!commentText.trim()) return;
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`/api/technician/tickets/${id}/comments`, 
+                { message: commentText, visibleToRequester }, 
+                { headers: { Authorization: `Bearer ${token}` }}
+            );
+            setCommentText('');
+            fetchTasks();
+        } catch (error) {
+            console.error('Failed to add comment:', error);
         }
     };
 
@@ -125,7 +144,7 @@ const TechDashboard = () => {
                                         >
                                             View Details
                                         </button>
-                                        {(task.status === 'OPEN' || task.status === 'ASSIGNED') && (
+                                        {(task.status === 'ASSIGNED' || task.status === 'ON_HOLD') && (
                                             <button 
                                                 onClick={() => updateStatus(task.id, 'IN_PROGRESS')}
                                                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-xl font-bold transition-colors shadow-sm shadow-amber-500/20"
@@ -197,11 +216,57 @@ const TechDashboard = () => {
                                     </p>
                                 </div>
 
+                                {/* Comments Section */}
+                                <div className="border-t border-slate-100 pt-6 mt-6">
+                                    <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest text-center">Add Progress Comment</h3>
+                                    <div className="flex flex-col gap-3">
+                                        <textarea
+                                            value={commentText}
+                                            onChange={(e) => setCommentText(e.target.value)}
+                                            placeholder="Write your note..."
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-primary/20 outline-none resize-none transition-all"
+                                            rows="3"
+                                        />
+                                        <div className="flex items-center gap-2 px-1">
+                                            <input 
+                                                type="checkbox" 
+                                                id="visibleRequest" 
+                                                checked={visibleToRequester} 
+                                                onChange={(e) => setVisibleToRequester(e.target.checked)} 
+                                                className="rounded border-slate-300 text-primary focus:ring-primary"
+                                            />
+                                            <label htmlFor="visibleRequest" className="text-sm text-slate-600 font-medium cursor-pointer">Visible to Requester</label>
+                                        </div>
+                                        <button 
+                                            onClick={() => addComment(selectedTask.id)}
+                                            disabled={!commentText.trim()}
+                                            className="bg-primary hover:bg-primary/90 text-white rounded-xl py-2 font-bold shadow-md opacity-100 disabled:opacity-50 transition-all"
+                                        >
+                                            Post Comment
+                                        </button>
+                                    </div>
+                                    {selectedTask.comments && selectedTask.comments.length > 0 && (
+                                        <div className="mt-6 space-y-3 max-h-60 overflow-y-auto pr-2">
+                                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Previous Comments</h4>
+                                            {selectedTask.comments.map((c, i) => (
+                                                <div key={i} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-bold text-slate-700">{c.authorName} ({c.authorRole})</span>
+                                                        <span className="text-[10px] text-slate-500">{new Date(c.timestamp).toLocaleString()}</span>
+                                                    </div>
+                                                    <p className="text-sm text-slate-600">{c.message}</p>
+                                                    {c.visibleToRequester && <div className="mt-1 text-[10px] font-bold text-emerald-600 uppercase">Visible to Requester</div>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Technician Action Controls */}
                                 <div className="border-t border-slate-100 pt-6 mt-6">
                                     <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest text-center">Update Work Status</h3>
                                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                                        {(selectedTask.status === 'OPEN' || selectedTask.status === 'ASSIGNED' || selectedTask.status === 'BLOCKED') && (
+                                        {(selectedTask.status === 'ASSIGNED' || selectedTask.status === 'ON_HOLD') && (
                                             <button 
                                                 onClick={() => updateStatus(selectedTask.id, 'IN_PROGRESS')}
                                                 className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-2"
@@ -213,21 +278,21 @@ const TechDashboard = () => {
                                         {selectedTask.status === 'IN_PROGRESS' && (
                                             <>
                                                 <button 
-                                                    onClick={() => updateStatus(selectedTask.id, 'BLOCKED')}
+                                                    onClick={() => updateStatus(selectedTask.id, 'ON_HOLD')}
                                                     className="px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md"
                                                 >
-                                                    Mark Blocked
+                                                    Mark On Hold
                                                 </button>
                                                 <button 
-                                                    onClick={() => updateStatus(selectedTask.id, 'COMPLETED')}
+                                                    onClick={() => updateStatus(selectedTask.id, 'RESOLVED')}
                                                     className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-2"
                                                 >
                                                     <CheckCircle size={18} />
-                                                    Mark Completed
+                                                    Mark Resolved
                                                 </button>
                                             </>
                                         )}
-                                        {(selectedTask.status === 'COMPLETED' || selectedTask.status === 'RESOLVED' || selectedTask.status === 'CLOSED' || selectedTask.status === 'REJECTED') && (
+                                        {(selectedTask.status === 'RESOLVED' || selectedTask.status === 'CLOSED' || selectedTask.status === 'REJECTED') && (
                                             <div className="px-6 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold flex items-center justify-center gap-2 w-full max-w-xs cursor-not-allowed">
                                                 No further actions available
                                             </div>
