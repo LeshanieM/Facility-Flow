@@ -18,7 +18,8 @@ const TechDashboard = () => {
             const res = await axios.get('/api/technician/tickets', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setTasks(res.data);
+            const sortedData = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setTasks(sortedData);
             
             // Update selected task in modal if it's open
             if (selectedTask) {
@@ -50,15 +51,15 @@ const TechDashboard = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'SUBMITTED': return 'bg-slate-100 text-slate-800';
-            case 'UNDER_REVIEW': return 'bg-amber-100 text-amber-800';
-            case 'ASSIGNED': return 'bg-blue-100 text-blue-800';
-            case 'IN_PROGRESS': return 'bg-orange-100 text-orange-800';
-            case 'ON_HOLD': return 'bg-purple-100 text-purple-800';
-            case 'RESOLVED': return 'bg-emerald-100 text-emerald-800';
-            case 'CLOSED': return 'bg-slate-200 text-slate-800';
-            case 'REJECTED': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'SUBMITTED': return 'bg-slate-500 text-white';
+            case 'UNDER_REVIEW': return 'bg-amber-500 text-white';
+            case 'ASSIGNED': return 'bg-blue-500 text-white';
+            case 'IN_PROGRESS': return 'bg-orange-500 text-white';
+            case 'ON_HOLD': return 'bg-purple-500 text-white';
+            case 'RESOLVED': return 'bg-emerald-500 text-white';
+            case 'CLOSED': return 'bg-slate-800 text-white';
+            case 'REJECTED': return 'bg-red-500 text-white';
+            default: return 'bg-gray-500 text-white';
         }
     };
 

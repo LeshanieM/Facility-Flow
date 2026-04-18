@@ -243,5 +243,9 @@ export const useStudentMaintenanceDashboard = () => {
     submitError,
     toasts,
     refreshDashboard: () => loadDashboard({ background: true }),
+    clearSubmitStatus: () => {
+      setSubmitMessage('');
+      setSubmitError('');
+    },
   };
 };

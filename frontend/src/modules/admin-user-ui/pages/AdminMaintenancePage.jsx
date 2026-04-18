@@ -32,8 +32,11 @@ export const AdminMaintenancePage = () => {
     const [filter, setFilter] = useState('ALL');
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [pendingTechAssignment, setPendingTechAssignment] = useState('');
+    const [pendingStatus, setPendingStatus] = useState('');
 
-    const filteredTickets = tickets.filter(t => filter === 'ALL' || t.status === filter);
+    const filteredTickets = tickets
+        .filter(t => filter === 'ALL' || t.status === filter)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const handleQuickAction = (e, ticketId, newStatus) => {
         e.stopPropagation(); // prevent modal from opening
@@ -43,15 +46,24 @@ export const AdminMaintenancePage = () => {
         }
     };
 
-    const handleAssign = () => {
-        if (!pendingTechAssignment) return;
-        assignTicket(selectedTicket.id, pendingTechAssignment);
-        setSelectedTicket(prev => ({ ...prev, assignedTechnicianName: technicians.find(t=>t.id===pendingTechAssignment)?.name, status: 'ASSIGNED' }));
-        setPendingTechAssignment('');
-    };
-
-    const handleModalStatusChange = (e) => {
-        handleQuickAction(e, selectedTicket.id, e.target.value);
+    const handleSave = () => {
+        let hasChanges = false;
+        
+        if (pendingTechAssignment) {
+            assignTicket(selectedTicket.id, pendingTechAssignment);
+            hasChanges = true;
+        }
+        
+        if (pendingStatus && pendingStatus !== selectedTicket.status) {
+            changeStatus(selectedTicket.id, pendingStatus);
+            hasChanges = true;
+        }
+        
+        if (hasChanges) {
+            setSelectedTicket(null);
+            setPendingTechAssignment('');
+            setPendingStatus('');
+        }
     };
 
     return (
@@ -209,7 +221,7 @@ export const AdminMaintenancePage = () => {
                                     </p>
                                 </div>
                                 <button 
-                                                    onClick={() => { setSelectedTicket(null); setPendingTechAssignment(''); }}
+                                                    onClick={() => { setSelectedTicket(null); setPendingTechAssignment(''); setPendingStatus(''); }}
                                                     className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
                                                 >
                                                     <X size={20} className="stroke-[3]" />
@@ -250,47 +262,50 @@ export const AdminMaintenancePage = () => {
                                 </div>
 
                                 {/* Admin Controls */}
-                                <div className="bg-white border-2 border-indigo-50/50 shadow-[0_0_40px_-10px_rgba(79,70,229,0.1)] p-6 rounded-2xl flex flex-col md:flex-row gap-6 relative overflow-hidden">
+                                <div className="bg-white border-2 border-indigo-50/50 shadow-[0_0_40px_-10px_rgba(79,70,229,0.1)] p-6 rounded-2xl flex flex-col gap-6 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
                                     
-                                    <div className="flex-1 space-y-2">
-                                        <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Technician Allocation</h3>
-                                        <select 
-                                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
-                                            value={pendingTechAssignment || technicians.find(t => t.name === selectedTicket.assignedTechnicianName)?.id || ''}
-                                            onChange={(e) => setPendingTechAssignment(e.target.value)}
-                                        >
-                                            <option value="" disabled>Select a Campus Technician...</option>
-                                            {technicians.map(tech => (
-                                                <option key={tech.id} value={tech.id}>{tech.name} ({tech.email})</option>
-                                            ))}
-                                        </select>
-                                        <button 
-                                            onClick={handleAssign}
-                                            disabled={!pendingTechAssignment}
-                                            className="w-full mt-2 bg-indigo-600 text-white text-sm font-bold py-2 rounded-xl disabled:opacity-50"
-                                        >
-                                            Save Assignment
-                                        </button>
+                                    <div className="flex flex-col md:flex-row gap-6">
+                                        <div className="flex-1 space-y-2">
+                                            <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Technician Allocation</h3>
+                                            <select 
+                                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
+                                                value={pendingTechAssignment || technicians.find(t => t.name === selectedTicket.assignedTechnicianName)?.id || ''}
+                                                onChange={(e) => setPendingTechAssignment(e.target.value)}
+                                            >
+                                                <option value="" disabled>Select a Campus Technician...</option>
+                                                {technicians.map(tech => (
+                                                    <option key={tech.id} value={tech.id}>{tech.name} ({tech.email})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="flex-1 space-y-2">
+                                            <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Manual Status Override</h3>
+                                            <select 
+                                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
+                                                value={pendingStatus || selectedTicket.status}
+                                                onChange={(e) => setPendingStatus(e.target.value)}
+                                            >
+                                                {selectedTicket.status === 'SUBMITTED' && <option value="SUBMITTED">Submitted</option>}
+                                                <option value="UNDER_REVIEW">Under Review</option>
+                                                <option value="ASSIGNED">Assigned</option>
+                                                <option value="IN_PROGRESS">In Progress</option>
+                                                <option value="ON_HOLD">On Hold</option>
+                                                <option value="RESOLVED">Resolved</option>
+                                                <option value="CLOSED">Closed / Archive</option>
+                                                <option value="REJECTED">Reject Request</option>
+                                            </select>
+                                        </div>
                                     </div>
 
-                                    <div className="flex-1 space-y-2">
-                                        <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Manual Status Override</h3>
-                                        <select 
-                                            className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
-                                            value={selectedTicket.status}
-                                            onChange={handleModalStatusChange}
-                                        >
-                                            <option value="SUBMITTED">Submitted</option>
-                                            <option value="UNDER_REVIEW">Under Review</option>
-                                            <option value="ASSIGNED">Assigned</option>
-                                            <option value="IN_PROGRESS">In Progress</option>
-                                            <option value="ON_HOLD">On Hold</option>
-                                            <option value="RESOLVED">Resolved</option>
-                                            <option value="CLOSED">Closed / Archive</option>
-                                            <option value="REJECTED">Reject Request</option>
-                                        </select>
-                                    </div>
+                                    <button 
+                                        onClick={handleSave}
+                                        disabled={!pendingTechAssignment && (!pendingStatus || pendingStatus === selectedTicket.status)}
+                                        className="w-full bg-indigo-600 text-white text-sm font-bold py-3 rounded-xl disabled:opacity-50 transition-all hover:bg-indigo-700"
+                                    >
+                                        Save Changes
+                                    </button>
                                 </div>
                             </div>
 

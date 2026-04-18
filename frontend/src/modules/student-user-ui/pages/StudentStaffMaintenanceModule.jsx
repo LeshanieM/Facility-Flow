@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import {
   AlertCircle,
   Bell,
@@ -68,12 +68,19 @@ const StudentStaffMaintenanceModule = () => {
     submitError,
     toasts,
     refreshDashboard,
+    clearSubmitStatus,
   } = useStudentMaintenanceDashboard();
+
+  useEffect(() => {
+    if (activeTab !== 'new-request') {
+      clearSubmitStatus();
+    }
+  }, [activeTab, clearSubmitStatus]);
 
   const filteredRequests = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
 
-    return requests.filter((request) => {
+    return [...requests].filter((request) => {
       const matchesQuery =
         !query ||
         request.title?.toLowerCase().includes(query) ||
@@ -82,7 +89,7 @@ const StudentStaffMaintenanceModule = () => {
 
       const matchesStatus = filters.status === 'ALL' || request.status === filters.status;
       return matchesQuery && matchesStatus;
-    });
+    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [filters, requests]);
 
   const recentActivity = useMemo(() => {
