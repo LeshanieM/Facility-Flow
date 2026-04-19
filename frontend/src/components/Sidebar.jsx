@@ -13,7 +13,9 @@ import {
   BellRing,
   ChevronLeft,
   ChevronRight,
-  Building2
+  Building2,
+  BookOpen,
+  ClipboardList
 } from 'lucide-react';
 
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
@@ -26,6 +28,7 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             { name: 'Users', icon: <Users size={20} />, path: '/admin' },
             { name: 'Incidents', icon: <BellRing size={20} />, path: '/admin/incidents' },
             { name: 'Facilities', icon: <Building2 size={20} />, path: '/admin/facilities' },
+            { name: 'Bookings', icon: <ClipboardList size={20} />, path: '/admin/bookings' },
             { name: 'Logs', icon: <History size={20} />, path: '/logs' },
             { name: 'Security', icon: <ShieldCheck size={20} />, path: '/security' },
         ],
@@ -33,7 +36,8 @@ const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
             { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
             { name: 'Facilities', icon: <Building2 size={20} />, path: '/facilities' },
             { name: 'Incident Ticketing', icon: <BellRing size={20} />, path: '/maintenance' },
-            { name: 'Bookings', icon: <Calendar size={20} />, path: '/bookings' },
+            { name: 'New Booking', icon: <BookOpen size={20} />, path: '/bookings/new' },
+            { name: 'My Bookings', icon: <Calendar size={20} />, path: '/bookings/my' },
             { name: 'Map', icon: <Map size={20} />, path: '/map' },
             { name: 'Profile', icon: <CircleUser size={20} />, path: '/profile' },
         ],
