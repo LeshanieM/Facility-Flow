@@ -5,6 +5,7 @@ import {
   getMyRequests,
   getNotifications,
   getRequestDetails,
+  cancelMaintenanceRequest,
 } from '../api/studentMaintenanceApi';
 
 const initialForm = {
@@ -47,6 +48,7 @@ export const useStudentMaintenanceDashboard = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [pageError, setPageError] = useState('');
   const [submitMessage, setSubmitMessage] = useState('');
   const [submitError, setSubmitError] = useState('');
@@ -208,6 +210,24 @@ export const useStudentMaintenanceDashboard = () => {
     }
   };
 
+  const cancelRequest = async (requestId) => {
+    setIsCancelling(true);
+    try {
+      await cancelMaintenanceRequest(requestId);
+      pushToast('success', 'Ticket cancelled', 'Your incident ticket has been cancelled.');
+      await loadDashboard({ background: true });
+      if (selectedRequestId === requestId) {
+         const detail = await getRequestDetails(requestId);
+         setSelectedRequest(detail);
+      }
+    } catch (error) {
+      const message = extractErrorMessage(error, 'Unable to cancel this ticket.');
+      pushToast('error', 'Cancellation failed', message);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const requestCards = useMemo(() => {
     return requests.map((request) => ({
       id: request.id,
@@ -238,10 +258,12 @@ export const useStudentMaintenanceDashboard = () => {
     isRefreshing,
     isSubmitting,
     isDetailLoading,
+    isCancelling,
     pageError,
     submitMessage,
     submitError,
     toasts,
+    cancelRequest,
     refreshDashboard: () => loadDashboard({ background: true }),
     clearSubmitStatus: () => {
       setSubmitMessage('');

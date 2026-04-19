@@ -27,7 +27,7 @@ const getUpdates = (request) => {
   return allComments;
 };
 
-const RequestDetailsPanel = ({ request, isLoading }) => {
+const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => {
   if (isLoading) {
     return (
       <SurfaceCard className="p-6 sm:p-7">
@@ -61,12 +61,32 @@ const RequestDetailsPanel = ({ request, isLoading }) => {
         icon={<Wrench size={14} />}
         title={request.title}
         description="Review the latest status, assignment, and timeline for this ticket."
-        actions={<StatusBadge status={request.status} />}
+        actions={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Are you sure you want to cancel this ticket?")) onCancel();
+              }}
+              disabled={request.status !== 'SUBMITTED' || isCancelling}
+              title={request.status !== 'SUBMITTED' ? "Cancellation only allowed when status is SUBMITTED" : "Cancel ticket"}
+              className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+                request.status !== 'SUBMITTED' 
+                  ? 'cursor-not-allowed bg-slate-100 text-slate-400' 
+                  : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
+              }`}
+            >
+              {isCancelling ? <Loader2 size={14} className="animate-spin" /> : null}
+              Cancel
+            </button>
+            <StatusBadge status={request.status} />
+          </div>
+        }
       />
 
       <p className="mt-6 text-sm leading-7 text-slate-600">{request.description}</p>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             <MapPin size={14} />
@@ -85,6 +105,20 @@ const RequestDetailsPanel = ({ request, isLoading }) => {
           <p className="mt-3 text-sm font-semibold text-slate-800">{request.priority}</p>
           <p className="mt-5 text-xs uppercase tracking-[0.2em] text-slate-400">Created</p>
           <p className="mt-3 text-sm font-semibold text-slate-800">{formatDate(request.createdAt)}</p>
+        </div>
+
+        <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">SLA Tracker</p>
+          <div className="mt-3 inline-block rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+            {request.slaStatus ? request.slaStatus.replace(/_/g, ' ') : 'NOT TRACKED'}
+          </div>
+          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Due / Resolved</p>
+          <p className="mt-1 text-xs font-semibold text-slate-700">
+            <span className="text-slate-500 font-normal">Response:</span> {request.actualFirstResponseAt ? formatDate(request.actualFirstResponseAt) : formatDate(request.slaResponseDeadline)}
+          </p>
+          <p className="mt-1 text-xs font-semibold text-slate-700">
+            <span className="text-slate-500 font-normal">Resolution:</span> {request.actualResolutionAt ? formatDate(request.actualResolutionAt) : formatDate(request.slaResolutionDeadline)}
+          </p>
         </div>
       </div>
 

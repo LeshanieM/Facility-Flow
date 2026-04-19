@@ -67,6 +67,8 @@ const StudentStaffMaintenanceModule = () => {
     submitMessage,
     submitError,
     toasts,
+    cancelRequest,
+    isCancelling,
     refreshDashboard,
     clearSubmitStatus,
   } = useStudentMaintenanceDashboard();
@@ -311,7 +313,12 @@ const StudentStaffMaintenanceModule = () => {
                   isRefreshing={isRefreshing}
                 />
 
-                <RequestDetailsPanel request={selectedRequest} isLoading={isDetailLoading} />
+                <RequestDetailsPanel 
+                  request={selectedRequest} 
+                  isLoading={isDetailLoading} 
+                  onCancel={() => cancelRequest(selectedRequestId)}
+                  isCancelling={isCancelling}
+                />
               </div>
             )}
 

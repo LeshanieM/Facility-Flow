@@ -75,4 +75,12 @@ public class IncidentRequests {
         @NotBlank private String message;
         private boolean visibleToRequester;
     }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EditCommentRequest {
+        @NotBlank private String message;
+        private boolean visibleToRequester;
+    }
 }

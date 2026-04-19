@@ -33,6 +33,8 @@ public class IncidentResponses {
         private String resolutionSummary;
         private String slaResponseDeadline;
         private String slaResolutionDeadline;
+        private String actualFirstResponseAt;
+        private String actualResolutionAt;
         private SlaStatus slaStatus;
         private String createdAt;
         private String updatedAt;

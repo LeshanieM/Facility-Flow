@@ -57,4 +57,9 @@ export const createMaintenanceRequest = async (payload) => {
   return response.data;
 };
 
+export const cancelMaintenanceRequest = async (requestId) => {
+  const response = await studentMaintenanceApi.patch(`/requests/${requestId}/cancel`);
+  return response.data;
+};
+
 export default studentMaintenanceApi;

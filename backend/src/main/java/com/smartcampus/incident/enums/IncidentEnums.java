@@ -21,9 +21,13 @@ public class IncidentEnums {
     }
 
     public enum SlaStatus {
+        ON_TRACK,
         ON_TIME,
-        AT_RISK,
-        BREACHED
+        RESPONSE_OVERDUE,
+        RESOLUTION_OVERDUE,
+        BREACHED,
+        COMPLETED_WITHIN_SLA,
+        COMPLETED_OVERDUE
     }
 
     public enum ActivityAction {
@@ -34,6 +38,8 @@ public class IncidentEnums {
         REASSIGNED,
         NOTE_ADDED,
         COMMENT_ADDED,
+        COMMENT_EDITED,
+        COMMENT_DELETED,
         RESOLVED,
         CLOSED,
         REJECTED

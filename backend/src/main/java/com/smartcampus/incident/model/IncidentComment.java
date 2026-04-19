@@ -12,9 +12,12 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IncidentComment {
+    private String id;
     private String message;
     private String authorName;
     private String authorRole;
     private Instant timestamp;
     private boolean visibleToRequester;
+    private boolean softDeleted;
+    private Instant editedAt;
 }
