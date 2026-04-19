@@ -7,6 +7,7 @@ import { ClipboardList, Clock, CheckCircle, MapPin, X, AlertCircle, Edit2, Trash
 const TechDashboard = () => {
     const { user } = useAuth();
     const [tasks, setTasks] = useState([]);
+    const [filter, setFilter] = useState('ALL');
     const [loading, setLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState(null);
     const [commentText, setCommentText] = useState('');
@@ -86,10 +87,11 @@ const TechDashboard = () => {
         if (!commentText.trim()) return;
         try {
             const token = localStorage.getItem('token');
-            await axios.post(`/api/technician/tickets/${id}/comments`,
+            const response = await axios.post(`/api/technician/tickets/${id}/comments`,
                 { message: commentText, visibleToRequester },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            setSelectedTask(response.data);
             setCommentText('');
             fetchTasks();
         } catch (error) {
@@ -101,9 +103,10 @@ const TechDashboard = () => {
         if (!window.confirm("Are you sure you want to delete this comment?")) return;
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`/api/technician/tickets/${taskId}/comments/${commentId}`, {
+            const response = await axios.delete(`/api/technician/tickets/${taskId}/comments/${commentId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            setSelectedTask(response.data);
             fetchTasks();
         } catch (error) {
             console.error('Failed to delete comment:', error);
@@ -114,10 +117,11 @@ const TechDashboard = () => {
         if (!commentText.trim()) return;
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`/api/technician/tickets/${taskId}/comments/${commentId}`,
+            const response = await axios.put(`/api/technician/tickets/${taskId}/comments/${commentId}`,
                 { message: commentText, visibleToRequester },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            setSelectedTask(response.data);
             setCommentText('');
             setEditingCommentId(null);
             fetchTasks();
@@ -135,6 +139,8 @@ const TechDashboard = () => {
         }
     };
 
+    const filteredTasks = tasks.filter(task => filter === 'ALL' || task.status === filter);
+
     return (
         <Layout>
             <div className="space-y-8 animate-fade-in text-slate-800 relative min-h-screen -m-8 p-8 overflow-hidden bg-slate-50">
@@ -148,6 +154,24 @@ const TechDashboard = () => {
                         <h1 className="text-4xl font-black text-slate-900 tracking-tight drop-shadow-sm">Technician Console</h1>
                         <p className="text-slate-600 font-medium text-lg mt-1">Hello, <span className="text-emerald-600 font-bold">{user?.sub?.split('@')[0]}</span>. Your operations workstation is ready.</p>
                     </div>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="bg-white/70 backdrop-blur-xl border border-white/60 p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col sm:flex-row items-center gap-4 relative z-10 w-fit mt-4">
+                    <span className="font-bold text-slate-700 text-sm pl-2">Filter Tasks:</span>
+                    <select 
+                        className="bg-white border border-slate-200 rounded-xl text-sm px-4 py-2 focus:ring-2 focus:ring-emerald-500/20 outline-none font-medium text-slate-600 cursor-pointer shadow-sm"
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                    >
+                        <option value="ALL">All Tickets</option>
+                        <option value="ASSIGNED">Assigned</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="ON_HOLD">On Hold</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="REJECTED">Rejected</option>
+                        <option value="CLOSED">Closed</option>
+                    </select>
                 </div>
 
                 {/* Content Area */}
@@ -175,7 +199,7 @@ const TechDashboard = () => {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
-                            {tasks.map(task => (
+                            {filteredTasks.map(task => (
                                 <div key={task.id} className="bg-white/70 backdrop-blur-xl border border-white/60 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-1 relative flex flex-col pt-12 text-slate-800">
                                     <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[10px] font-black font-mono tracking-widest ${getStatusColor(task.status)} shadow-sm uppercase`}>
                                         {task.status.replace(/_/g, ' ')}
