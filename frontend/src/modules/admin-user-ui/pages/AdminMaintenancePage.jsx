@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
 import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin } from 'lucide-react';
@@ -33,6 +33,28 @@ export const AdminMaintenancePage = () => {
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [pendingTechAssignment, setPendingTechAssignment] = useState('');
     const [pendingStatus, setPendingStatus] = useState('');
+    const styleRef = useRef(null);
+
+    useEffect(() => {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = `
+          @keyframes float-slow {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-20px) scale(1.05); }
+          }
+          @keyframes glow-pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.2); }
+          }
+          @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+          }
+        `;
+        document.head.appendChild(styleEl);
+        styleRef.current = styleEl;
+        return () => document.head.removeChild(styleEl);
+    }, []);
 
     const filteredTickets = tickets
         .filter(t => filter === 'ALL' || t.status === filter)
@@ -68,19 +90,24 @@ export const AdminMaintenancePage = () => {
 
     return (
         <Layout>
-            <div className="space-y-6 animate-fade-in relative">
+            <div className="space-y-8 animate-fade-in relative min-h-screen text-slate-800 -m-8 p-8 overflow-hidden bg-slate-50">
+                {/* Background Blobs for Epic aesthetic */}
+                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[50%] bg-indigo-400/20 rounded-full blur-[120px] pointer-events-none animate-[float-slow_8s_ease-in-out_infinite]" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[40%] bg-blue-400/20 rounded-full blur-[140px] pointer-events-none animate-[float-slow_12s_ease-in-out_infinite_reverse]" />
+                <div className="absolute top-[20%] right-[10%] w-[25%] h-[30%] bg-purple-400/15 rounded-full blur-[100px] pointer-events-none animate-[glow-pulse_6s_ease-in-out_infinite]" />
+
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 relative z-10">
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Incident Ticketing Monitor</h1>
-                        <p className="text-slate-500 font-medium">Oversee all campus facility breakdowns and map technicians to workflow requests.</p>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight drop-shadow-sm">Incident Ticketing Monitor</h1>
+                        <p className="text-slate-600 font-medium">Oversee all campus facility breakdowns and map technicians to workflow requests.</p>
                     </div>
                 </div>
 
                 {/* Dashboard Datatable */}
-                <div className="glass-card overflow-hidden shadow-xl shadow-slate-200/50 border-slate-200/60 bg-white">
+                <div className="glass-card overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 bg-white/60 backdrop-blur-xl rounded-[24px] relative z-10">
                     {/* Toolbar */}
-                    <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+                    <div className="p-4 border-b border-white/50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/40">
                         <div className="flex items-center gap-2">
                             <MonitorPlay className="text-slate-400" size={18} />
                             <span className="font-bold text-slate-700 text-sm">Global Filter:</span>
@@ -134,12 +161,12 @@ export const AdminMaintenancePage = () => {
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-right">Quick Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-slate-200/50">
                                     {filteredTickets.map(ticket => (
                                         <tr 
                                             key={ticket.id} 
                                             onClick={() => setSelectedTicket(ticket)}
-                                            className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                                            className="hover:bg-white/80 transition-all duration-300 group cursor-pointer hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 relative z-10"
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
@@ -204,10 +231,10 @@ export const AdminMaintenancePage = () => {
                 {/* Details & Assignment Modal */}
                 {selectedTicket && (
                     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl relative border border-slate-100 flex flex-col max-h-[90vh]">
+                        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl w-full max-w-3xl overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/50 flex flex-col max-h-[90vh]">
                             
                             {/* Modal Header */}
-                            <div className="px-8 py-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+                            <div className="px-8 py-6 border-b border-slate-200/50 flex items-start justify-between bg-white/50">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-3 mb-2">
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white shadow-sm ${getPriorityColor(selectedTicket.priority)}`}>
