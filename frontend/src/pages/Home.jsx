@@ -1,112 +1,164 @@
-import React from 'react';
-import { LogIn, GraduationCap, Building, Users, BookOpen } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import heroImage from "../assets/hero.png";
 
-const Home = () => {
-    const navigate = useNavigate();
-    const { user } = useAuth();
-
-    return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 relative overflow-hidden font-sans select-none">
-            {/* --- Top Header Navigation --- */}
-            <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-8 flex items-center justify-between shadow-sm">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-md">
-                        F
-                    </div>
-                    <div>
-                        <h2 className="text-lg font-black text-slate-900 tracking-tight leading-tight uppercase">
-                            {user?.role === 'ADMIN' ? 'Control Center' : 'Campus Hub'}
-                        </h2>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    <button 
-                        onClick={() => navigate(user ? '/dashboard' : '/login')}
-                        className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-600/20 active:scale-95 flex items-center gap-2"
-                    >
-                        {user ? 'Go to Dashboard' : 'Sign In'}
-                    </button>
-                </div>
-            </header>
-
-            {/* --- Background Decorative Elements --- */}
-            <div className="absolute top-0 -left-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] animate-pulse" />
-            <div className="absolute bottom-0 -right-10 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] animate-pulse delay-700" />
-            
-            {/* --- Main Content --- */}
-            <main className="relative z-10 max-w-7xl mx-auto px-8 pt-24 pb-32 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-                
-                {/* Left Side: Copy and CTA */}
-                <div className="space-y-8 max-w-xl animate-fade-in">
-                    <h1 className="text-6xl md:text-7xl font-black leading-[1.1] tracking-tight text-slate-900">
-                        Discover your <br />
-                        <span className="text-blue-600">campus hub</span>
-                    </h1>
-                    
-                    <p className="text-slate-500 text-lg leading-relaxed max-w-md font-medium">
-                        Access university facilities, from collaborative study pods to cutting-edge research labs. Your intelligent portal for a connected campus experience.
-                    </p>
-
-                    <button 
-                        onClick={() => navigate('/login')}
-                        className="group relative px-8 py-4 bg-blue-600 text-white rounded-full font-bold text-lg hover:scale-105 transition-all duration-300 shadow-xl shadow-blue-600/30 hover:shadow-blue-600/50 flex items-center gap-3"
-                    >
-                        Login to Portal
-                        <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                </div>
-
-                {/* Right Side: University Image */}
-                <div className="relative flex justify-center items-center animate-fade-in">
-                    <div className="relative w-full aspect-[4/3] max-w-[600px] rounded-3xl overflow-hidden shadow-2xl shadow-slate-300/50 transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                        <img 
-                            src="https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80" 
-                            alt="Modern University Campus" 
-                            className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 to-transparent"></div>
-                    </div>
-
-                    {/* Floating elements to keep some dynamic style */}
-                    <div className="absolute -top-6 -right-6 w-24 h-24 bg-yellow-400 rounded-full blur-[20px] opacity-40 animate-pulse" />
-                    <div className="absolute -bottom-6 -left-6 w-32 h-32 bg-blue-500 rounded-full blur-[30px] opacity-20" />
-                </div>
-            </main>
-
-            {/* --- Footer Cards --- */}
-            <div className="relative z-10 max-w-7xl mx-auto px-8 pb-32">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {[
-                        { icon: GraduationCap, title: "Academic Life", text: "Access course schedules, grades, and essential academic resources seamlessly." },
-                        { icon: Building, title: "Campus Facilities", text: "Book study rooms, advanced sports arenas, and dedicated event spaces." },
-                        { icon: Users, title: "Student Community", text: "Connect with peers, join diverse campus clubs, and attend local events." },
-                        { icon: BookOpen, title: "Digital Library", text: "Explore millions of global research papers, curated journals, and books." }
-                    ].map((card, idx) => (
-                        <div key={idx} className="group p-8 rounded-3xl bg-white border border-slate-100 shadow-xl shadow-slate-200/50 hover:border-blue-200 transition-all duration-300 transform hover:-translate-y-2">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                                <card.icon className="w-6 h-6" />
-                            </div>
-                            <h3 className="text-xl font-bold mb-3 text-slate-800">{card.title}</h3>
-                            <p className="text-slate-500 text-sm leading-relaxed">
-                                {card.text}
-                            </p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            
-            {/* Custom Styles */}
-            <style dangerouslySetInnerHTML={{ __html: `
-                @keyframes float {
-                    0%, 100% { transform: translateY(0px) rotate(2deg); }
-                    50% { transform: translateY(-10px) rotate(1deg); }
-                }
-            ` }} />
-        </div>
-    );
+const colors = {
+  DEFAULT: "#4169E1",
+  dark: "#314fb3",
+  light: "#6687eb",
+  darker: "#243a8a",
+  gold: "#f5c842",
 };
 
-export default Home;
+const features = [
+  {
+    title: "Academic Life",
+    desc: "Access course schedules, grades, and essential academic resources seamlessly.",
+  },
+  {
+    title: "Campus Facilities",
+    desc: "Book study rooms, advanced sports arenas, and dedicated event spaces.",
+  },
+  {
+    title: "Student Community",
+    desc: "Connect with peers, join diverse campus clubs, and attend local events.",
+  },
+  {
+    title: "Digital Library",
+    desc: "Explore millions of global research papers, curated journals, and books.",
+  },
+];
+
+export default function CampusPortal() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const styleRef = useRef(null);
+
+  useEffect(() => {
+    const styleEl = document.createElement("style");
+    styleEl.textContent = `
+      @keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-12px); }
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.3; transform: scale(1.6); }
+      }
+    `;
+    document.head.appendChild(styleEl);
+    styleRef.current = styleEl;
+    return () => document.head.removeChild(styleEl);
+  }, []);
+
+  return (
+    <div className="font-['DM_Sans',sans-serif] h-screen w-full overflow-hidden flex flex-col bg-slate-50">
+      {/* Header */}
+      <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-4 sm:px-8 flex items-center justify-between shadow-sm flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-md">
+            F
+          </div>
+          <h2 className="text-lg font-black text-slate-900 tracking-tight leading-tight uppercase">
+            {user?.role === "ADMIN" ? "Control Center" : "Campus Hub"}
+          </h2>
+        </div>
+        <button
+          onClick={() => navigate(user ? "/dashboard" : "/login")}
+          className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-md shadow-blue-600/20 active:scale-95"
+        >
+          {user ? "Go to Dashboard" : "Sign In"}
+        </button>
+      </header>
+
+      {/* Hero */}
+      <div
+        className="flex-1 min-h-0 relative overflow-hidden flex items-center"
+        style={{
+          background: `linear-gradient(135deg, ${colors.darker} 0%, ${colors.DEFAULT} 55%, ${colors.light} 100%)`,
+        }}
+      >
+        {/* Radial overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse 70% 90% at 60% 40%, rgba(255,255,255,0.07) 0%, transparent 70%)`,
+          }}
+        />
+
+        {/* Pulsing accent dots */}
+        <div className="absolute top-12 right-[38%] w-2 h-2 rounded-full bg-yellow-400/70 animate-[pulse_2.2s_ease-in-out_infinite]" />
+        <div className="absolute top-1/3 right-[20%] w-2 h-2 rounded-full bg-yellow-400/50 animate-[pulse_2.8s_ease-in-out_infinite_0.5s]" />
+        <div className="absolute bottom-16 right-[42%] w-1.5 h-1.5 rounded-full bg-white/50 animate-[pulse_3s_ease-in-out_infinite_1s]" />
+
+        {/* Layout*/}
+        <div className="relative z-10 w-full flex flex-col lg:flex-row items-center px-8 md:px-14 gap-8 lg:gap-0">
+
+          {/* Left text */}
+          <div className="flex-shrink-0 w-full lg:w-[380px] text-center lg:text-left">
+            <div className="font-['Playfair_Display',serif] text-5xl md:text-6xl font-black text-white leading-none mb-2 tracking-[-2px]">
+              CAM<span style={{ color: colors.gold }}>PUS</span>
+            </div>
+            <div className="text-[11px] font-semibold text-white/55 tracking-[0.14em] uppercase mb-5">
+              University Portal
+            </div>
+            <p className="text-[15px] text-white/85 leading-relaxed mb-8 max-w-[360px] mx-auto lg:mx-0">
+              Access university facilities, from collaborative study pods to
+              cutting-edge research labs. Your{" "}
+              <strong className="text-white font-semibold">intelligent portal</strong>{" "}
+              for a connected campus experience.
+            </p>
+            <button
+              onClick={() => navigate("/login")}
+              className="inline-flex items-center gap-2.5 bg-white/12 backdrop-blur-sm border border-white/35 text-white font-medium text-sm py-3 px-6 rounded-full transition-all duration-200 hover:bg-white/20 hover:-translate-y-0.5 group mx-auto lg:mx-0"
+            >
+              Login to Portal
+              <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
+            </button>
+          </div>
+
+          {/* Image */}
+          <div className="flex-1 flex items-center justify-center lg:justify-center min-w-0">
+            <div
+              className="relative animate-[float_4s_ease-in-out_infinite]"
+              style={{ width: "min(580px, 90%)" }}
+            >
+              {/* Glow blob behind image */}
+              <div
+                className="absolute inset-0 rounded-3xl pointer-events-none"
+                style={{
+                  background: "radial-gradient(ellipse 80% 70% at 50% 55%, rgba(100,130,255,0.35) 0%, transparent 70%)",
+                  transform: "scale(1.15)",
+                }}
+              />
+              <img
+                src={heroImage}
+                alt="University Campus"
+                className="relative w-full h-auto object-contain drop-shadow-2xl"
+                style={{ maxHeight: "620px" }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Feature strip  */}
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-0 flex-shrink-0"
+        style={{ background: colors.darker }}
+      >
+        {features.map((f) => (
+          <div
+            key={f.title}
+            className="px-8 py-7 border-r border-white/10 last:border-r-0 hover:bg-white/5 transition-colors duration-200 cursor-default"
+          >
+            <div className="text-lg mb-3" style={{ color: colors.gold }}>★</div>
+            <h4 className="text-[15px] font-bold text-white mb-2">{f.title}</h4>
+            <p className="text-[13px] text-white/60 leading-relaxed">{f.desc}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
