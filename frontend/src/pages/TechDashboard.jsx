@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import axios from 'axios';
-import { ClipboardList, Clock, CheckCircle, MapPin, X, AlertCircle } from 'lucide-react';
+import { ClipboardList, Clock, CheckCircle, MapPin, X, AlertCircle, Edit2, Trash2 } from 'lucide-react';
 
 const TechDashboard = () => {
     const { user } = useAuth();
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState(null);
+    const [commentText, setCommentText] = useState('');
+    const [visibleToRequester, setVisibleToRequester] = useState(true);
+    const [editingCommentId, setEditingCommentId] = useState(null);
 
     const fetchTasks = async () => {
         try {
@@ -16,7 +19,8 @@ const TechDashboard = () => {
             const res = await axios.get('/api/technician/tickets', {
                 headers: { Authorization: `Bearer ${token}` }
             });
-            setTasks(res.data);
+            const sortedData = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setTasks(sortedData);
             
             // Update selected task in modal if it's open
             if (selectedTask) {
@@ -48,13 +52,68 @@ const TechDashboard = () => {
 
     const getStatusColor = (status) => {
         switch (status) {
-            case 'OPEN': return 'bg-blue-100 text-blue-800';
-            case 'IN_PROGRESS': return 'bg-amber-100 text-amber-800';
-            case 'RESOLVED': 
-            case 'COMPLETED': return 'bg-emerald-100 text-emerald-800';
-            case 'BLOCKED': return 'bg-red-100 text-red-800';
-            case 'CLOSED': return 'bg-slate-100 text-slate-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'SUBMITTED': return 'bg-slate-500 text-white';
+            case 'UNDER_REVIEW': return 'bg-amber-500 text-white';
+            case 'ASSIGNED': return 'bg-blue-500 text-white';
+            case 'IN_PROGRESS': return 'bg-orange-500 text-white';
+            case 'ON_HOLD': return 'bg-purple-500 text-white';
+            case 'RESOLVED': return 'bg-emerald-500 text-white';
+            case 'CLOSED': return 'bg-slate-800 text-white';
+            case 'REJECTED': return 'bg-red-500 text-white';
+            default: return 'bg-gray-500 text-white';
+        }
+    };
+
+    const addComment = async (id) => {
+        if (!commentText.trim()) return;
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(`/api/technician/tickets/${id}/comments`, 
+                { message: commentText, visibleToRequester }, 
+                { headers: { Authorization: `Bearer ${token}` }}
+            );
+            setCommentText('');
+            fetchTasks();
+        } catch (error) {
+            console.error('Failed to add comment:', error);
+        }
+    };
+
+    const deleteComment = async (taskId, commentId) => {
+        if (!window.confirm("Are you sure you want to delete this comment?")) return;
+        try {
+            const token = localStorage.getItem('token');
+            await axios.delete(`/api/technician/tickets/${taskId}/comments/${commentId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            fetchTasks();
+        } catch (error) {
+            console.error('Failed to delete comment:', error);
+        }
+    };
+
+    const editComment = async (taskId, commentId) => {
+        if (!commentText.trim()) return;
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`/api/technician/tickets/${taskId}/comments/${commentId}`, 
+                { message: commentText, visibleToRequester },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setCommentText('');
+            setEditingCommentId(null);
+            fetchTasks();
+        } catch (error) {
+            console.error('Failed to edit comment:', error);
+            alert("Error editing comment. Only the author can edit.");
+        }
+    };
+
+    const submitComment = () => {
+        if (editingCommentId) {
+            editComment(selectedTask.id, editingCommentId);
+        } else {
+            addComment(selectedTask.id);
         }
     };
 
@@ -125,7 +184,7 @@ const TechDashboard = () => {
                                         >
                                             View Details
                                         </button>
-                                        {(task.status === 'OPEN' || task.status === 'ASSIGNED') && (
+                                        {(task.status === 'ASSIGNED' || task.status === 'ON_HOLD') && (
                                             <button 
                                                 onClick={() => updateStatus(task.id, 'IN_PROGRESS')}
                                                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-xl font-bold transition-colors shadow-sm shadow-amber-500/20"
@@ -190,6 +249,29 @@ const TechDashboard = () => {
                                     </div>
                                 </div>
 
+                                <div className="bg-blue-50/70 p-5 rounded-2xl border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-4 shadow-inner">
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">SLA Status</p>
+                                        <div className="inline-block px-2 py-1 bg-white border border-blue-200 text-blue-700 text-xs font-bold rounded">
+                                            {selectedTask.slaStatus ? selectedTask.slaStatus.replace(/_/g, ' ') : 'NOT TRACKED'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">Response Target</p>
+                                        <p className="text-sm font-bold text-blue-900">{selectedTask.slaResponseDeadline ? new Date(selectedTask.slaResponseDeadline).toLocaleString() : 'N/A'}</p>
+                                        <p className="text-[10px] mt-2 text-slate-500 font-medium tracking-wide">
+                                            <span className="font-bold">Actual:</span> {selectedTask.actualFirstResponseAt ? new Date(selectedTask.actualFirstResponseAt).toLocaleString() : 'Pending'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">Resolution Target</p>
+                                        <p className="text-sm font-bold text-blue-900">{selectedTask.slaResolutionDeadline ? new Date(selectedTask.slaResolutionDeadline).toLocaleString() : 'N/A'}</p>
+                                        <p className="text-[10px] mt-2 text-slate-500 font-medium tracking-wide">
+                                            <span className="font-bold">Actual:</span> {selectedTask.actualResolutionAt ? new Date(selectedTask.actualResolutionAt).toLocaleString() : 'Pending'}
+                                        </p>
+                                    </div>
+                                </div>
+
                                 <div>
                                     <h3 className="text-sm font-black text-slate-900 mb-2 uppercase tracking-widest">Full Description</h3>
                                     <p className="bg-slate-50 p-4 rounded-xl text-slate-600 text-sm leading-relaxed border border-slate-100 whitespace-pre-wrap">
@@ -197,11 +279,70 @@ const TechDashboard = () => {
                                     </p>
                                 </div>
 
+                                {/* Comments Section */}
+                                <div className="border-t border-slate-100 pt-6 mt-6">
+                                    <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest text-center">{editingCommentId ? 'Edit Comment' : 'Add Progress Comment'}</h3>
+                                    <div className="flex flex-col gap-3">
+                                        <textarea
+                                            value={commentText}
+                                            onChange={(e) => setCommentText(e.target.value)}
+                                            placeholder="Write your note..."
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-4 focus:ring-primary/20 outline-none resize-none transition-all"
+                                            rows="3"
+                                        />
+                                        <div className="flex items-center gap-2 px-1 justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="visibleRequest" 
+                                                    checked={visibleToRequester} 
+                                                    onChange={(e) => setVisibleToRequester(e.target.checked)} 
+                                                    className="rounded border-slate-300 text-primary focus:ring-primary"
+                                                />
+                                                <label htmlFor="visibleRequest" className="text-sm text-slate-600 font-medium cursor-pointer">Visible to Requester</label>
+                                            </div>
+                                            {editingCommentId && (
+                                                <button onClick={() => { setEditingCommentId(null); setCommentText(''); }} className="text-sm text-slate-500 hover:text-slate-800 font-bold">Cancel Edit</button>
+                                            )}
+                                        </div>
+                                        <button 
+                                            onClick={submitComment}
+                                            disabled={!commentText.trim()}
+                                            className="bg-primary hover:bg-primary/90 text-white rounded-xl py-2 font-bold shadow-md opacity-100 disabled:opacity-50 transition-all"
+                                        >
+                                            {editingCommentId ? 'Save Changes' : 'Post Comment'}
+                                        </button>
+                                    </div>
+                                    {selectedTask.comments && selectedTask.comments.length > 0 && (
+                                        <div className="mt-6 space-y-3 max-h-60 overflow-y-auto pr-2">
+                                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Previous Comments</h4>
+                                            {selectedTask.comments.filter(c => !c.softDeleted).map((c, i) => (
+                                                <div key={i} className="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-xs font-bold text-slate-700">{c.authorName} ({c.authorRole})</span>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="text-[10px] text-slate-500">{new Date(c.timestamp).toLocaleString()}{c.editedAt && ' (edited)'}</span>
+                                                            {(c.id && (c.authorName?.toLowerCase() === user?.name?.toLowerCase() || c.authorName?.toLowerCase() === user?.sub?.split('@')[0]?.toLowerCase() || !c.authorName)) && (
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={() => { setEditingCommentId(c.id); setCommentText(c.message); setVisibleToRequester(c.visibleToRequester); }} className="text-blue-500 hover:text-blue-700 transition-colors"><Edit2 size={14} /></button>
+                                                                    <button onClick={() => deleteComment(selectedTask.id, c.id)} className="text-rose-500 hover:text-rose-700 transition-colors"><Trash2 size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-sm text-slate-600 mt-2">{c.message}</p>
+                                                    {c.visibleToRequester && <div className="mt-2 inline-block px-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded uppercase">Visible to Requester</div>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Technician Action Controls */}
                                 <div className="border-t border-slate-100 pt-6 mt-6">
                                     <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest text-center">Update Work Status</h3>
                                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                                        {(selectedTask.status === 'OPEN' || selectedTask.status === 'ASSIGNED' || selectedTask.status === 'BLOCKED') && (
+                                        {(selectedTask.status === 'ASSIGNED' || selectedTask.status === 'ON_HOLD') && (
                                             <button 
                                                 onClick={() => updateStatus(selectedTask.id, 'IN_PROGRESS')}
                                                 className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-2"
@@ -213,21 +354,21 @@ const TechDashboard = () => {
                                         {selectedTask.status === 'IN_PROGRESS' && (
                                             <>
                                                 <button 
-                                                    onClick={() => updateStatus(selectedTask.id, 'BLOCKED')}
+                                                    onClick={() => updateStatus(selectedTask.id, 'ON_HOLD')}
                                                     className="px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md"
                                                 >
-                                                    Mark Blocked
+                                                    Mark On Hold
                                                 </button>
                                                 <button 
-                                                    onClick={() => updateStatus(selectedTask.id, 'COMPLETED')}
+                                                    onClick={() => updateStatus(selectedTask.id, 'RESOLVED')}
                                                     className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-2"
                                                 >
                                                     <CheckCircle size={18} />
-                                                    Mark Completed
+                                                    Mark Resolved
                                                 </button>
                                             </>
                                         )}
-                                        {(selectedTask.status === 'COMPLETED' || selectedTask.status === 'RESOLVED' || selectedTask.status === 'CLOSED' || selectedTask.status === 'REJECTED') && (
+                                        {(selectedTask.status === 'RESOLVED' || selectedTask.status === 'CLOSED' || selectedTask.status === 'REJECTED') && (
                                             <div className="px-6 py-3 bg-slate-100 text-slate-500 rounded-xl font-bold flex items-center justify-center gap-2 w-full max-w-xs cursor-not-allowed">
                                                 No further actions available
                                             </div>

@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import {
   AlertCircle,
   Bell,
@@ -67,13 +67,22 @@ const StudentStaffMaintenanceModule = () => {
     submitMessage,
     submitError,
     toasts,
+    cancelRequest,
+    isCancelling,
     refreshDashboard,
+    clearSubmitStatus,
   } = useStudentMaintenanceDashboard();
+
+  useEffect(() => {
+    if (activeTab !== 'new-request') {
+      clearSubmitStatus();
+    }
+  }, [activeTab, clearSubmitStatus]);
 
   const filteredRequests = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
 
-    return requests.filter((request) => {
+    return [...requests].filter((request) => {
       const matchesQuery =
         !query ||
         request.title?.toLowerCase().includes(query) ||
@@ -82,7 +91,7 @@ const StudentStaffMaintenanceModule = () => {
 
       const matchesStatus = filters.status === 'ALL' || request.status === filters.status;
       return matchesQuery && matchesStatus;
-    });
+    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [filters, requests]);
 
   const recentActivity = useMemo(() => {
@@ -94,10 +103,10 @@ const StudentStaffMaintenanceModule = () => {
   const displaySummary = useMemo(() => {
     const totalSubmitted = requests.length;
     const pending = requests.filter((request) =>
-      request.status === 'OPEN' || request.status === 'PENDING_REVIEW'
+      request.status === 'SUBMITTED' || request.status === 'UNDER_REVIEW'
     ).length;
     const completed = requests.filter((request) =>
-      ['RESOLVED', 'COMPLETED', 'CLOSED'].includes(request.status)
+      ['RESOLVED', 'CLOSED'].includes(request.status)
     ).length;
 
     return {
@@ -304,7 +313,12 @@ const StudentStaffMaintenanceModule = () => {
                   isRefreshing={isRefreshing}
                 />
 
-                <RequestDetailsPanel request={selectedRequest} isLoading={isDetailLoading} />
+                <RequestDetailsPanel 
+                  request={selectedRequest} 
+                  isLoading={isDetailLoading} 
+                  onCancel={() => cancelRequest(selectedRequestId)}
+                  isCancelling={isCancelling}
+                />
               </div>
             )}
 
@@ -347,7 +361,7 @@ const StudentStaffMaintenanceModule = () => {
                               <p className="mt-1 text-sm text-slate-500">{request.location}</p>
                             </div>
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                              {request.status === 'IN_PROGRESS' ? 'In Progress' : request.status}
+                              {request.status.replace(/_/g, ' ')}
                             </span>
                           </div>
                         </button>

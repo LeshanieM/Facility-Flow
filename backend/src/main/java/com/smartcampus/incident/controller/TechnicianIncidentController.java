@@ -39,6 +39,40 @@ public class TechnicianIncidentController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<TicketResponse> addComment(
+            @PathVariable String id,
+            @Valid @RequestBody com.smartcampus.incident.dto.IncidentRequests.AddCommentRequest request,
+            Principal principal) {
+        User user = getUser(principal);
+        return ResponseEntity.ok(incidentService.addComment(id, request, user));
+    }
+
+    @PutMapping("/{id}/comments/{commentId}")
+    public ResponseEntity<TicketResponse> editComment(
+            @PathVariable String id,
+            @PathVariable String commentId,
+            @Valid @RequestBody com.smartcampus.incident.dto.IncidentRequests.EditCommentRequest request,
+            Principal principal) {
+        User user = getUser(principal);
+        return ResponseEntity.ok(incidentService.editComment(id, commentId, request, user));
+    }
+
+    @DeleteMapping("/{id}/comments/{commentId}")
+    public ResponseEntity<TicketResponse> deleteComment(
+            @PathVariable String id,
+            @PathVariable String commentId,
+            Principal principal) {
+        User user = getUser(principal);
+        return ResponseEntity.ok(incidentService.deleteComment(id, commentId, user));
+    }
+
+    @GetMapping("/{id}/history")
+    public ResponseEntity<java.util.List<com.smartcampus.incident.dto.IncidentResponses.ActivityLogResponse>> getHistory(
+            @PathVariable String id) {
+        return ResponseEntity.ok(incidentService.getActivityLogs(id));
+    }
+
     private User getUser(Principal principal) {
         if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth) {
             if (auth.getPrincipal() instanceof User) {

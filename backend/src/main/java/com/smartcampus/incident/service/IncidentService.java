@@ -56,7 +56,7 @@ public class IncidentService {
             .location(request.getLocation())
             .room(request.getRoom())
             .priority(mappedPriority)
-            .status(IncidentStatus.OPEN)
+            .status(IncidentStatus.SUBMITTED)
             .submittedBy(user)
             .attachments(uploadedFiles)
             .createdAt(Instant.now())
@@ -97,13 +97,13 @@ public class IncidentService {
         List<Incident> incidents = incidentRepository.findBySubmittedById(userId);
         long totalSubmitted = incidents.size();
         long pending = incidents.stream()
-            .filter(i -> i.getStatus() == IncidentStatus.OPEN || i.getStatus() == IncidentStatus.PENDING_REVIEW)
+            .filter(i -> i.getStatus() == IncidentStatus.SUBMITTED || i.getStatus() == IncidentStatus.UNDER_REVIEW)
             .count();
         long approved = incidents.stream()
             .filter(i -> i.getStatus() == IncidentStatus.ASSIGNED || i.getStatus() == IncidentStatus.IN_PROGRESS)
             .count();
         long completed = incidents.stream()
-            .filter(i -> i.getStatus() == IncidentStatus.RESOLVED || i.getStatus() == IncidentStatus.COMPLETED || i.getStatus() == IncidentStatus.CLOSED)
+            .filter(i -> i.getStatus() == IncidentStatus.RESOLVED || i.getStatus() == IncidentStatus.CLOSED)
             .count();
         long rejected = incidents.stream().filter(i -> i.getStatus() == IncidentStatus.REJECTED).count();
         long overdue = incidents.stream().filter(i -> i.getSlaStatus() == SlaStatus.BREACHED).count();
@@ -117,7 +117,7 @@ public class IncidentService {
         if (!incident.getSubmittedBy().getId().equals(user.getId())) {
             throw new UnauthorizedIncidentAccessException("Cannot cancel another user's incident.");
         }
-        if (incident.getStatus() != IncidentStatus.OPEN && incident.getStatus() != IncidentStatus.PENDING_REVIEW) {
+        if (incident.getStatus() != IncidentStatus.SUBMITTED) {
             throw new IllegalIncidentStateException("Incident cannot be cancelled in current status.");
         }
         incident.setStatus(IncidentStatus.CLOSED);
@@ -136,7 +136,7 @@ public class IncidentService {
             Instant startForResponse = incident.getCreatedAt() != null ? incident.getCreatedAt() : Instant.now();
             incident.setResponseDurationMinutes(ChronoUnit.MINUTES.between(startForResponse, Instant.now()));
         }
-        if (newStatus == IncidentStatus.RESOLVED || newStatus == IncidentStatus.COMPLETED) {
+        if (newStatus == IncidentStatus.RESOLVED || newStatus == IncidentStatus.CLOSED) {
             incident.setResolvedAt(Instant.now());
             Instant startForResolution = incident.getCreatedAt() != null ? incident.getCreatedAt() : Instant.now();
             incident.setResolutionDurationMinutes(ChronoUnit.MINUTES.between(startForResolution, Instant.now()));
@@ -158,6 +158,11 @@ public class IncidentService {
         ActivityAction assignmentAction =
                 incident.getAssignedTechnician() == null ? ActivityAction.ASSIGNED : ActivityAction.REASSIGNED;
         incident.setAssignedTechnician(technician);
+        
+        if (incident.getStatus() == IncidentStatus.SUBMITTED || incident.getStatus() == IncidentStatus.UNDER_REVIEW) {
+            incident.setStatus(IncidentStatus.ASSIGNED);
+        }
+        
         incident.setUpdatedAt(Instant.now());
 
         Incident saved = incidentRepository.save(incident);
@@ -168,6 +173,102 @@ public class IncidentService {
     private Incident findById(String id) {
         return incidentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Incident not found"));
+    }
+
+    @Transactional
+    public TicketResponse addComment(String incidentId, AddCommentRequest request, User user) {
+        Incident incident = findById(incidentId);
+        
+        com.smartcampus.incident.model.IncidentComment comment = com.smartcampus.incident.model.IncidentComment.builder()
+                .id(UUID.randomUUID().toString())
+                .message(request.getMessage())
+                .authorName(user.getName())
+                .authorRole(user.getRole() != null ? user.getRole().name() : "USER")
+                .timestamp(Instant.now())
+                .visibleToRequester(request.isVisibleToRequester())
+                .softDeleted(false)
+                .build();
+                
+        if (incident.getComments() == null) {
+            incident.setComments(new ArrayList<>());
+        }
+        incident.getComments().add(comment);
+        incident.setUpdatedAt(Instant.now());
+        
+        Incident saved = incidentRepository.save(incident);
+        logActivity(incidentId, user, ActivityAction.COMMENT_ADDED, "Added comment: " + request.getMessage());
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public TicketResponse editComment(String incidentId, String commentId, EditCommentRequest request, User user) {
+        Incident incident = findById(incidentId);
+        
+        if (incident.getComments() == null) {
+            throw new ResourceNotFoundException("No comments found");
+        }
+        
+        com.smartcampus.incident.model.IncidentComment comment = incident.getComments().stream()
+                .filter(c -> commentId.equals(c.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
+                
+        if (!comment.getAuthorName().equals(user.getName())) {
+            throw new UnauthorizedIncidentAccessException("You can only edit your own comments.");
+        }
+        
+        if (comment.isSoftDeleted()) {
+            throw new IllegalIncidentStateException("Cannot edit a deleted comment.");
+        }
+        
+        comment.setMessage(request.getMessage());
+        comment.setVisibleToRequester(request.isVisibleToRequester());
+        comment.setEditedAt(Instant.now());
+        
+        incident.setUpdatedAt(Instant.now());
+        Incident saved = incidentRepository.save(incident);
+        logActivity(incidentId, user, ActivityAction.COMMENT_EDITED, "Edited a comment.");
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public TicketResponse deleteComment(String incidentId, String commentId, User user) {
+        Incident incident = findById(incidentId);
+        
+        if (incident.getComments() == null) {
+            throw new ResourceNotFoundException("No comments found");
+        }
+        
+        com.smartcampus.incident.model.IncidentComment comment = incident.getComments().stream()
+                .filter(c -> commentId.equals(c.getId()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
+                
+        if (!comment.getAuthorName().equals(user.getName())) {
+            throw new UnauthorizedIncidentAccessException("You can only delete your own comments.");
+        }
+        
+        comment.setSoftDeleted(true);
+        comment.setEditedAt(Instant.now());
+        
+        incident.setUpdatedAt(Instant.now());
+        Incident saved = incidentRepository.save(incident);
+        logActivity(incidentId, user, ActivityAction.COMMENT_DELETED, "Deleted a comment.");
+        return toResponse(saved);
+    }
+    
+    public List<ActivityLogResponse> getActivityLogs(String incidentId) {
+        return activityLogRepository.findByIncidentIdOrderByTimestampDesc(incidentId).stream()
+            .map(log -> new ActivityLogResponse(
+                log.getId(),
+                log.getIncidentId(),
+                log.getActionType() != null ? log.getActionType().name() : null,
+                log.getMessage(),
+                log.getPerformedBy() != null ? log.getPerformedBy().getName() : null,
+                log.getPerformedByRole(),
+                log.getTimestamp() != null ? log.getTimestamp().toString() : null
+            ))
+            .collect(Collectors.toList());
     }
 
     public void logActivity(String incidentId, User user, ActivityAction action, String message) {
@@ -215,9 +316,12 @@ public class IncidentService {
             incident.getResolutionSummary(),
             incident.getSlaResponseDeadline() != null ? incident.getSlaResponseDeadline().toString() : null,
             incident.getSlaResolutionDeadline() != null ? incident.getSlaResolutionDeadline().toString() : null,
+            incident.getFirstResponseAt() != null ? incident.getFirstResponseAt().toString() : null,
+            incident.getResolvedAt() != null ? incident.getResolvedAt().toString() : null,
             incident.getSlaStatus(),
             actualCreatedAt != null ? actualCreatedAt.toString() : null,
-            incident.getUpdatedAt() != null ? incident.getUpdatedAt().toString() : null
+            incident.getUpdatedAt() != null ? incident.getUpdatedAt().toString() : null,
+            incident.getComments()
         );
     }
 }
