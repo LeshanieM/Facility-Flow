@@ -11,6 +11,11 @@ import TechDashboard from './pages/TechDashboard';
 import Unauthorized from './pages/Unauthorized';
 import { StudentStaffMaintenanceModule } from './modules/student-user-ui';
 import AdminMaintenancePage from './modules/admin-user-ui/pages/AdminMaintenancePage';
+import FacilityCataloguePage from './modules/facility-catalogue/pages/FacilityCataloguePage';
+import AdminFacilityPage from './modules/facility-catalogue/pages/AdminFacilityPage';
+import CreateBookingPage from './pages/bookings/CreateBookingPage';
+import MyBookingsPage from './pages/bookings/MyBookingsPage';
+import AdminBookingsPage from './pages/bookings/AdminBookingsPage';
 import './index.css';
 
 function App() {
@@ -47,9 +52,40 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/facilities" element={
+            <ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+              <FacilityCataloguePage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/facilities" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <AdminFacilityPage />
+            </ProtectedRoute>
+          } />
+
           <Route path="/tech/tasks" element={
             <ProtectedRoute allowedRoles={['TECHNICIAN']}>
               <TechDashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* ── Booking Module (Module B) ── */}
+          <Route path="/bookings/new" element={
+            <ProtectedRoute allowedRoles={['USER']}>
+              <CreateBookingPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/bookings/my" element={
+            <ProtectedRoute allowedRoles={['USER']}>
+              <MyBookingsPage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/bookings" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <AdminBookingsPage />
             </ProtectedRoute>
           } />
 
