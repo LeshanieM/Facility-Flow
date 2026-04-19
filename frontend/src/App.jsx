@@ -11,6 +11,8 @@ import TechDashboard from './pages/TechDashboard';
 import Unauthorized from './pages/Unauthorized';
 import { StudentStaffMaintenanceModule } from './modules/student-user-ui';
 import AdminMaintenancePage from './modules/admin-user-ui/pages/AdminMaintenancePage';
+import FacilityCataloguePage from './modules/facility-catalogue/pages/FacilityCataloguePage';
+import AdminFacilityPage from './modules/facility-catalogue/pages/AdminFacilityPage';
 import './index.css';
 
 function App() {
@@ -44,6 +46,18 @@ function App() {
           <Route path="/admin/incidents" element={
             <ProtectedRoute allowedRoles={['ADMIN']}>
               <AdminMaintenancePage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/facilities" element={
+            <ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+              <FacilityCataloguePage />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/facilities" element={
+            <ProtectedRoute allowedRoles={['ADMIN']}>
+              <AdminFacilityPage />
             </ProtectedRoute>
           } />
 
