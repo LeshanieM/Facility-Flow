@@ -1,0 +1,76 @@
+package com.smartcampus.facility.controller;
+
+import com.smartcampus.entity.User;
+import com.smartcampus.facility.dto.FacilityRequests.CreateResourceRequest;
+import com.smartcampus.facility.dto.FacilityRequests.UpdateResourceRequest;
+import com.smartcampus.facility.enums.FacilityEnums.ResourceStatus;
+import com.smartcampus.facility.dto.FacilityResponses.ResourceResponse;
+import com.smartcampus.facility.service.ResourceService;
+import com.smartcampus.repository.UserRepository;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.security.Principal;
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/admin/resources")
+@PreAuthorize("hasRole('ADMIN')")
+@RequiredArgsConstructor
+public class AdminResourceController {
+
+    private final ResourceService resourceService;
+    private final UserRepository userRepository;
+
+    @PostMapping
+    public ResponseEntity<ResourceResponse> createResource(
+            @Valid @RequestBody CreateResourceRequest request,
+            Principal principal) {
+        User admin = getUser(principal);
+        return ResponseEntity.status(HttpStatus.CREATED).body(resourceService.createResource(request, admin));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ResourceResponse>> getAllResources() {
+        return ResponseEntity.ok(resourceService.getAllResources());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ResourceResponse> getResourceById(@PathVariable String id) {
+        return ResponseEntity.ok(resourceService.getResourceById(id));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ResourceResponse> updateResource(
+            @PathVariable String id,
+            @Valid @RequestBody UpdateResourceRequest request) {
+        return ResponseEntity.ok(resourceService.updateResource(id, request));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ResourceResponse> updateStatus(
+            @PathVariable String id,
+            @RequestParam ResourceStatus status) {
+        return ResponseEntity.ok(resourceService.updateStatus(id, status));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteResource(@PathVariable String id) {
+        resourceService.deleteResource(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    private User getUser(Principal principal) {
+        if (principal instanceof org.springframework.security.authentication.UsernamePasswordAuthenticationToken auth) {
+            if (auth.getPrincipal() instanceof User) {
+                return (User) auth.getPrincipal();
+            }
+        }
+        return userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+}
