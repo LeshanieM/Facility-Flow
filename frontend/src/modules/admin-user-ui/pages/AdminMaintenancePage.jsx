@@ -269,9 +269,10 @@ export const AdminMaintenancePage = () => {
                                         <div className="flex-1 space-y-2">
                                             <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Technician Allocation</h3>
                                             <select 
-                                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
+                                                className={`w-full ${(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') ? 'bg-slate-100 cursor-not-allowed opacity-70' : 'bg-slate-50'} border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all`}
                                                 value={pendingTechAssignment || technicians.find(t => t.name === selectedTicket.assignedTechnicianName)?.id || ''}
                                                 onChange={(e) => setPendingTechAssignment(e.target.value)}
+                                                disabled={selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED'}
                                             >
                                                 <option value="" disabled>Select a Campus Technician...</option>
                                                 {technicians.map(tech => (
@@ -283,18 +284,19 @@ export const AdminMaintenancePage = () => {
                                         <div className="flex-1 space-y-2">
                                             <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Manual Status Override</h3>
                                             <select 
-                                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
+                                                className={`w-full ${selectedTicket.status === 'CLOSED' ? 'bg-slate-100 cursor-not-allowed opacity-70' : 'bg-slate-50'} border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all`}
                                                 value={pendingStatus || selectedTicket.status}
                                                 onChange={(e) => setPendingStatus(e.target.value)}
+                                                disabled={selectedTicket.status === 'CLOSED'}
                                             >
                                                 {selectedTicket.status === 'SUBMITTED' && <option value="SUBMITTED">Submitted</option>}
-                                                <option value="UNDER_REVIEW">Under Review</option>
-                                                <option value="ASSIGNED">Assigned</option>
-                                                <option value="IN_PROGRESS">In Progress</option>
-                                                <option value="ON_HOLD">On Hold</option>
+                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="UNDER_REVIEW">Under Review</option>}
+                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="ASSIGNED">Assigned</option>}
+                                                <option value="IN_PROGRESS">In Progress (Reopen)</option>
+                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="ON_HOLD">On Hold</option>}
                                                 <option value="RESOLVED">Resolved</option>
                                                 <option value="CLOSED">Closed / Archive</option>
-                                                <option value="REJECTED">Reject Request</option>
+                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="REJECTED">Reject Request</option>}
                                             </select>
                                         </div>
                                     </div>

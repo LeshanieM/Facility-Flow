@@ -213,7 +213,7 @@ public class IncidentService {
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
                 
-        if (!comment.getAuthorName().equals(user.getName())) {
+        if (comment.getAuthorName() == null || !comment.getAuthorName().equalsIgnoreCase(user.getName())) {
             throw new UnauthorizedIncidentAccessException("You can only edit your own comments.");
         }
         
@@ -244,7 +244,7 @@ public class IncidentService {
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Comment not found"));
                 
-        if (!comment.getAuthorName().equals(user.getName())) {
+        if (comment.getAuthorName() == null || !comment.getAuthorName().equalsIgnoreCase(user.getName())) {
             throw new UnauthorizedIncidentAccessException("You can only delete your own comments.");
         }
         
