@@ -4,6 +4,7 @@ import com.smartcampus.entity.Role;
 import com.smartcampus.entity.User;
 import com.smartcampus.incident.dto.IncidentRequests.AddCommentRequest;
 import com.smartcampus.incident.dto.IncidentRequests.EditCommentRequest;
+import com.smartcampus.incident.dto.IncidentResponses.AttachmentResponse;
 import com.smartcampus.incident.dto.IncidentResponses.CommentResponse;
 import com.smartcampus.incident.dto.IncidentResponses.TicketResponse;
 import com.smartcampus.incident.enums.IncidentEnums.IncidentStatus;
@@ -45,6 +46,9 @@ class IncidentServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private IncidentAttachmentService incidentAttachmentService;
 
     @InjectMocks
     private IncidentService incidentService;
@@ -276,6 +280,25 @@ class IncidentServiceTest {
         CommentResponse comment = response.getComments().get(0);
         assertThat(comment.getCreatedAt()).startsWith("202");
         assertThat(comment.getUpdatedAt()).startsWith("202");
+    }
+
+    @Test
+    void attachmentResponsesIncludeViewAndDownloadUrls() {
+        incident.setAttachments(List.of("attachment-1::photo.jpg::image%2Fjpeg::incident-1-attachment-1.jpg"));
+        when(incidentAttachmentService.toResponse("incident-1", "attachment-1::photo.jpg::image%2Fjpeg::incident-1-attachment-1.jpg"))
+                .thenReturn(new AttachmentResponse(
+                        "attachment-1",
+                        "photo.jpg",
+                        "image/jpeg",
+                        "/incidents/incident-1/attachments/attachment-1",
+                        "/incidents/incident-1/attachments/attachment-1?download=true"
+                ));
+
+        TicketResponse response = incidentService.getTicketById("incident-1", admin);
+
+        assertThat(response.getAttachments()).hasSize(1);
+        assertThat(response.getAttachments().get(0).getViewUrl()).isEqualTo("/incidents/incident-1/attachments/attachment-1");
+        assertThat(response.getAttachments().get(0).getDownloadUrl()).isEqualTo("/incidents/incident-1/attachments/attachment-1?download=true");
     }
 
     private IncidentComment comment(String id, User author, boolean visibleToRequester, String content) {

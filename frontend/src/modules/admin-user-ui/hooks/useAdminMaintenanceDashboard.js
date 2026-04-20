@@ -42,7 +42,7 @@ export const useAdminMaintenanceDashboard = () => {
     const changeStatus = async (ticketId, newStatus) => {
         try {
             const updated = await updateTicketStatus(ticketId, newStatus);
-            setTickets(current => current.map(t => t.id === ticketId ? { ...t, status: updated.status } : t));
+            setTickets(current => current.map(t => t.id === ticketId ? { ...t, ...updated } : t));
         } catch (err) {
             console.error('Failed to update ticket status', err);
             alert('Failed to update ticket. Check your connection.');

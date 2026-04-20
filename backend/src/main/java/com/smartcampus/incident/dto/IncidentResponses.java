@@ -13,6 +13,16 @@ public class IncidentResponses {
 
     @Data
     @AllArgsConstructor
+    public static class AttachmentResponse {
+        private String id;
+        private String fileName;
+        private String contentType;
+        private String viewUrl;
+        private String downloadUrl;
+    }
+
+    @Data
+    @AllArgsConstructor
     public static class TicketResponse {
         private String id;
         private String ticketId;
@@ -27,7 +37,7 @@ public class IncidentResponses {
         private String submittedByName;
         private String assignedTechnicianId;
         private String assignedTechnicianName;
-        private List<String> attachments;
+        private List<AttachmentResponse> attachments;
         private String rejectionReason;
         private String adminNotes;
         private String technicianNotes;

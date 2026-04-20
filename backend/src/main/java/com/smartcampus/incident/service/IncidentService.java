@@ -6,6 +6,7 @@ import com.smartcampus.incident.dto.IncidentRequests.AddCommentRequest;
 import com.smartcampus.incident.dto.IncidentRequests.CreateTicketRequest;
 import com.smartcampus.incident.dto.IncidentRequests.EditCommentRequest;
 import com.smartcampus.incident.dto.IncidentResponses.ActivityLogResponse;
+import com.smartcampus.incident.dto.IncidentResponses.AttachmentResponse;
 import com.smartcampus.incident.dto.IncidentResponses.CommentResponse;
 import com.smartcampus.incident.dto.IncidentResponses.DashboardSummaryResponse;
 import com.smartcampus.incident.dto.IncidentResponses.TicketResponse;
@@ -45,19 +46,11 @@ public class IncidentService {
     private final IncidentActivityLogRepository activityLogRepository;
     private final SlaService slaService;
     private final UserRepository userRepository;
+    private final IncidentAttachmentService incidentAttachmentService;
 
     @Transactional
     public TicketResponse createIncident(CreateTicketRequest request, User user) {
         PriorityLevel mappedPriority = mapPriority(request.getPriority());
-
-        List<String> uploadedFiles = new ArrayList<>();
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            for (org.springframework.web.multipart.MultipartFile file : request.getAttachments()) {
-                if (file != null && !file.isEmpty()) {
-                    uploadedFiles.add(file.getOriginalFilename());
-                }
-            }
-        }
 
         Instant now = Instant.now();
         Incident incident = Incident.builder()
@@ -70,13 +63,16 @@ public class IncidentService {
                 .priority(mappedPriority)
                 .status(IncidentStatus.SUBMITTED)
                 .submittedBy(user)
-                .attachments(uploadedFiles)
+                .attachments(new ArrayList<>())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
 
         slaService.calculateDeadlines(incident);
         Incident saved = incidentRepository.save(incident);
+        List<String> uploadedFiles = incidentAttachmentService.storeAttachments(saved.getId(), request.getAttachments());
+        saved.setAttachments(uploadedFiles);
+        saved = incidentRepository.save(saved);
 
         logActivity(saved.getId(), user, ActivityAction.CREATED, "Incident created.");
         return toResponse(saved, user);
@@ -285,6 +281,13 @@ public class IncidentService {
                         log.getTimestamp() != null ? log.getTimestamp().toString() : null
                 ))
                 .collect(Collectors.toList());
+    }
+
+    public AttachmentDownload getAttachment(String incidentId, String attachmentId, User user) {
+        Incident incident = findAccessibleIncident(incidentId, user);
+        IncidentAttachmentService.StoredAttachment attachment =
+                incidentAttachmentService.resolveStoredAttachment(incident.getAttachments(), attachmentId);
+        return new AttachmentDownload(attachment.path(), attachment.fileName(), attachment.contentType());
     }
 
     public void logActivity(String incidentId, User user, ActivityAction action, String message) {
@@ -513,7 +516,7 @@ public class IncidentService {
                 incident.getSubmittedBy() != null ? incident.getSubmittedBy().getName() : null,
                 incident.getAssignedTechnician() != null ? incident.getAssignedTechnician().getId() : null,
                 incident.getAssignedTechnician() != null ? incident.getAssignedTechnician().getName() : null,
-                incident.getAttachments(),
+                buildAttachmentResponses(incident),
                 incident.getRejectionReason(),
                 incident.getAdminNotes(),
                 incident.getTechnicianNotes(),
@@ -527,6 +530,16 @@ public class IncidentService {
                 incident.getUpdatedAt() != null ? incident.getUpdatedAt().toString() : null,
                 buildVisibleComments(incident, user)
         );
+    }
+
+    private List<AttachmentResponse> buildAttachmentResponses(Incident incident) {
+        if (incident.getAttachments() == null || incident.getAttachments().isEmpty()) {
+            return List.of();
+        }
+
+        return incident.getAttachments().stream()
+                .map(attachment -> incidentAttachmentService.toResponse(incident.getId(), attachment))
+                .collect(Collectors.toList());
     }
 
     private boolean isRequester(Incident incident, User user) {
@@ -592,5 +605,8 @@ public class IncidentService {
         return left != null
                 && right != null
                 && left.trim().toLowerCase(Locale.ROOT).equals(right.trim().toLowerCase(Locale.ROOT));
+    }
+
+    public record AttachmentDownload(java.nio.file.Path path, String fileName, String contentType) {
     }
 }

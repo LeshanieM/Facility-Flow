@@ -1,10 +1,11 @@
 import React from 'react';
-import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench } from 'lucide-react';
+import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench, Paperclip, Eye, Download } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
 import StatusBadge from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
+import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
 const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || 'Update added.';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
@@ -159,6 +160,47 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
           </div>
           <p className="mt-3 text-sm text-slate-600">{formatDateTime(request.updatedAt || request.createdAt)}</p>
         </div>
+      </div>
+
+      <div className="mt-8 rounded-[26px] border border-slate-200 bg-white p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-2 text-slate-800">
+          <Paperclip size={18} />
+          <h4 className="text-lg font-bold">Attachments</h4>
+        </div>
+
+        {request.attachments?.length ? (
+          <div className="space-y-3">
+            {request.attachments.map((attachment, index) => (
+              <div key={`${getAttachmentName(attachment)}-${index}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm font-semibold text-slate-800">{getAttachmentName(attachment)}</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => viewAttachment(attachment).catch((error) => window.alert(error?.response?.data?.message || error?.message || 'Unable to open the attachment.'))}
+                    disabled={!attachment?.viewUrl}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Eye size={14} />
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadAttachment(attachment).catch((error) => window.alert(error?.response?.data?.message || error?.message || 'Unable to download the attachment.'))}
+                    disabled={!attachment?.downloadUrl}
+                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Download size={14} />
+                    Download
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+            No attachments were uploaded for this ticket.
+          </div>
+        )}
       </div>
 
       <div className="mt-8 rounded-[26px] border border-slate-200 bg-white p-5 sm:p-6">

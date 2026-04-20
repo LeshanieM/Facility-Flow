@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
-import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin } from 'lucide-react';
+import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download } from 'lucide-react';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
+import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
@@ -37,6 +38,7 @@ export const AdminMaintenancePage = () => {
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [pendingTechAssignment, setPendingTechAssignment] = useState('');
     const [pendingStatus, setPendingStatus] = useState('');
+    const [attachmentActionKey, setAttachmentActionKey] = useState('');
     const styleRef = useRef(null);
 
     useEffect(() => {
@@ -89,6 +91,22 @@ export const AdminMaintenancePage = () => {
             setSelectedTicket(null);
             setPendingTechAssignment('');
             setPendingStatus('');
+        }
+    };
+
+    const handleAttachmentAction = async (attachment, mode) => {
+        const key = `${attachment?.id || getAttachmentName(attachment)}-${mode}`;
+        setAttachmentActionKey(key);
+        try {
+            if (mode === 'view') {
+                await viewAttachment(attachment);
+            } else {
+                await downloadAttachment(attachment);
+            }
+        } catch (error) {
+            alert(error?.response?.data?.message || error?.message || 'Unable to open the attachment.');
+        } finally {
+            setAttachmentActionKey('');
         }
     };
 
@@ -290,6 +308,49 @@ export const AdminMaintenancePage = () => {
                                     <p className="bg-slate-50 p-5 rounded-2xl text-slate-600 text-sm leading-relaxed border border-slate-100 whitespace-pre-wrap">
                                         {selectedTicket.description || 'No detailed description provided by the user.'}
                                     </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-widest">Attachments</h3>
+                                    {selectedTicket.attachments?.length ? (
+                                        <div className="space-y-3">
+                                            {selectedTicket.attachments.map((attachment, index) => (
+                                                <div
+                                                    key={`${getAttachmentName(attachment)}-${index}`}
+                                                    className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                                >
+                                                    <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                                                        <Paperclip size={14} className="text-slate-400" />
+                                                        <span>{getAttachmentName(attachment)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAttachmentAction(attachment, 'view')}
+                                                            disabled={!attachment?.viewUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-view`}
+                                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <Eye size={14} />
+                                                            View
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAttachmentAction(attachment, 'download')}
+                                                            disabled={!attachment?.downloadUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-download`}
+                                                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <Download size={14} />
+                                                            Download
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                                            No attachments were uploaded for this ticket.
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>

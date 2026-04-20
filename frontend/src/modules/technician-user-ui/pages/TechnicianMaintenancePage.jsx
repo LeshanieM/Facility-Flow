@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock } from 'lucide-react';
+import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download } from 'lucide-react';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../services/api';
@@ -8,6 +8,7 @@ import SurfaceCard from '../../student-user-ui/components/SurfaceCard';
 import StatusBadge from '../../student-user-ui/components/StatusBadge';
 import ToastStack from '../../student-user-ui/components/ToastStack';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
+import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
 
 const sortTickets = (items) => [...items].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
@@ -26,6 +27,7 @@ const TechnicianMaintenancePage = () => {
   const [visibleToRequester, setVisibleToRequester] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [toasts, setToasts] = useState([]);
+  const [attachmentActionKey, setAttachmentActionKey] = useState('');
 
   const displayName = useMemo(() => {
     return user?.name || user?.sub || user?.email || 'Technician';
@@ -179,6 +181,22 @@ const TechnicianMaintenancePage = () => {
     setVisibleToRequester(Boolean(comment.visibleToRequester));
   };
 
+  const handleAttachmentAction = async (attachment, mode) => {
+    const key = `${attachment?.id || getAttachmentName(attachment)}-${mode}`;
+    setAttachmentActionKey(key);
+    try {
+      if (mode === 'view') {
+        await viewAttachment(attachment);
+      } else {
+        await downloadAttachment(attachment);
+      }
+    } catch (error) {
+      pushToast('error', 'Attachment unavailable', error?.response?.data?.message || error?.message || '');
+    } finally {
+      setAttachmentActionKey('');
+    }
+  };
+
   const comments = selectedRequest?.comments || [];
 
   return (
@@ -262,6 +280,47 @@ const TechnicianMaintenancePage = () => {
                     <div className="mt-3 inline-block rounded bg-blue-100 px-3 py-1 text-sm font-bold text-blue-900">
                       Status: {selectedRequest.slaStatus?.replace(/_/g, ' ') || 'Not tracked'}
                     </div>
+                  </div>
+
+                  <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700"><Paperclip size={14}/> Attachments</p>
+                    {selectedRequest.attachments?.length ? (
+                      <div className="mt-3 space-y-3">
+                        {selectedRequest.attachments.map((attachment, index) => (
+                          <div
+                            key={`${getAttachmentName(attachment)}-${index}`}
+                            className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                              <Paperclip size={14} className="text-slate-400" />
+                              <span>{getAttachmentName(attachment)}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleAttachmentAction(attachment, 'view')}
+                                disabled={!attachment?.viewUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-view`}
+                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <Eye size={14} />
+                                View
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleAttachmentAction(attachment, 'download')}
+                                disabled={!attachment?.downloadUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-download`}
+                                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                <Download size={14} />
+                                Download
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-slate-500">No attachments were uploaded for this ticket.</p>
+                    )}
                   </div>
 
                   <div className="mt-8">
