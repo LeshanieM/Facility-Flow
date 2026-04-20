@@ -5,7 +5,7 @@ import SectionHeader from './SectionHeader';
 import StatusBadge from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
-import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
+import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || 'Update added.';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
@@ -174,15 +174,15 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
               <div key={`${getAttachmentName(attachment)}-${index}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm font-semibold text-slate-800">{getAttachmentName(attachment)}</div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => viewAttachment(attachment).catch((error) => window.alert(error?.response?.data?.message || error?.message || 'Unable to open the attachment.'))}
-                    disabled={!attachment?.viewUrl}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  <a
+                    href={getViewerUrl(attachment) || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 ${!attachment?.viewUrl ? 'cursor-not-allowed opacity-50 pointer-events-none' : ''}`}
                   >
                     <Eye size={14} />
                     View
-                  </button>
+                  </a>
                   <button
                     type="button"
                     onClick={() => downloadAttachment(attachment).catch((error) => window.alert(error?.response?.data?.message || error?.message || 'Unable to download the attachment.'))}

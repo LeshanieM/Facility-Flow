@@ -8,7 +8,7 @@ import SurfaceCard from '../../student-user-ui/components/SurfaceCard';
 import StatusBadge from '../../student-user-ui/components/StatusBadge';
 import ToastStack from '../../student-user-ui/components/ToastStack';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
-import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
+import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 
 const sortTickets = (items) => [...items].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
@@ -296,15 +296,15 @@ const TechnicianMaintenancePage = () => {
                               <span>{getAttachmentName(attachment)}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleAttachmentAction(attachment, 'view')}
-                                disabled={!attachment?.viewUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-view`}
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              <a
+                                href={getViewerUrl(attachment) || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 ${!attachment?.viewUrl ? 'cursor-not-allowed opacity-50 pointer-events-none' : ''}`}
                               >
                                 <Eye size={14} />
                                 View
-                              </button>
+                              </a>
                               <button
                                 type="button"
                                 onClick={() => handleAttachmentAction(attachment, 'download')}

@@ -16,6 +16,7 @@ import TechnicianMaintenancePage from './modules/technician-user-ui/pages/Techni
 import CreateBookingPage from './pages/bookings/CreateBookingPage';
 import MyBookingsPage from './pages/bookings/MyBookingsPage';
 import AdminBookingsPage from './pages/bookings/AdminBookingsPage';
+import AttachmentViewerPage from './modules/maintenance/pages/AttachmentViewerPage';
 import './index.css';
 
 function App() {
@@ -67,6 +68,13 @@ function App() {
           <Route path="/tech/tasks" element={
             <ProtectedRoute allowedRoles={['TECHNICIAN']}>
               <TechnicianMaintenancePage />
+            </ProtectedRoute>
+          } />
+
+          {/* ── Maintenance Viewer (Internal) ── */}
+          <Route path="/maintenance/attachment-viewer" element={
+            <ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
+              <AttachmentViewerPage />
             </ProtectedRoute>
           } />
 

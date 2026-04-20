@@ -3,7 +3,7 @@ import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
 import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download } from 'lucide-react';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
-import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
+import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
@@ -324,15 +324,15 @@ export const AdminMaintenancePage = () => {
                                                         <span>{getAttachmentName(attachment)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleAttachmentAction(attachment, 'view')}
-                                                            disabled={!attachment?.viewUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-view`}
-                                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        <a
+                                                            href={getViewerUrl(attachment) || '#'}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className={`inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 ${!attachment?.viewUrl ? 'cursor-not-allowed opacity-50 pointer-events-none' : ''}`}
                                                         >
                                                             <Eye size={14} />
                                                             View
-                                                        </button>
+                                                        </a>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleAttachmentAction(attachment, 'download')}
