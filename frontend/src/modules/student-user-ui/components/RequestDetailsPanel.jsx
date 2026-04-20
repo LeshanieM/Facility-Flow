@@ -1,9 +1,14 @@
 import React from 'react';
-import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench } from 'lucide-react';
+import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench, Paperclip, Eye, Download } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
 import StatusBadge from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
+import { formatDateTime } from '../../maintenance/utils/dateTime';
+import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
+const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || 'Update added.';
+const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
+const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
 const timelineSteps = ['SUBMITTED', 'UNDER_REVIEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 
@@ -13,18 +18,8 @@ const statusStepIndex = (status) => {
   return Math.max(timelineSteps.indexOf(status), 0);
 };
 
-const formatDate = (value) => {
-  if (!value) return 'Just now';
-
-  return new Intl.DateTimeFormat('en', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-};
-
 const getUpdates = (request) => {
-  const allComments = (request?.comments || []).filter(c => c.visibleToRequester);
-  return allComments;
+  return request?.comments || [];
 };
 
 const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => {
@@ -104,7 +99,7 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Priority</p>
           <p className="mt-3 text-sm font-semibold text-slate-800">{request.priority}</p>
           <p className="mt-5 text-xs uppercase tracking-[0.2em] text-slate-400">Created</p>
-          <p className="mt-3 text-sm font-semibold text-slate-800">{formatDate(request.createdAt)}</p>
+          <p className="mt-3 text-sm font-semibold text-slate-800">{formatDateTime(request.createdAt)}</p>
         </div>
 
         <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
@@ -114,10 +109,10 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
           </div>
           <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Due / Resolved</p>
           <p className="mt-1 text-xs font-semibold text-slate-700">
-            <span className="text-slate-500 font-normal">Response:</span> {request.actualFirstResponseAt ? formatDate(request.actualFirstResponseAt) : formatDate(request.slaResponseDeadline)}
+            <span className="text-slate-500 font-normal">Response:</span> {request.actualFirstResponseAt ? formatDateTime(request.actualFirstResponseAt) : formatDateTime(request.slaResponseDeadline)}
           </p>
           <p className="mt-1 text-xs font-semibold text-slate-700">
-            <span className="text-slate-500 font-normal">Resolution:</span> {request.actualResolutionAt ? formatDate(request.actualResolutionAt) : formatDate(request.slaResolutionDeadline)}
+            <span className="text-slate-500 font-normal">Resolution:</span> {request.actualResolutionAt ? formatDateTime(request.actualResolutionAt) : formatDateTime(request.slaResolutionDeadline)}
           </p>
         </div>
       </div>
@@ -163,8 +158,49 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
             <Wrench size={18} />
             <p className="text-sm font-semibold">Latest activity</p>
           </div>
-          <p className="mt-3 text-sm text-slate-600">{formatDate(request.updatedAt || request.createdAt)}</p>
+          <p className="mt-3 text-sm text-slate-600">{formatDateTime(request.updatedAt || request.createdAt)}</p>
         </div>
+      </div>
+
+      <div className="mt-8 rounded-[26px] border border-slate-200 bg-white p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-2 text-slate-800">
+          <Paperclip size={18} />
+          <h4 className="text-lg font-bold">Attachments</h4>
+        </div>
+
+        {request.attachments?.length ? (
+          <div className="space-y-3">
+            {request.attachments.map((attachment, index) => (
+              <div key={`${getAttachmentName(attachment)}-${index}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm font-semibold text-slate-800">{getAttachmentName(attachment)}</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => viewAttachment(attachment).catch((error) => window.alert(error?.response?.data?.message || error?.message || 'Unable to open the attachment.'))}
+                    disabled={!attachment?.viewUrl}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Eye size={14} />
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => downloadAttachment(attachment).catch((error) => window.alert(error?.response?.data?.message || error?.message || 'Unable to download the attachment.'))}
+                    disabled={!attachment?.downloadUrl}
+                    className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Download size={14} />
+                    Download
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+            No attachments were uploaded for this ticket.
+          </div>
+        )}
       </div>
 
       <div className="mt-8 rounded-[26px] border border-slate-200 bg-white p-5 sm:p-6">
@@ -180,18 +216,19 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
         ) : (
           <div className="space-y-3">
             {updates.map((update, index) => (
-              <div key={update.id || `${index}-${update.createdAt || update.updatedAt || 'update'}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+              <div key={update.id || `${index}-${getCommentCreatedAt(update) || getCommentUpdatedAt(update) || 'update'}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-slate-800">
-                      {update.author?.name || update.authorName || update.createdBy?.name || 'Facilities team'}
+                      {update.authorName || update.author?.name || update.createdBy?.name || 'Facilities team'}
+                      {update.authorRole ? <span className="ml-1 font-normal text-slate-400">({update.authorRole})</span> : null}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {update.message || update.comment || update.text || 'Update added.'}
+                      {getCommentContent(update)}
                     </p>
                   </div>
                   <span className="shrink-0 text-xs text-slate-400">
-                    {formatDate(update.createdAt || update.updatedAt)}
+                    {formatDateTime(getCommentUpdatedAt(update) || getCommentCreatedAt(update))}
                   </span>
                 </div>
               </div>

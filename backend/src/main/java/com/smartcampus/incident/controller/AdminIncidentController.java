@@ -1,6 +1,7 @@
 package com.smartcampus.incident.controller;
 
 import com.smartcampus.entity.User;
+import com.smartcampus.incident.dto.IncidentResponses.CommentResponse;
 import com.smartcampus.incident.dto.IncidentRequests.UpdateStatusRequest;
 import com.smartcampus.incident.dto.IncidentResponses.TicketResponse;
 import com.smartcampus.incident.service.IncidentService;
@@ -23,13 +24,18 @@ public class AdminIncidentController {
     private final UserRepository userRepository;
 
     @GetMapping
-    public ResponseEntity<java.util.List<TicketResponse>> getAllTickets() {
-        return ResponseEntity.ok(incidentService.getAllTickets());
+    public ResponseEntity<java.util.List<TicketResponse>> getAllTickets(Principal principal) {
+        return ResponseEntity.ok(incidentService.getAllTickets(getUser(principal)));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<TicketResponse> getTicketById(@PathVariable String id) {
-        return ResponseEntity.ok(incidentService.getTicketById(id));
+    public ResponseEntity<TicketResponse> getTicketById(@PathVariable String id, Principal principal) {
+        return ResponseEntity.ok(incidentService.getTicketById(id, getUser(principal)));
+    }
+
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<java.util.List<CommentResponse>> getComments(@PathVariable String id, Principal principal) {
+        return ResponseEntity.ok(incidentService.getComments(id, getUser(principal)));
     }
 
     @PatchMapping("/{id}/status")
@@ -65,8 +71,9 @@ public class AdminIncidentController {
 
     @GetMapping("/{id}/history")
     public ResponseEntity<java.util.List<com.smartcampus.incident.dto.IncidentResponses.ActivityLogResponse>> getHistory(
-            @PathVariable String id) {
-        return ResponseEntity.ok(incidentService.getActivityLogs(id));
+            @PathVariable String id,
+            Principal principal) {
+        return ResponseEntity.ok(incidentService.getActivityLogs(id, getUser(principal)));
     }
 
     private User getUser(Principal principal) {

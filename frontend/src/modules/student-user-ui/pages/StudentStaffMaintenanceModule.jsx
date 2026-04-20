@@ -72,6 +72,24 @@ const StudentStaffMaintenanceModule = () => {
     refreshDashboard,
     clearSubmitStatus,
   } = useStudentMaintenanceDashboard();
+  const styleRef = useRef(null);
+
+  useEffect(() => {
+    const styleEl = document.createElement("style");
+    styleEl.textContent = `
+      @keyframes aurora-wave {
+        0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+        50% { transform: translateY(-20px) rotate(1deg) scale(1.03); }
+      }
+      @keyframes aurora-pulse {
+        0%, 100% { opacity: 0.5; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.15); }
+      }
+    `;
+    document.head.appendChild(styleEl);
+    styleRef.current = styleEl;
+    return () => document.head.removeChild(styleEl);
+  }, []);
 
   useEffect(() => {
     if (activeTab !== 'new-request') {
@@ -133,12 +151,16 @@ const StudentStaffMaintenanceModule = () => {
     <Layout>
       <ToastStack toasts={toasts} />
 
-      <div className="space-y-8 text-slate-900">
-        <SurfaceCard className="p-7 sm:p-9" tone="hero">
+      <div className="space-y-8 text-slate-800 relative min-h-screen -m-8 p-8 overflow-hidden bg-slate-50">
+        {/* Epic Background Elements */}
+        <div className="absolute top-[-10%] right-[-5%] w-[55%] h-[50%] bg-blue-500/15 rounded-full blur-[140px] pointer-events-none animate-[aurora-wave_12s_ease-in-out_infinite]" />
+        <div className="absolute top-[20%] left-[-10%] w-[45%] h-[40%] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none animate-[aurora-pulse_10s_ease-in-out_infinite]" />
+
+        <div className="relative z-10 w-full sm:p-9 p-7 rounded-[32px] border border-white/60 bg-white/70 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-gradient-to-br from-white/90 to-blue-50/50">
           <SectionHeader
             eyebrow="Student and Staff Portal"
-            icon={<ShieldCheck size={14} />}
-            title={`${getGreeting()}, ${getDisplayName(user)}.`}
+            icon={<ShieldCheck size={14} className="text-blue-600" />}
+            title={<strong className="text-slate-900 drop-shadow-sm">{getGreeting()}, {getDisplayName(user)}.</strong>}
             description="Submit campus incidents, monitor maintenance progress, and stay updated through one clean dashboard designed for everyday university use."
             actions={
               <button
@@ -162,18 +184,20 @@ const StudentStaffMaintenanceModule = () => {
               </p>
             </div>
           </div>
-        </SurfaceCard>
+        </div>
 
-        {pageError && (
-          <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700">
-            <AlertCircle className="mt-0.5 shrink-0" size={18} />
-            <span>{pageError}</span>
-          </div>
-        )}
+        <div className="relative z-10">
+          {pageError && (
+            <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm text-rose-700 mb-6">
+              <AlertCircle className="mt-0.5 shrink-0" size={18} />
+              <span>{pageError}</span>
+            </div>
+          )}
 
-        {!isBootstrapping && (
-          <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
-        )}
+          {!isBootstrapping && (
+            <TabNavigation tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
+          )}
+        </div>
 
         {isBootstrapping ? (
           <>
@@ -216,7 +240,7 @@ const StudentStaffMaintenanceModule = () => {
         ) : (
           <>
             {activeTab === 'overview' && (
-              <div className="space-y-8">
+              <div className="space-y-8 relative z-10">
                 <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <SummaryCard
                     label="Total requests"
@@ -284,8 +308,8 @@ const StudentStaffMaintenanceModule = () => {
             )}
 
             {activeTab === 'new-request' && (
-              <div className="mx-auto max-w-[1000px]">
-                <div ref={formRef}>
+              <div className="mx-auto max-w-[1000px] relative z-10">
+                <div ref={formRef} className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60">
                   <RequestForm
                     values={formValues}
                     errors={formErrors}
@@ -300,8 +324,9 @@ const StudentStaffMaintenanceModule = () => {
             )}
 
             {activeTab === 'my-requests' && (
-              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)]">
-                <RequestList
+              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1.18fr)_minmax(320px,0.82fr)] relative z-10">
+                <div className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60">
+                  <RequestList
                   requests={filteredRequests}
                   selectedRequestId={selectedRequestId}
                   onSelect={setSelectedRequestId}
@@ -312,18 +337,21 @@ const StudentStaffMaintenanceModule = () => {
                   onRefresh={refreshDashboard}
                   isRefreshing={isRefreshing}
                 />
+                </div>
 
-                <RequestDetailsPanel 
-                  request={selectedRequest} 
-                  isLoading={isDetailLoading} 
-                  onCancel={() => cancelRequest(selectedRequestId)}
-                  isCancelling={isCancelling}
-                />
+                <div className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60">
+                  <RequestDetailsPanel 
+                    request={selectedRequest} 
+                    isLoading={isDetailLoading} 
+                    onCancel={() => cancelRequest(selectedRequestId)}
+                    isCancelling={isCancelling}
+                  />
+                </div>
               </div>
             )}
 
             {activeTab === 'updates' && (
-              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]">
+              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)] relative z-10">
                 <NotificationList notifications={notifications} isLoading={false} />
 
                 <SurfaceCard className="p-6 sm:p-7" tone="muted">
