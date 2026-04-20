@@ -2,6 +2,9 @@ package com.smartcampus.exception;
 
 import com.smartcampus.facility.exception.FacilityExceptions.InvalidResourceOperationException;
 import com.smartcampus.facility.exception.FacilityExceptions.ResourceNotFoundException;
+import com.smartcampus.incident.exception.IncidentExceptions.IllegalIncidentStateException;
+import com.smartcampus.incident.exception.IncidentExceptions.InvalidRequestException;
+import com.smartcampus.incident.exception.IncidentExceptions.UnauthorizedIncidentAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -22,6 +25,26 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidResourceOperationException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidResourceOperationException(InvalidResourceOperationException ex) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage());
+    }
+
+    @ExceptionHandler(com.smartcampus.incident.exception.IncidentExceptions.ResourceNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleIncidentResourceNotFoundException(com.smartcampus.incident.exception.IncidentExceptions.ResourceNotFoundException ex) {
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidRequestException(InvalidRequestException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Bad Request", ex.getMessage());
+    }
+
+    @ExceptionHandler(UnauthorizedIncidentAccessException.class)
+    public ResponseEntity<Map<String, Object>> handleUnauthorizedIncidentAccessException(UnauthorizedIncidentAccessException ex) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Forbidden", ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalIncidentStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalIncidentStateException(IllegalIncidentStateException ex) {
+        return buildErrorResponse(HttpStatus.CONFLICT, "Conflict", ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

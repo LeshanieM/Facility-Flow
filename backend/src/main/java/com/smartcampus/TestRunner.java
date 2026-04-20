@@ -18,8 +18,6 @@ public class TestRunner {
     public void onReady() {
         System.out.println("====== TEST RUNNER START ======");
         try {
-            var tickets = incidentService.getAllTickets();
-            System.out.println("Tickets count: " + tickets.size());
             var summary = incidentService.getStudentDashboardSummary("some-id");
             System.out.println("Summary: " + summary);
         } catch (Exception e) {
