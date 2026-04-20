@@ -1,6 +1,7 @@
 package com.smartcampus.incident.controller;
 
 import com.smartcampus.entity.User;
+import com.smartcampus.incident.dto.IncidentResponses.CommentResponse;
 import com.smartcampus.incident.dto.IncidentRequests.UpdateStatusRequest;
 import com.smartcampus.incident.dto.IncidentResponses.TicketResponse;
 import com.smartcampus.incident.service.IncidentService;
@@ -15,7 +16,7 @@ import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/technician/tickets")
-@PreAuthorize("hasRole('SUPPORT') or hasRole('TECHNICIAN')")
+@PreAuthorize("hasRole('TECHNICIAN')")
 @RequiredArgsConstructor
 public class TechnicianIncidentController {
 
@@ -25,7 +26,19 @@ public class TechnicianIncidentController {
     @GetMapping
     public ResponseEntity<java.util.List<TicketResponse>> getAssignedTickets(Principal principal) {
         User user = getUser(principal);
-        return ResponseEntity.ok(incidentService.getTechnicianTickets(user.getId()));
+        return ResponseEntity.ok(incidentService.getTechnicianTickets(user));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TicketResponse> getTicketById(@PathVariable String id, Principal principal) {
+        User user = getUser(principal);
+        return ResponseEntity.ok(incidentService.getTicketById(id, user));
+    }
+
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<java.util.List<CommentResponse>> getComments(@PathVariable String id, Principal principal) {
+        User user = getUser(principal);
+        return ResponseEntity.ok(incidentService.getComments(id, user));
     }
 
     @PatchMapping("/{id}/status")
@@ -69,8 +82,9 @@ public class TechnicianIncidentController {
 
     @GetMapping("/{id}/history")
     public ResponseEntity<java.util.List<com.smartcampus.incident.dto.IncidentResponses.ActivityLogResponse>> getHistory(
-            @PathVariable String id) {
-        return ResponseEntity.ok(incidentService.getActivityLogs(id));
+            @PathVariable String id,
+            Principal principal) {
+        return ResponseEntity.ok(incidentService.getActivityLogs(id, getUser(principal)));
     }
 
     private User getUser(Principal principal) {

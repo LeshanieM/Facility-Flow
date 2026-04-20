@@ -7,12 +7,12 @@ import Home from './pages/Home';
 import Redirect from './pages/Redirect';
 import Dashboard from './pages/Dashboard';
 import AdminPage from './pages/AdminPage';
-import TechDashboard from './pages/TechDashboard';
 import Unauthorized from './pages/Unauthorized';
 import { StudentStaffMaintenanceModule } from './modules/student-user-ui';
 import AdminMaintenancePage from './modules/admin-user-ui/pages/AdminMaintenancePage';
 import FacilityCataloguePage from './modules/facility-catalogue/pages/FacilityCataloguePage';
 import AdminFacilityPage from './modules/facility-catalogue/pages/AdminFacilityPage';
+import TechnicianMaintenancePage from './modules/technician-user-ui/pages/TechnicianMaintenancePage';
 import CreateBookingPage from './pages/bookings/CreateBookingPage';
 import MyBookingsPage from './pages/bookings/MyBookingsPage';
 import AdminBookingsPage from './pages/bookings/AdminBookingsPage';
@@ -66,7 +66,7 @@ function App() {
 
           <Route path="/tech/tasks" element={
             <ProtectedRoute allowedRoles={['TECHNICIAN']}>
-              <TechDashboard />
+              <TechnicianMaintenancePage />
             </ProtectedRoute>
           } />
 

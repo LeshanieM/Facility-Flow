@@ -5,10 +5,9 @@ import com.smartcampus.incident.enums.IncidentEnums.PriorityLevel;
 import com.smartcampus.incident.enums.IncidentEnums.SlaStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
-import java.time.Instant;
 import java.util.List;
-import com.smartcampus.incident.model.IncidentComment;
 
 public class IncidentResponses {
 
@@ -24,7 +23,9 @@ public class IncidentResponses {
         private String room;
         private PriorityLevel priority;
         private IncidentStatus status;
+        private String submittedById;
         private String submittedByName;
+        private String assignedTechnicianId;
         private String assignedTechnicianName;
         private List<String> attachments;
         private String rejectionReason;
@@ -38,7 +39,24 @@ public class IncidentResponses {
         private SlaStatus slaStatus;
         private String createdAt;
         private String updatedAt;
-        private List<IncidentComment> comments;
+        private List<CommentResponse> comments;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CommentResponse {
+        private String id;
+        private String ticketId;
+        private String authorId;
+        private String authorName;
+        private String authorRole;
+        private String content;
+        private boolean visibleToRequester;
+        private String createdAt;
+        private String updatedAt;
+        private boolean canEdit;
+        private boolean canDelete;
     }
 
     @Data

@@ -2,6 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
 import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin } from 'lucide-react';
+import { formatDateTime } from '../../maintenance/utils/dateTime';
+const getCommentContent = (comment) => comment?.content || comment?.message || '';
+const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
+const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
 const getStatusBadge = (status) => {
     switch(status) {
@@ -286,6 +290,40 @@ export const AdminMaintenancePage = () => {
                                     <p className="bg-slate-50 p-5 rounded-2xl text-slate-600 text-sm leading-relaxed border border-slate-100 whitespace-pre-wrap">
                                         {selectedTicket.description || 'No detailed description provided by the user.'}
                                     </p>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-widest">Comment Monitor</h3>
+                                    {selectedTicket.comments?.length ? (
+                                        <div className="space-y-3">
+                                            {selectedTicket.comments.map((comment) => (
+                                                <div key={comment.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                    <div className="flex items-start justify-between gap-4">
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-800">
+                                                                {comment.authorName}
+                                                                <span className="ml-1 font-normal text-slate-500">({comment.authorRole})</span>
+                                                            </p>
+                                                            <p className="mt-1 text-xs text-slate-400">
+                                                                Created {formatDateTime(getCommentCreatedAt(comment))}
+                                                                {getCommentUpdatedAt(comment) && getCommentUpdatedAt(comment) !== getCommentCreatedAt(comment) ? ` • Updated ${formatDateTime(getCommentUpdatedAt(comment))}` : ''}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${comment.visibleToRequester ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                                                            {comment.visibleToRequester ? 'Requester Visible' : 'Internal'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                                                        {getCommentContent(comment)}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                                            No comments have been added to this ticket yet.
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Admin Controls */}
