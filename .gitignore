@@ -33,3 +33,5 @@ frontend/.env.production.local
 logs/
 *.log
 Thumbs.db
+config.bat
+node_modules

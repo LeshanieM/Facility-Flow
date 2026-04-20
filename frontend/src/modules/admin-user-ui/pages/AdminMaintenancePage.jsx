@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
-import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin } from 'lucide-react';
+import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download } from 'lucide-react';
+import { formatDateTime } from '../../maintenance/utils/dateTime';
+import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
+const getCommentContent = (comment) => comment?.content || comment?.message || '';
+const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
+const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
 const getStatusBadge = (status) => {
     switch(status) {
@@ -33,6 +38,29 @@ export const AdminMaintenancePage = () => {
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [pendingTechAssignment, setPendingTechAssignment] = useState('');
     const [pendingStatus, setPendingStatus] = useState('');
+    const [attachmentActionKey, setAttachmentActionKey] = useState('');
+    const styleRef = useRef(null);
+
+    useEffect(() => {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = `
+          @keyframes float-slow {
+            0%, 100% { transform: translateY(0px) scale(1); }
+            50% { transform: translateY(-20px) scale(1.05); }
+          }
+          @keyframes glow-pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.2); }
+          }
+          @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+          }
+        `;
+        document.head.appendChild(styleEl);
+        styleRef.current = styleEl;
+        return () => document.head.removeChild(styleEl);
+    }, []);
 
     const filteredTickets = tickets
         .filter(t => filter === 'ALL' || t.status === filter)
@@ -66,21 +94,42 @@ export const AdminMaintenancePage = () => {
         }
     };
 
+    const handleAttachmentAction = async (attachment, mode) => {
+        const key = `${attachment?.id || getAttachmentName(attachment)}-${mode}`;
+        setAttachmentActionKey(key);
+        try {
+            if (mode === 'view') {
+                await viewAttachment(attachment);
+            } else {
+                await downloadAttachment(attachment);
+            }
+        } catch (error) {
+            alert(error?.response?.data?.message || error?.message || 'Unable to open the attachment.');
+        } finally {
+            setAttachmentActionKey('');
+        }
+    };
+
     return (
         <Layout>
-            <div className="space-y-6 animate-fade-in relative">
+            <div className="space-y-8 animate-fade-in relative min-h-screen text-slate-800 -m-8 p-8 overflow-hidden bg-slate-50">
+                {/* Background Blobs for Epic aesthetic */}
+                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[50%] bg-indigo-400/20 rounded-full blur-[120px] pointer-events-none animate-[float-slow_8s_ease-in-out_infinite]" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[40%] bg-blue-400/20 rounded-full blur-[140px] pointer-events-none animate-[float-slow_12s_ease-in-out_infinite_reverse]" />
+                <div className="absolute top-[20%] right-[10%] w-[25%] h-[30%] bg-purple-400/15 rounded-full blur-[100px] pointer-events-none animate-[glow-pulse_6s_ease-in-out_infinite]" />
+
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 relative z-10">
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Incident Ticketing Monitor</h1>
-                        <p className="text-slate-500 font-medium">Oversee all campus facility breakdowns and map technicians to workflow requests.</p>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight drop-shadow-sm">Incident Ticketing Monitor</h1>
+                        <p className="text-slate-600 font-medium">Oversee all campus facility breakdowns and map technicians to workflow requests.</p>
                     </div>
                 </div>
 
                 {/* Dashboard Datatable */}
-                <div className="glass-card overflow-hidden shadow-xl shadow-slate-200/50 border-slate-200/60 bg-white">
+                <div className="glass-card overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 bg-white/60 backdrop-blur-xl rounded-[24px] relative z-10">
                     {/* Toolbar */}
-                    <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+                    <div className="p-4 border-b border-white/50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/40">
                         <div className="flex items-center gap-2">
                             <MonitorPlay className="text-slate-400" size={18} />
                             <span className="font-bold text-slate-700 text-sm">Global Filter:</span>
@@ -134,12 +183,12 @@ export const AdminMaintenancePage = () => {
                                         <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-right">Quick Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-slate-200/50">
                                     {filteredTickets.map(ticket => (
                                         <tr 
                                             key={ticket.id} 
                                             onClick={() => setSelectedTicket(ticket)}
-                                            className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                                            className="hover:bg-white/80 transition-all duration-300 group cursor-pointer hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 relative z-10"
                                         >
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
@@ -204,10 +253,10 @@ export const AdminMaintenancePage = () => {
                 {/* Details & Assignment Modal */}
                 {selectedTicket && (
                     <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl relative border border-slate-100 flex flex-col max-h-[90vh]">
+                        <div className="bg-white/90 backdrop-blur-2xl rounded-3xl w-full max-w-3xl overflow-hidden shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-white/50 flex flex-col max-h-[90vh]">
                             
                             {/* Modal Header */}
-                            <div className="px-8 py-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+                            <div className="px-8 py-6 border-b border-slate-200/50 flex items-start justify-between bg-white/50">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-3 mb-2">
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white shadow-sm ${getPriorityColor(selectedTicket.priority)}`}>
@@ -261,6 +310,83 @@ export const AdminMaintenancePage = () => {
                                     </p>
                                 </div>
 
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-widest">Attachments</h3>
+                                    {selectedTicket.attachments?.length ? (
+                                        <div className="space-y-3">
+                                            {selectedTicket.attachments.map((attachment, index) => (
+                                                <div
+                                                    key={`${getAttachmentName(attachment)}-${index}`}
+                                                    className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                                >
+                                                    <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
+                                                        <Paperclip size={14} className="text-slate-400" />
+                                                        <span>{getAttachmentName(attachment)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAttachmentAction(attachment, 'view')}
+                                                            disabled={!attachment?.viewUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-view`}
+                                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <Eye size={14} />
+                                                            View
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleAttachmentAction(attachment, 'download')}
+                                                            disabled={!attachment?.downloadUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-download`}
+                                                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                                                        >
+                                                            <Download size={14} />
+                                                            Download
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                                            No attachments were uploaded for this ticket.
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-widest">Comment Monitor</h3>
+                                    {selectedTicket.comments?.length ? (
+                                        <div className="space-y-3">
+                                            {selectedTicket.comments.map((comment) => (
+                                                <div key={comment.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                    <div className="flex items-start justify-between gap-4">
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-800">
+                                                                {comment.authorName}
+                                                                <span className="ml-1 font-normal text-slate-500">({comment.authorRole})</span>
+                                                            </p>
+                                                            <p className="mt-1 text-xs text-slate-400">
+                                                                Created {formatDateTime(getCommentCreatedAt(comment))}
+                                                                {getCommentUpdatedAt(comment) && getCommentUpdatedAt(comment) !== getCommentCreatedAt(comment) ? ` • Updated ${formatDateTime(getCommentUpdatedAt(comment))}` : ''}
+                                                            </p>
+                                                        </div>
+                                                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${comment.visibleToRequester ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
+                                                            {comment.visibleToRequester ? 'Requester Visible' : 'Internal'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+                                                        {getCommentContent(comment)}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                                            No comments have been added to this ticket yet.
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Admin Controls */}
                                 <div className="bg-white border-2 border-indigo-50/50 shadow-[0_0_40px_-10px_rgba(79,70,229,0.1)] p-6 rounded-2xl flex flex-col gap-6 relative overflow-hidden">
                                     <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
@@ -269,9 +395,10 @@ export const AdminMaintenancePage = () => {
                                         <div className="flex-1 space-y-2">
                                             <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Technician Allocation</h3>
                                             <select 
-                                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
+                                                className={`w-full ${(selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED') ? 'bg-slate-100 cursor-not-allowed opacity-70' : 'bg-slate-50'} border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all`}
                                                 value={pendingTechAssignment || technicians.find(t => t.name === selectedTicket.assignedTechnicianName)?.id || ''}
                                                 onChange={(e) => setPendingTechAssignment(e.target.value)}
+                                                disabled={selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED'}
                                             >
                                                 <option value="" disabled>Select a Campus Technician...</option>
                                                 {technicians.map(tech => (
@@ -283,18 +410,19 @@ export const AdminMaintenancePage = () => {
                                         <div className="flex-1 space-y-2">
                                             <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Manual Status Override</h3>
                                             <select 
-                                                className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all"
+                                                className={`w-full ${selectedTicket.status === 'CLOSED' ? 'bg-slate-100 cursor-not-allowed opacity-70' : 'bg-slate-50'} border border-slate-200 text-slate-700 text-sm rounded-xl px-4 py-3 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-400 outline-none font-bold transition-all`}
                                                 value={pendingStatus || selectedTicket.status}
                                                 onChange={(e) => setPendingStatus(e.target.value)}
+                                                disabled={selectedTicket.status === 'CLOSED'}
                                             >
                                                 {selectedTicket.status === 'SUBMITTED' && <option value="SUBMITTED">Submitted</option>}
-                                                <option value="UNDER_REVIEW">Under Review</option>
-                                                <option value="ASSIGNED">Assigned</option>
-                                                <option value="IN_PROGRESS">In Progress</option>
-                                                <option value="ON_HOLD">On Hold</option>
+                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="UNDER_REVIEW">Under Review</option>}
+                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="ASSIGNED">Assigned</option>}
+                                                <option value="IN_PROGRESS">In Progress (Reopen)</option>
+                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="ON_HOLD">On Hold</option>}
                                                 <option value="RESOLVED">Resolved</option>
                                                 <option value="CLOSED">Closed / Archive</option>
-                                                <option value="REJECTED">Reject Request</option>
+                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="REJECTED">Reject Request</option>}
                                             </select>
                                         </div>
                                     </div>

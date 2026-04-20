@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 import axios from 'axios';
@@ -7,11 +7,30 @@ import { ClipboardList, Clock, CheckCircle, MapPin, X, AlertCircle, Edit2, Trash
 const TechDashboard = () => {
     const { user } = useAuth();
     const [tasks, setTasks] = useState([]);
+    const [filter, setFilter] = useState('ALL');
     const [loading, setLoading] = useState(true);
     const [selectedTask, setSelectedTask] = useState(null);
     const [commentText, setCommentText] = useState('');
     const [visibleToRequester, setVisibleToRequester] = useState(true);
     const [editingCommentId, setEditingCommentId] = useState(null);
+    const styleRef = useRef(null);
+
+    useEffect(() => {
+        const styleEl = document.createElement("style");
+        styleEl.textContent = `
+          @keyframes tech-float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(2deg); }
+          }
+          @keyframes tech-pulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.15); }
+          }
+        `;
+        document.head.appendChild(styleEl);
+        styleRef.current = styleEl;
+        return () => document.head.removeChild(styleEl);
+    }, []);
 
     const fetchTasks = async () => {
         try {
@@ -21,7 +40,7 @@ const TechDashboard = () => {
             });
             const sortedData = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             setTasks(sortedData);
-            
+
             // Update selected task in modal if it's open
             if (selectedTask) {
                 const updated = res.data.find(t => t.id === selectedTask.id);
@@ -68,10 +87,11 @@ const TechDashboard = () => {
         if (!commentText.trim()) return;
         try {
             const token = localStorage.getItem('token');
-            await axios.post(`/api/technician/tickets/${id}/comments`, 
-                { message: commentText, visibleToRequester }, 
-                { headers: { Authorization: `Bearer ${token}` }}
+            const response = await axios.post(`/api/technician/tickets/${id}/comments`,
+                { message: commentText, visibleToRequester },
+                { headers: { Authorization: `Bearer ${token}` } }
             );
+            setSelectedTask(response.data);
             setCommentText('');
             fetchTasks();
         } catch (error) {
@@ -83,9 +103,10 @@ const TechDashboard = () => {
         if (!window.confirm("Are you sure you want to delete this comment?")) return;
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`/api/technician/tickets/${taskId}/comments/${commentId}`, {
+            const response = await axios.delete(`/api/technician/tickets/${taskId}/comments/${commentId}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            setSelectedTask(response.data);
             fetchTasks();
         } catch (error) {
             console.error('Failed to delete comment:', error);
@@ -96,10 +117,11 @@ const TechDashboard = () => {
         if (!commentText.trim()) return;
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`/api/technician/tickets/${taskId}/comments/${commentId}`, 
+            const response = await axios.put(`/api/technician/tickets/${taskId}/comments/${commentId}`,
                 { message: commentText, visibleToRequester },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            setSelectedTask(response.data);
             setCommentText('');
             setEditingCommentId(null);
             fetchTasks();
@@ -117,15 +139,39 @@ const TechDashboard = () => {
         }
     };
 
+    const filteredTasks = tasks.filter(task => filter === 'ALL' || task.status === filter);
+
     return (
         <Layout>
-            <div className="space-y-8 animate-fade-in text-slate-900 relative">
+            <div className="space-y-8 animate-fade-in text-slate-800 relative min-h-screen -m-8 p-8 overflow-hidden bg-slate-50">
+                {/* Background Blobs for Epic aesthetic */}
+                <div className="absolute top-[-5%] right-[-10%] w-[50%] h-[60%] bg-emerald-400/20 rounded-full blur-[130px] pointer-events-none animate-[tech-float_10s_ease-in-out_infinite]" />
+                <div className="absolute bottom-[-15%] left-[-5%] w-[45%] h-[50%] bg-blue-500/15 rounded-full blur-[140px] pointer-events-none animate-[tech-pulse_8s_ease-in-out_infinite]" />
+
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
                     <div>
-                        <h1 className="text-3xl font-black tracking-tight">Technician Console</h1>
-                        <p className="text-slate-500 font-medium">Hello, <span className="text-primary font-bold">{user?.sub?.split('@')[0]}</span>. Your operations workstation is ready.</p>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight drop-shadow-sm">Technician Console</h1>
+                        <p className="text-slate-600 font-medium text-lg mt-1">Hello, <span className="text-emerald-600 font-bold">{user?.sub?.split('@')[0]}</span>. Your operations workstation is ready.</p>
                     </div>
+                </div>
+
+                {/* Filter Controls */}
+                <div className="bg-white/70 backdrop-blur-xl border border-white/60 p-4 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col sm:flex-row items-center gap-4 relative z-10 w-fit mt-4">
+                    <span className="font-bold text-slate-700 text-sm pl-2">Filter Tasks:</span>
+                    <select 
+                        className="bg-white border border-slate-200 rounded-xl text-sm px-4 py-2 focus:ring-2 focus:ring-emerald-500/20 outline-none font-medium text-slate-600 cursor-pointer shadow-sm"
+                        value={filter}
+                        onChange={(e) => setFilter(e.target.value)}
+                    >
+                        <option value="ALL">All Tickets</option>
+                        <option value="ASSIGNED">Assigned</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="ON_HOLD">On Hold</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="REJECTED">Rejected</option>
+                        <option value="CLOSED">Closed</option>
+                    </select>
                 </div>
 
                 {/* Content Area */}
@@ -152,19 +198,19 @@ const TechDashboard = () => {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {tasks.map(task => (
-                                <div key={task.id} className="bg-white border rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow relative flex flex-col pt-12 text-slate-800">
-                                    <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold font-mono tracking-widest ${getStatusColor(task.status)} font-medium`}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+                            {filteredTasks.map(task => (
+                                <div key={task.id} className="bg-white/70 backdrop-blur-xl border border-white/60 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] transition-all duration-300 hover:-translate-y-1 relative flex flex-col pt-12 text-slate-800">
+                                    <div className={`absolute top-4 right-4 px-3 py-1 rounded-full text-[10px] font-black font-mono tracking-widest ${getStatusColor(task.status)} shadow-sm uppercase`}>
                                         {task.status.replace(/_/g, ' ')}
                                     </div>
                                     <div className="absolute top-4 left-4 flex items-center justify-center p-2 bg-slate-50 rounded-xl text-slate-500 border border-slate-100">
                                         <ClipboardList className="w-5 h-5" />
                                     </div>
-                                    
+
                                     <h3 className="text-lg font-bold truncate mt-2">{task.title}</h3>
                                     <p className="text-slate-500 text-sm mt-1 line-clamp-2 min-h-[40px] leading-relaxed">{task.description}</p>
-                                    
+
                                     <div className="mt-4 flex flex-col gap-2 text-sm text-slate-600 bg-slate-50 p-3 rounded-2xl border border-slate-100">
                                         <div className="flex items-center gap-2">
                                             <MapPin className="w-4 h-4 text-slate-400" />
@@ -178,14 +224,14 @@ const TechDashboard = () => {
                                     </div>
 
                                     <div className="mt-auto pt-6 flex gap-3">
-                                        <button 
+                                        <button
                                             onClick={() => setSelectedTask(task)}
                                             className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-800 py-2.5 rounded-xl font-bold transition-colors shadow-sm"
                                         >
                                             View Details
                                         </button>
                                         {(task.status === 'ASSIGNED' || task.status === 'ON_HOLD') && (
-                                            <button 
+                                            <button
                                                 onClick={() => updateStatus(task.id, 'IN_PROGRESS')}
                                                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2.5 rounded-xl font-bold transition-colors shadow-sm shadow-amber-500/20"
                                             >
@@ -201,10 +247,10 @@ const TechDashboard = () => {
 
                 {/* Details Modal */}
                 {selectedTask && (
-                    <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative border border-slate-100 flex flex-col max-h-[90vh]">
-                            
-                            <div className="px-8 py-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+                    <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-white/95 backdrop-blur-2xl rounded-3xl w-full max-w-2xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.4)] relative border border-white/50 flex flex-col max-h-[90vh]">
+
+                            <div className="px-8 py-6 border-b border-slate-200/50 flex items-start justify-between bg-white/50">
                                 <div>
                                     <div className="flex items-center gap-2 mb-2">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusColor(selectedTask.status)}`}>
@@ -217,7 +263,7 @@ const TechDashboard = () => {
                                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">{selectedTask.title}</h2>
                                     <p className="text-sm font-semibold text-slate-500 mt-1">Ticket ID: {selectedTask.ticketId}</p>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => setSelectedTask(null)}
                                     className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
                                 >
@@ -292,11 +338,11 @@ const TechDashboard = () => {
                                         />
                                         <div className="flex items-center gap-2 px-1 justify-between">
                                             <div className="flex items-center gap-2">
-                                                <input 
-                                                    type="checkbox" 
-                                                    id="visibleRequest" 
-                                                    checked={visibleToRequester} 
-                                                    onChange={(e) => setVisibleToRequester(e.target.checked)} 
+                                                <input
+                                                    type="checkbox"
+                                                    id="visibleRequest"
+                                                    checked={visibleToRequester}
+                                                    onChange={(e) => setVisibleToRequester(e.target.checked)}
                                                     className="rounded border-slate-300 text-primary focus:ring-primary"
                                                 />
                                                 <label htmlFor="visibleRequest" className="text-sm text-slate-600 font-medium cursor-pointer">Visible to Requester</label>
@@ -305,7 +351,7 @@ const TechDashboard = () => {
                                                 <button onClick={() => { setEditingCommentId(null); setCommentText(''); }} className="text-sm text-slate-500 hover:text-slate-800 font-bold">Cancel Edit</button>
                                             )}
                                         </div>
-                                        <button 
+                                        <button
                                             onClick={submitComment}
                                             disabled={!commentText.trim()}
                                             className="bg-primary hover:bg-primary/90 text-white rounded-xl py-2 font-bold shadow-md opacity-100 disabled:opacity-50 transition-all"
@@ -343,7 +389,7 @@ const TechDashboard = () => {
                                     <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest text-center">Update Work Status</h3>
                                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                         {(selectedTask.status === 'ASSIGNED' || selectedTask.status === 'ON_HOLD') && (
-                                            <button 
+                                            <button
                                                 onClick={() => updateStatus(selectedTask.id, 'IN_PROGRESS')}
                                                 className="px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-2"
                                             >
@@ -353,13 +399,13 @@ const TechDashboard = () => {
                                         )}
                                         {selectedTask.status === 'IN_PROGRESS' && (
                                             <>
-                                                <button 
+                                                <button
                                                     onClick={() => updateStatus(selectedTask.id, 'ON_HOLD')}
                                                     className="px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md"
                                                 >
                                                     Mark On Hold
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => updateStatus(selectedTask.id, 'RESOLVED')}
                                                     className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-2"
                                                 >
