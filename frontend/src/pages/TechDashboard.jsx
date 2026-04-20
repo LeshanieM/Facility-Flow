@@ -298,6 +298,7 @@ const TechDashboard = () => {
                                 <div className="bg-blue-50/70 p-5 rounded-2xl border border-blue-100 grid grid-cols-1 sm:grid-cols-3 gap-4 shadow-inner">
                                     <div>
                                         <p className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">SLA Status</p>
+                                        <p>Hello</p>
                                         <div className="inline-block px-2 py-1 bg-white border border-blue-200 text-blue-700 text-xs font-bold rounded">
                                             {selectedTask.slaStatus ? selectedTask.slaStatus.replace(/_/g, ' ') : 'NOT TRACKED'}
                                         </div>
