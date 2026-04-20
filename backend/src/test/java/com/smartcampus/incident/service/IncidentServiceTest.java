@@ -184,6 +184,43 @@ class IncidentServiceTest {
     }
 
     @Test
+    void editedCommentShowsUpdatedContentToRequesterAndAdmin() {
+        IncidentComment existing = IncidentComment.builder()
+                .id("comment-edit")
+                .ticketId(incident.getTicketId())
+                .authorId(assignedTechnician.getId())
+                .authorName(assignedTechnician.getName())
+                .authorRole(Role.TECHNICIAN.name())
+                .content("Old technician update")
+                .legacyContent("Old technician update")
+                .visibleToRequester(true)
+                .createdAt(Instant.parse("2026-04-20T05:00:00Z"))
+                .legacyCreatedAt(Instant.parse("2026-04-20T05:00:00Z"))
+                .updatedAt(Instant.parse("2026-04-20T05:00:00Z"))
+                .legacyUpdatedAt(Instant.parse("2026-04-20T05:00:00Z"))
+                .softDeleted(false)
+                .build();
+        incident.setComments(new ArrayList<>(List.of(existing)));
+
+        incidentService.editComment(
+                "incident-1",
+                "comment-edit",
+                new EditCommentRequest("Updated technician message", true),
+                assignedTechnician
+        );
+
+        List<CommentResponse> requesterComments = incidentService.getComments("incident-1", requester);
+        List<CommentResponse> adminComments = incidentService.getComments("incident-1", admin);
+
+        assertThat(requesterComments).hasSize(1);
+        assertThat(adminComments).hasSize(1);
+        assertThat(requesterComments.get(0).getContent()).isEqualTo("Updated technician message");
+        assertThat(adminComments.get(0).getContent()).isEqualTo("Updated technician message");
+        assertThat(requesterComments.get(0).getContent()).isNotEqualTo("Old technician update");
+        assertThat(adminComments.get(0).getContent()).isNotEqualTo("Old technician update");
+    }
+
+    @Test
     void technicianOwnsLegacyCommentWhenAuthorNameMatchesEmailLocalPart() {
         IncidentComment existing = IncidentComment.builder()
                 .id("comment-legacy")

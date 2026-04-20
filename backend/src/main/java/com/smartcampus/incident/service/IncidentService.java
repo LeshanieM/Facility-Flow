@@ -217,6 +217,7 @@ public class IncidentService {
                 .updatedAt(now)
                 .softDeleted(false)
                 .build();
+        synchronizeCommentFields(comment);
 
         if (incident.getComments() == null) {
             incident.setComments(new ArrayList<>());
@@ -245,6 +246,7 @@ public class IncidentService {
         comment.setContent(request.getMessage().trim());
         comment.setVisibleToRequester(resolveRequesterVisibility(user, request.isVisibleToRequester()));
         comment.setUpdatedAt(Instant.now());
+        synchronizeCommentFields(comment);
 
         incident.setUpdatedAt(Instant.now());
         Incident saved = incidentRepository.save(incident);
@@ -262,6 +264,7 @@ public class IncidentService {
 
         comment.setSoftDeleted(true);
         comment.setUpdatedAt(Instant.now());
+        synchronizeCommentFields(comment);
 
         incident.setUpdatedAt(Instant.now());
         Incident saved = incidentRepository.save(incident);
@@ -393,6 +396,7 @@ public class IncidentService {
         }
 
         return incident.getComments().stream()
+                .peek(this::synchronizeCommentFields)
                 .filter(comment -> !comment.isSoftDeleted())
                 .filter(comment -> canSeeComment(comment, user))
                 .sorted(Comparator.comparing(this::resolveCommentCreatedAt))
@@ -459,6 +463,26 @@ public class IncidentService {
             return comment.getLegacyContent();
         }
         return null;
+    }
+
+    private void synchronizeCommentFields(IncidentComment comment) {
+        String resolvedContent = resolveCommentContent(comment);
+        if (resolvedContent != null && !resolvedContent.isBlank()) {
+            comment.setContent(resolvedContent);
+            comment.setLegacyContent(resolvedContent);
+        }
+
+        Instant resolvedCreatedAt = resolveCommentCreatedAt(comment);
+        if (resolvedCreatedAt != null) {
+            comment.setCreatedAt(resolvedCreatedAt);
+            comment.setLegacyCreatedAt(resolvedCreatedAt);
+        }
+
+        Instant resolvedUpdatedAt = resolveCommentUpdatedAt(comment, resolvedCreatedAt);
+        if (resolvedUpdatedAt != null) {
+            comment.setUpdatedAt(resolvedUpdatedAt);
+            comment.setLegacyUpdatedAt(resolvedUpdatedAt);
+        }
     }
 
     private Instant getCreatedAtCorrected(Incident incident) {
