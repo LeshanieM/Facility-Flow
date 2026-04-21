@@ -32,6 +32,7 @@ public class IncidentRequests {
     @AllArgsConstructor
     public static class UpdateStatusRequest {
         @NotNull private IncidentStatus status;
+        private String rejectionReason;
     }
 
     @Data

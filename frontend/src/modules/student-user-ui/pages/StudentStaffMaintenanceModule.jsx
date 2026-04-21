@@ -25,6 +25,7 @@ import RequestList from '../components/RequestList';
 import RequestDetailsPanel from '../components/RequestDetailsPanel';
 import SkeletonBlock from '../components/SkeletonBlock';
 import SurfaceCard from '../components/SurfaceCard';
+import { formatIncidentStatusLabel } from '../components/StatusBadge';
 import TabNavigation from '../components/TabNavigation';
 import ToastStack from '../components/ToastStack';
 import { useStudentMaintenanceDashboard } from '../hooks/useStudentMaintenanceDashboard';
@@ -397,7 +398,7 @@ const StudentStaffMaintenanceModule = () => {
                               <p className="mt-1 text-sm text-slate-500">{request.location}</p>
                             </div>
                             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                              {request.status.replace(/_/g, ' ')}
+                              {formatIncidentStatusLabel(request.status)}
                             </span>
                           </div>
                         </button>

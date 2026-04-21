@@ -45,7 +45,7 @@ public class AdminIncidentController {
             Principal principal) {
         
         User admin = getUser(principal);
-        TicketResponse response = incidentService.updateStatus(id, request.getStatus(), admin);
+        TicketResponse response = incidentService.updateStatus(id, request, admin);
         return ResponseEntity.ok(response);
     }
 

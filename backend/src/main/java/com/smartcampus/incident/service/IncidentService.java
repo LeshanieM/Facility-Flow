@@ -5,6 +5,7 @@ import com.smartcampus.entity.User;
 import com.smartcampus.incident.dto.IncidentRequests.AddCommentRequest;
 import com.smartcampus.incident.dto.IncidentRequests.CreateTicketRequest;
 import com.smartcampus.incident.dto.IncidentRequests.EditCommentRequest;
+import com.smartcampus.incident.dto.IncidentRequests.UpdateStatusRequest;
 import com.smartcampus.incident.dto.IncidentResponses.ActivityLogResponse;
 import com.smartcampus.incident.dto.IncidentResponses.AttachmentResponse;
 import com.smartcampus.incident.dto.IncidentResponses.CommentResponse;
@@ -36,11 +37,20 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Locale;
 import java.util.UUID;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class IncidentService {
+
+    private static final Set<IncidentStatus> SUPPORTED_WORKFLOW_STATUSES = Set.of(
+            IncidentStatus.OPEN,
+            IncidentStatus.IN_PROGRESS,
+            IncidentStatus.RESOLVED,
+            IncidentStatus.CLOSED,
+            IncidentStatus.REJECTED
+    );
 
     private final IncidentRepository incidentRepository;
     private final IncidentActivityLogRepository activityLogRepository;
@@ -113,15 +123,18 @@ public class IncidentService {
         List<Incident> incidents = incidentRepository.findBySubmittedById(userId);
         long totalSubmitted = incidents.size();
         long pending = incidents.stream()
-                .filter(i -> i.getStatus() == IncidentStatus.OPEN)
+                .filter(i -> normalizeStatus(i) == IncidentStatus.OPEN)
                 .count();
         long approved = incidents.stream()
-                .filter(i -> i.getStatus() == IncidentStatus.IN_PROGRESS)
+                .filter(i -> normalizeStatus(i) == IncidentStatus.IN_PROGRESS)
                 .count();
         long completed = incidents.stream()
-                .filter(i -> i.getStatus() == IncidentStatus.RESOLVED || i.getStatus() == IncidentStatus.CLOSED)
+                .filter(i -> {
+                    IncidentStatus status = normalizeStatus(i);
+                    return status == IncidentStatus.RESOLVED || status == IncidentStatus.CLOSED;
+                })
                 .count();
-        long rejected = incidents.stream().filter(i -> i.getStatus() == IncidentStatus.REJECTED).count();
+        long rejected = incidents.stream().filter(i -> normalizeStatus(i) == IncidentStatus.REJECTED).count();
         long overdue = incidents.stream().filter(i -> i.getSlaStatus() == SlaStatus.BREACHED).count();
 
         return new DashboardSummaryResponse(totalSubmitted, pending, approved, completed, rejected, overdue);
@@ -130,6 +143,7 @@ public class IncidentService {
     @Transactional
     public void cancelIncident(String id, User user) {
         Incident incident = findById(id);
+        normalizePersistedStatus(incident);
         if (!isRequester(incident, user)) {
             throw new UnauthorizedIncidentAccessException("Cannot cancel another user's incident.");
         }
@@ -143,22 +157,30 @@ public class IncidentService {
     }
 
     @Transactional
-    public TicketResponse updateStatus(String id, IncidentStatus newStatus, User user) {
+    public TicketResponse updateStatus(String id, UpdateStatusRequest request, User user) {
         Incident incident = findById(id);
+        normalizePersistedStatus(incident);
         ensureCanManageTicket(incident, user);
+
+        IncidentStatus newStatus = normalizeRequestedStatus(request.getStatus());
+        validateStatusTransitionRequest(newStatus, user, request.getRejectionReason());
 
         Instant now = Instant.now();
         incident.setStatus(newStatus);
 
         if (newStatus == IncidentStatus.IN_PROGRESS && incident.getFirstResponseAt() == null) {
-            incident.setFirstResponseAt(now);
-            Instant startForResponse = incident.getCreatedAt() != null ? incident.getCreatedAt() : now;
-            incident.setResponseDurationMinutes(ChronoUnit.MINUTES.between(startForResponse, now));
+            applyFirstResponseIfMissing(incident, now);
         }
         if (newStatus == IncidentStatus.RESOLVED || newStatus == IncidentStatus.CLOSED) {
             incident.setResolvedAt(now);
             Instant startForResolution = incident.getCreatedAt() != null ? incident.getCreatedAt() : now;
             incident.setResolutionDurationMinutes(ChronoUnit.MINUTES.between(startForResolution, now));
+        }
+        if (newStatus == IncidentStatus.CLOSED) {
+            incident.setClosedAt(now);
+        }
+        if (newStatus == IncidentStatus.REJECTED) {
+            incident.setRejectionReason(request.getRejectionReason().trim());
         }
 
         slaService.evaluateSlaBreach(incident);
@@ -173,6 +195,7 @@ public class IncidentService {
         requireRole(admin, Role.ADMIN);
 
         Incident incident = findById(id);
+        normalizePersistedStatus(incident);
         User technician = userRepository.findById(technicianId)
                 .orElseThrow(() -> new ResourceNotFoundException("Technician user not found"));
 
@@ -184,11 +207,14 @@ public class IncidentService {
                 incident.getAssignedTechnician() == null ? ActivityAction.ASSIGNED : ActivityAction.REASSIGNED;
         incident.setAssignedTechnician(technician);
 
+        Instant now = Instant.now();
+
         if (incident.getStatus() == IncidentStatus.OPEN) {
             incident.setStatus(IncidentStatus.IN_PROGRESS);
+            applyFirstResponseIfMissing(incident, now);
         }
 
-        incident.setUpdatedAt(Instant.now());
+        incident.setUpdatedAt(now);
 
         Incident saved = incidentRepository.save(incident);
         logActivity(id, admin, assignmentAction, "Assigned technician: " + technician.getName());
@@ -318,6 +344,7 @@ public class IncidentService {
 
     private Incident findAccessibleIncident(String id, User user) {
         Incident incident = findById(id);
+        normalizePersistedStatus(incident);
         ensureCanAccessTicket(incident, user);
         return incident;
     }
@@ -500,8 +527,11 @@ public class IncidentService {
     }
 
     private TicketResponse toResponse(Incident incident, User user) {
+        normalizePersistedStatus(incident);
         slaService.evaluateSlaBreach(incident);
         Instant actualCreatedAt = getCreatedAtCorrected(incident);
+        Long responseDurationMinutes = resolveResponseDurationMinutes(incident, actualCreatedAt);
+        Long resolutionDurationMinutes = resolveResolutionDurationMinutes(incident, actualCreatedAt);
 
         return new TicketResponse(
                 incident.getId(),
@@ -527,6 +557,8 @@ public class IncidentService {
                 incident.getSlaResolutionDeadline() != null ? incident.getSlaResolutionDeadline().toString() : null,
                 incident.getFirstResponseAt() != null ? incident.getFirstResponseAt().toString() : null,
                 incident.getResolvedAt() != null ? incident.getResolvedAt().toString() : null,
+                responseDurationMinutes,
+                resolutionDurationMinutes,
                 incident.getSlaStatus(),
                 actualCreatedAt != null ? actualCreatedAt.toString() : null,
                 incident.getUpdatedAt() != null ? incident.getUpdatedAt().toString() : null,
@@ -607,6 +639,74 @@ public class IncidentService {
         return left != null
                 && right != null
                 && left.trim().toLowerCase(Locale.ROOT).equals(right.trim().toLowerCase(Locale.ROOT));
+    }
+
+    private IncidentStatus normalizeStatus(Incident incident) {
+        IncidentStatus normalized = com.smartcampus.incident.enums.IncidentEnums.normalizeStatus(incident.getStatus());
+        if (incident.getStatus() != normalized) {
+            incident.setStatus(normalized);
+        }
+        return normalized;
+    }
+
+    private void normalizePersistedStatus(Incident incident) {
+        IncidentStatus currentStatus = incident.getStatus();
+        IncidentStatus normalizedStatus = normalizeStatus(incident);
+        if (currentStatus != normalizedStatus) {
+            incident.setUpdatedAt(Instant.now());
+            incidentRepository.save(incident);
+        }
+    }
+
+    private IncidentStatus normalizeRequestedStatus(IncidentStatus requestedStatus) {
+        IncidentStatus normalized = com.smartcampus.incident.enums.IncidentEnums.normalizeStatus(requestedStatus);
+        if (!SUPPORTED_WORKFLOW_STATUSES.contains(normalized)) {
+            throw new InvalidRequestException("Unsupported ticket status.");
+        }
+        return normalized;
+    }
+
+    private void validateStatusTransitionRequest(IncidentStatus newStatus, User user, String rejectionReason) {
+        if (newStatus == IncidentStatus.REJECTED) {
+            requireRole(user, Role.ADMIN);
+            if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
+                throw new InvalidRequestException("Rejection reason is required when rejecting a ticket.");
+            }
+        }
+    }
+
+    private void applyFirstResponseIfMissing(Incident incident, Instant responseAt) {
+        if (incident.getFirstResponseAt() != null) {
+            return;
+        }
+
+        Instant createdAt = getCreatedAtCorrected(incident);
+        Instant effectiveResponseAt = responseAt != null ? responseAt : Instant.now();
+        incident.setFirstResponseAt(effectiveResponseAt);
+
+        if (createdAt != null) {
+            incident.setResponseDurationMinutes(ChronoUnit.MINUTES.between(createdAt, effectiveResponseAt));
+        }
+    }
+
+    private Long resolveResponseDurationMinutes(Incident incident, Instant createdAt) {
+        if (incident.getResponseDurationMinutes() != null) {
+            return incident.getResponseDurationMinutes();
+        }
+        if (createdAt == null || incident.getFirstResponseAt() == null) {
+            return null;
+        }
+        return ChronoUnit.MINUTES.between(createdAt, incident.getFirstResponseAt());
+    }
+
+    private Long resolveResolutionDurationMinutes(Incident incident, Instant createdAt) {
+        if (incident.getResolutionDurationMinutes() != null) {
+            return incident.getResolutionDurationMinutes();
+        }
+        if (createdAt == null || incident.getResolvedAt() == null) {
+            return null;
+        }
+        return ChronoUnit.MINUTES.between(createdAt, incident.getResolvedAt());
     }
 
     public record AttachmentDownload(java.nio.file.Path path, String fileName, String contentType) {

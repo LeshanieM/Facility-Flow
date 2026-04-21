@@ -5,9 +5,9 @@ import { useAuth } from '../../../context/AuthContext';
 import api from '../../../services/api';
 import SectionHeader from '../../student-user-ui/components/SectionHeader';
 import SurfaceCard from '../../student-user-ui/components/SurfaceCard';
-import StatusBadge from '../../student-user-ui/components/StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_OPTIONS } from '../../student-user-ui/components/StatusBadge';
 import ToastStack from '../../student-user-ui/components/ToastStack';
-import { formatDateTime } from '../../maintenance/utils/dateTime';
+import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 
 const sortTickets = (items) => [...items].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
@@ -270,10 +270,22 @@ const TechnicianMaintenancePage = () => {
                         <div>
                           <p className="text-xs text-blue-600">Response Due</p>
                           <p className="font-semibold text-blue-900 text-xs">{formatDateTime(selectedRequest.slaResponseDeadline)}</p>
+                          <p className="mt-2 text-[11px] text-slate-500">Actual: {formatDateTimeOrFallback(selectedRequest.actualFirstResponseAt)}</p>
                         </div>
                         <div>
                           <p className="text-xs text-blue-600">Resolution Due</p>
                           <p className="font-semibold text-blue-900 text-xs">{formatDateTime(selectedRequest.slaResolutionDeadline)}</p>
+                          <p className="mt-2 text-[11px] text-slate-500">Actual: {formatDateTimeOrFallback(selectedRequest.actualResolutionAt)}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-blue-600">First Response Time</p>
+                          <p className="font-semibold text-blue-900 text-xs">{formatDurationMinutes(selectedRequest.responseDurationMinutes)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-blue-600">Resolution Time</p>
+                          <p className="font-semibold text-blue-900 text-xs">{formatDurationMinutes(selectedRequest.resolutionDurationMinutes)}</p>
                         </div>
                       </div>
                       <div className="mt-3 inline-block rounded bg-blue-100 px-3 py-1 text-[10px] font-bold text-blue-900 uppercase">
@@ -298,10 +310,9 @@ const TechnicianMaintenancePage = () => {
                                 }}
                                 className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
                             >
-                                <option value="OPEN">Open</option>
-                                <option value="IN_PROGRESS">In Progress</option>
-                                <option value="RESOLVED">Resolved</option>
-                                <option value="CLOSED">Closed</option>
+                                {INCIDENT_STATUS_OPTIONS.filter((status) => status.value !== 'REJECTED').map((status) => (
+                                  <option key={status.value} value={status.value}>{status.label}</option>
+                                ))}
                             </select>
                         </div>
                         <div className="mt-3 text-[10px] text-slate-400 font-medium italic">
