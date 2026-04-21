@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../assets/logo.jpeg';
 import { 
   LayoutDashboard, 
   Users, 
@@ -18,108 +19,222 @@ import {
   ClipboardList
 } from 'lucide-react';
 
+const colors = {
+  DEFAULT: "#4169E1",
+  dark: "#314fb3",
+  light: "#6687eb",
+  darker: "#243a8a",
+  gold: "#f5c842",
+};
+
 const Sidebar = ({ isCollapsed, setIsCollapsed }) => {
     const { user } = useAuth();
     const location = useLocation();
 
     const menuItems = {
         ADMIN: [
-            { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
-            { name: 'Users', icon: <Users size={20} />, path: '/admin' },
-            { name: 'Incidents', icon: <BellRing size={20} />, path: '/admin/incidents' },
-            { name: 'Facilities', icon: <Building2 size={20} />, path: '/admin/facilities' },
-            { name: 'Bookings', icon: <ClipboardList size={20} />, path: '/admin/bookings' },
-            { name: 'Logs', icon: <History size={20} />, path: '/logs' },
-            { name: 'Security', icon: <ShieldCheck size={20} />, path: '/security' },
+            { name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/dashboard' },
+            { name: 'Users', icon: <Users size={18} />, path: '/admin' },
+            { name: 'Incidents', icon: <BellRing size={18} />, path: '/admin/incidents' },
+            { name: 'Facilities', icon: <Building2 size={18} />, path: '/admin/facilities' },
+            { name: 'Bookings', icon: <ClipboardList size={18} />, path: '/admin/bookings' },
+          
         ],
         USER: [
-            { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
-            { name: 'Facilities', icon: <Building2 size={20} />, path: '/facilities' },
-            { name: 'Incident Ticketing', icon: <BellRing size={20} />, path: '/maintenance' },
-            { name: 'New Booking', icon: <BookOpen size={20} />, path: '/bookings/new' },
-            { name: 'My Bookings', icon: <Calendar size={20} />, path: '/bookings/my' },
-            { name: 'Map', icon: <Map size={20} />, path: '/map' },
-            { name: 'Profile', icon: <CircleUser size={20} />, path: '/profile' },
+            { name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/dashboard' },
+            { name: 'Facilities', icon: <Building2 size={18} />, path: '/facilities' },
+            { name: 'Incident Ticketing', icon: <BellRing size={18} />, path: '/maintenance' },
+            { name: 'New Booking', icon: <BookOpen size={18} />, path: '/bookings/new' },
+            { name: 'My Bookings', icon: <Calendar size={18} />, path: '/bookings/my' },
+            { name: 'Profile', icon: <CircleUser size={18} />, path: '/profile' },
         ],
         TECHNICIAN: [
-            { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/dashboard' },
-            { name: 'Facilities', icon: <Building2 size={20} />, path: '/facilities' },
-            { name: 'Tasks', icon: <Hammer size={20} />, path: '/tech/tasks' },
-            { name: 'History', icon: <History size={20} />, path: '/history' },
-            { name: 'Profile', icon: <CircleUser size={20} />, path: '/profile' },
+            { name: 'Dashboard', icon: <LayoutDashboard size={18} />, path: '/dashboard' },
+            { name: 'Facilities', icon: <Building2 size={18} />, path: '/facilities' },
+            { name: 'Tasks', icon: <Hammer size={18} />, path: '/tech/tasks' },
+            { name: 'Profile', icon: <CircleUser size={18} />, path: '/profile' },
         ]
     };
 
     const currentMenu = menuItems[user?.role] || menuItems.USER;
+    const displayName = user?.name || (user?.email || user?.sub)?.split('@')[0];
+    const initial = (user?.email || user?.sub)?.[0]?.toUpperCase();
 
     return (
-        <aside className={`fixed left-0 top-0 h-screen bg-white text-slate-600 font-sans transition-all duration-300 ease-in-out z-50 flex flex-col border-r border-slate-200 shadow-xl shadow-slate-200/40 ${isCollapsed ? 'w-20' : 'w-64'}`}>
-            {/* Brand Header */}
-            <div className="p-6 border-b border-slate-100 bg-white relative group">
-                <div className={`flex items-center gap-3 overflow-hidden transition-all duration-300 ${isCollapsed ? 'justify-center' : ''}`}>
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/30 shrink-0 group-hover:shadow-blue-500/50 transition-all">
-                        F
-                    </div>
-                    {!isCollapsed && (
-                        <div className="animate-fade-in whitespace-nowrap">
-                            <h2 className="text-xl font-black text-slate-900 tracking-tight">CAMPUS HUB</h2>
-                            <p className="text-[10px] tracking-widest text-blue-600 font-bold uppercase">Space Booking</p>
-                        </div>
-                    )}
-                </div>
-            </div>
+        <>
+            <style>{`
+                @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&display=swap');
+                .sidebar-root {
+                    font-family: 'Sora', sans-serif;
+                }
+                .nav-link {
+                    transition: background 0.15s, color 0.15s;
+                }
+                .nav-link:hover .nav-icon {
+                    color: ${colors.DEFAULT};
+                }
+                .nav-link.active {
+                    background: ${colors.DEFAULT};
+                    color: #ffffff;
+                }
+                .nav-link.active .nav-icon {
+                    color: #ffffff;
+                }
+                .nav-link:not(.active):hover {
+                    background: #f0f0f5;
+                    color: ${colors.dark};
+                }
+                .collapse-btn {
+                    transition: transform 0.15s, box-shadow 0.15s;
+                }
+                .collapse-btn:hover {
+                    transform: scale(1.1);
+                    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+                }
+            `}</style>
 
-            {/* Navigation */}
-            <nav className="flex-1 py-6 space-y-2 overflow-y-auto px-4 bg-slate-50/50">
-                {currentMenu.map((item) => {
-                    const isActive = location.pathname === item.path;
-                    return (
-                        <Link
-                            key={item.name}
-                            to={item.path}
-                            title={isCollapsed ? item.name : ''}
-                            className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 font-medium group relative overflow-hidden ${
-                                isActive 
-                                ? 'bg-white text-blue-700 shadow-md shadow-slate-200/50 border border-slate-100' 
-                                : 'text-slate-500 hover:text-slate-800 hover:bg-white border border-transparent hover:shadow-sm'
-                            } ${isCollapsed ? 'justify-center p-0 h-12 w-12 mx-auto' : ''}`}
-                        >
-                            <span className={`shrink-0 transition-transform duration-300 ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:scale-110 group-hover:text-blue-500'}`}>
-                                {item.icon}
-                            </span>
-                            {!isCollapsed && <span className="truncate">{item.name}</span>}
-                            {isActive && !isCollapsed && (
-                                <div className="absolute right-0 top-0 h-full w-1.5 bg-blue-600 rounded-l-full shadow-[0_0_10px_rgba(37,99,235,0.4)]" />
-                            )}
-                        </Link>
-                    );
-                })}
-            </nav>
-
-            {/* User Profile Summary */}
-            <div className="p-4 border-t border-slate-100 bg-white">
-                <div className={`flex items-center gap-4 transition-all duration-300 ${isCollapsed ? 'justify-center' : ''}`}>
-                    <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-slate-700 shrink-0 relative group shadow-sm">
-                        {user?.sub?.[0].toUpperCase()}
-                        <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
-                    </div>
-                    {!isCollapsed && (
-                        <div className="min-w-0 animate-fade-in">
-                            <div className="text-sm font-bold text-slate-800 truncate">{user?.sub?.split('@')[0]}</div>
-                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user?.role}</div>
-                        </div>
-                    )}
-                </div>
-            </div>
-            
-            {/* Collapse Toggle (Custom UI) */}
-            <button 
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="absolute -right-3 top-20 w-6 h-6 bg-white rounded-full flex items-center justify-center text-slate-600 shadow-md border border-slate-200 hover:scale-110 hover:text-blue-600 transition-all z-[60]"
+            <aside
+                className="sidebar-root fixed left-0 top-0 h-screen flex flex-col z-50 transition-all duration-300"
+                style={{
+                    width: isCollapsed ? '72px' : '240px',
+                    background: '#fafafa',
+                    borderRight: '1px solid #e8e8ec',
+                }}
             >
-                {isCollapsed ? <ChevronRight size={14} strokeWidth={3} /> : <ChevronLeft size={14} strokeWidth={3} />}
-            </button>
-        </aside>
+                {/* Brand */}
+                <Link
+                    to="/"
+                    className="flex items-center gap-3 px-5 py-5 hover:opacity-90 transition-opacity"
+                    style={{ borderBottom: '1px solid #e8e8ec' }}
+                >
+                    <div
+                        className="shrink-0 w-9 h-9 rounded-lg overflow-hidden border border-white/20 shadow-md"
+                    >
+                        <img src={logo} alt="Facility Flow Logo" className="w-full h-full object-cover" />
+                    </div>
+                    {!isCollapsed && (
+                        <div>
+                            <div className="font-black text-sm leading-none tracking-tight font-['Playfair_Display',serif] uppercase">
+                                <span style={{ color: colors.darker }}>Facility </span>
+                                <span style={{ color: colors.light }}>Flow</span>
+                            </div>
+                            <div
+                                className="text-[10px] mt-1 font-medium"
+                                style={{ color: '#a0a0b0', letterSpacing: '0.04em' }}
+                            >
+                                Smart Campus Hub
+                            </div>
+                        </div>
+                    )}
+                </Link>
+
+                {/* Nav */}
+                <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-0.5">
+                    {currentMenu.map((item) => {
+                        const isActive = location.pathname === item.path;
+                        return (
+                            <Link
+                                key={item.name}
+                                to={item.path}
+                                title={isCollapsed ? item.name : ''}
+                                className={`nav-link flex items-center gap-3 rounded-lg text-sm font-medium ${isActive ? 'active' : ''}`}
+                                style={{
+                                    padding: isCollapsed ? '10px 0' : '9px 12px',
+                                    justifyContent: isCollapsed ? 'center' : 'flex-start',
+                                    color: isActive ? '#ffffff' : '#6b6b80',
+                                }}
+                            >
+                                <span
+                                    className="nav-icon shrink-0"
+                                    style={{ color: isActive ? '#ffffff' : '#9090a8' }}
+                                >
+                                    {item.icon}
+                                </span>
+                                {!isCollapsed && <span>{item.name}</span>}
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                {/* Role badge */}
+                {!isCollapsed && (
+                    <div className="px-4 py-2">
+                        <div
+                            className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded"
+                            style={{
+                                background: colors.light + '20',
+                                color: colors.DEFAULT,
+                                display: 'inline-block'
+                            }}
+                        >
+                            {user?.role}
+                        </div>
+                    </div>
+                )}
+
+                {/* User */}
+                <div
+                    className="px-3 py-4"
+                    style={{ borderTop: '1px solid #e8e8ec' }}
+                >
+                    <div
+                        className="flex items-center gap-3"
+                        style={{ justifyContent: isCollapsed ? 'center' : 'flex-start' }}
+                    >
+                        <div
+                            className="shrink-0 w-9 h-9 rounded-lg flex items-center justify-center font-semibold text-sm relative"
+                            style={{
+                                background: colors.light + '20',
+                                color: colors.DEFAULT,
+                            }}
+                        >
+                            {initial}
+                            <span
+                                className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2"
+                                style={{
+                                    background: '#34d399',
+                                    borderColor: '#fafafa',
+                                    transform: 'translate(1px, 1px)'
+                                }}
+                            />
+                        </div>
+                        {!isCollapsed && (
+                            <div className="min-w-0">
+                                <div
+                                    className="text-sm font-semibold truncate leading-none"
+                                    style={{ color: colors.darker }}
+                                >
+                                    {displayName}
+                                </div>
+                                <div
+                                    className="text-xs mt-1 truncate"
+                                    style={{ color: '#a0a0b0' }}
+                                >
+                                    {user?.email}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Collapse button */}
+                <button
+                    onClick={() => setIsCollapsed(!isCollapsed)}
+                    className="collapse-btn absolute -right-3.5 top-[72px] w-7 h-7 rounded-full flex items-center justify-center"
+                    style={{
+                        background: '#ffffff',
+                        border: '1px solid #e8e8ec',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                        color: colors.DEFAULT,
+                    }}
+                >
+                    {isCollapsed
+                        ? <ChevronRight size={12} strokeWidth={2.5} />
+                        : <ChevronLeft size={12} strokeWidth={2.5} />
+                    }
+                </button>
+            </aside>
+        </>
     );
 };
 
