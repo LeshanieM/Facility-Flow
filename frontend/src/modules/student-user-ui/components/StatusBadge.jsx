@@ -1,6 +1,21 @@
 import React from 'react';
 import { Clock, Wrench, CheckCircle, ShieldCheck, AlertCircle } from 'lucide-react';
 
+export const INCIDENT_STATUS_ORDER = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
+
+export const normalizeIncidentStatus = (status) => {
+  switch (status) {
+    case 'SUBMITTED':
+    case 'UNDER_REVIEW':
+      return 'OPEN';
+    case 'ASSIGNED':
+    case 'ON_HOLD':
+      return 'IN_PROGRESS';
+    default:
+      return status || 'OPEN';
+  }
+};
+
 const statusConfigs = {
   OPEN: {
     color: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -29,16 +44,27 @@ const statusConfigs = {
   },
 };
 
-const StatusBadge = ({ status }) => {
-  const config = statusConfigs[status] || {
+export const INCIDENT_STATUS_OPTIONS = INCIDENT_STATUS_ORDER.map((status) => ({
+  value: status,
+  label: statusConfigs[status]?.label || status,
+}));
+
+export const formatIncidentStatusLabel = (status) => {
+  const normalizedStatus = normalizeIncidentStatus(status);
+  return statusConfigs[normalizedStatus]?.label || normalizedStatus.replace(/_/g, ' ');
+};
+
+const StatusBadge = ({ status, className = '' }) => {
+  const normalizedStatus = normalizeIncidentStatus(status);
+  const config = statusConfigs[normalizedStatus] || {
     color: 'bg-slate-50 text-slate-700 border-slate-200',
     icon: null,
-    label: status,
+    label: formatIncidentStatusLabel(normalizedStatus),
   };
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold transition-colors ${config.color}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold transition-colors ${config.color} ${className}`.trim()}
     >
       {config.icon}
       {config.label}

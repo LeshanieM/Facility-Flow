@@ -48,7 +48,7 @@ public class TechnicianIncidentController {
             Principal principal) {
         
         User user = getUser(principal);
-        TicketResponse response = incidentService.updateStatus(id, request.getStatus(), user);
+        TicketResponse response = incidentService.updateStatus(id, request, user);
         return ResponseEntity.ok(response);
     }
 

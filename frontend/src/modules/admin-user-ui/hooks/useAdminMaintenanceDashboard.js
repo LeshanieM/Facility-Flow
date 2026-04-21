@@ -39,13 +39,15 @@ export const useAdminMaintenanceDashboard = () => {
         loadTechnicians();
     }, []);
 
-    const changeStatus = async (ticketId, newStatus) => {
+    const changeStatus = async (ticketId, statusPayload) => {
         try {
-            const updated = await updateTicketStatus(ticketId, newStatus);
+            const updated = await updateTicketStatus(ticketId, statusPayload);
             setTickets(current => current.map(t => t.id === ticketId ? { ...t, ...updated } : t));
+            return updated;
         } catch (err) {
             console.error('Failed to update ticket status', err);
-            alert('Failed to update ticket. Check your connection.');
+            alert(err?.response?.data?.message || 'Failed to update ticket. Check your connection.');
+            return null;
         }
     };
 

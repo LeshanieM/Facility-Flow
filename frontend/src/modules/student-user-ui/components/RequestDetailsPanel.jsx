@@ -2,20 +2,19 @@ import React, { useState } from 'react';
 import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench, Paperclip, Eye, Download, Send, Edit2, Trash2, X, Check, Phone } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
-import StatusBadge from './StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_ORDER, formatIncidentStatusLabel, normalizeIncidentStatus } from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
-import { formatDateTime } from '../../maintenance/utils/dateTime';
+import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 
 const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || 'Update added.';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
-const timelineSteps = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
-
 const statusStepIndex = (status) => {
-  if (status === 'REJECTED') return 0;
-  return Math.max(timelineSteps.indexOf(status), 0);
+  const normalizedStatus = normalizeIncidentStatus(status);
+  if (normalizedStatus === 'REJECTED') return 0;
+  return Math.max(INCIDENT_STATUS_ORDER.indexOf(normalizedStatus), 0);
 };
 
 const getUpdates = (request) => {
@@ -157,15 +156,42 @@ const RequestDetailsPanel = ({
         </div>
       </div>
 
+      <div className="mt-8 rounded-[26px] border border-blue-200 bg-blue-50/70 p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-2 text-blue-900">
+          <Clock3 size={18} />
+          <h4 className="text-lg font-bold">SLA details</h4>
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-blue-100 bg-white/80 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-500">Response target</p>
+            <p className="mt-2 text-sm font-semibold text-blue-900">{formatDateTime(request.slaResponseDeadline)}</p>
+            <p className="mt-2 text-xs text-slate-500">Actual: {formatDateTimeOrFallback(request.actualFirstResponseAt)}</p>
+          </div>
+          <div className="rounded-2xl border border-blue-100 bg-white/80 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-500">Resolution target</p>
+            <p className="mt-2 text-sm font-semibold text-blue-900">{formatDateTime(request.slaResolutionDeadline)}</p>
+            <p className="mt-2 text-xs text-slate-500">Actual: {formatDateTimeOrFallback(request.actualResolutionAt)}</p>
+          </div>
+          <div className="rounded-2xl border border-blue-100 bg-white/80 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-500">First response time</p>
+            <p className="mt-2 text-sm font-semibold text-blue-900">{formatDurationMinutes(request.responseDurationMinutes)}</p>
+          </div>
+          <div className="rounded-2xl border border-blue-100 bg-white/80 p-4">
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-blue-500">Resolution time</p>
+            <p className="mt-2 text-sm font-semibold text-blue-900">{formatDurationMinutes(request.resolutionDurationMinutes)}</p>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-8 rounded-[26px] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
         <div className="mb-4 flex items-center gap-2 text-slate-800">
           <Clock3 size={18} />
           <h4 className="text-lg font-bold">Progress timeline</h4>
         </div>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {timelineSteps.map((step, index) => {
+          {INCIDENT_STATUS_ORDER.slice(0, 4).map((step, index) => {
             const isComplete = index <= activeIndex;
-            const label = step.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+            const label = formatIncidentStatusLabel(step);
             return (
               <div
                 key={step}

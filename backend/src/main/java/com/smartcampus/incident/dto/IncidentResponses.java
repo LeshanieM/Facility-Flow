@@ -47,6 +47,8 @@ public class IncidentResponses {
         private String slaResolutionDeadline;
         private String actualFirstResponseAt;
         private String actualResolutionAt;
+        private Long responseDurationMinutes;
+        private Long resolutionDurationMinutes;
         private SlaStatus slaStatus;
         private String createdAt;
         private String updatedAt;

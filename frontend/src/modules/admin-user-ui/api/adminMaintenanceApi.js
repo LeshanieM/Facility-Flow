@@ -22,8 +22,12 @@ export const getTicketDetails = async (id) => {
   return response.data;
 };
 
-export const updateTicketStatus = async (id, status) => {
-  const response = await adminMaintenanceApi.patch(`/${id}/status`, { status });
+export const updateTicketStatus = async (id, statusOrPayload) => {
+  const payload = typeof statusOrPayload === 'string'
+    ? { status: statusOrPayload }
+    : statusOrPayload;
+
+  const response = await adminMaintenanceApi.patch(`/${id}/status`, payload);
   return response.data;
 };
 

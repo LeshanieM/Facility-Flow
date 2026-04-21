@@ -18,6 +18,44 @@ const categoryOptions = [
 const priorityOptions = ['Low', 'Medium', 'High', 'Urgent'];
 
 const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSubmitting, submitMessage, submitError }) => {
+  const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+  const formatResourceType = (value) =>
+    String(value || '')
+      .toLowerCase()
+      .split('_')
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
+
+  const dbResourceTypes = Array.from(
+    new Set(
+      (resources || [])
+        .map((resource) => formatResourceType(resource?.type))
+        .filter(Boolean)
+    )
+  );
+
+  const combinedCategoryOptions = Array.from(
+    new Set([...dbResourceTypes, ...categoryOptions])
+  );
+
+  const filteredResourceOptions = (resources || []).filter((resource) => {
+    if (!values.category?.trim()) {
+      return true;
+    }
+
+    return normalizeText(formatResourceType(resource?.type)) === normalizeText(values.category);
+  });
+
+  const locationOptions = Array.from(
+    new Set(
+      (resources || [])
+        .map((resource) => resource?.location?.trim())
+        .filter(Boolean)
+    )
+  );
+
   return (
     <SurfaceCard className="p-6 sm:p-8">
       <SectionHeader
@@ -59,39 +97,60 @@ const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSub
             />
           </FieldControl>
 
-          <FieldControl label="Location" required error={errors.location} hint="Select a facility or type a custom location.">
+          <FieldControl label="Location" required error={errors.location} hint="Select a saved location from the database or type a custom one.">
             <input
               value={values.location}
               onChange={(event) => onChange('location', event.target.value)}
               className={fieldInputClass(Boolean(errors.location))}
               placeholder="Select or type location..."
-              list="resource-list"
+              list="location-list"
               maxLength={140}
             />
-            <datalist id="resource-list">
-              {(resources || []).map((res) => (
-                <option key={res.id} value={res.name}>
-                  {res.location ? `${res.name} (${res.location})` : res.name}
-                </option>
+            <datalist id="location-list">
+              {locationOptions.map((location) => (
+                <option key={location} value={location} />
               ))}
             </datalist>
           </FieldControl>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
-          <FieldControl label="Category" required error={errors.category}>
-            <select
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <FieldControl label="Resource Type / Category" required error={errors.category} hint="Select a database resource type or type a custom category.">
+            <input
               value={values.category}
               onChange={(event) => onChange('category', event.target.value)}
               className={fieldInputClass(Boolean(errors.category))}
-            >
-              <option value="">Select a category</option>
-              {categoryOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
+              placeholder="Select or type category..."
+              list="resource-type-list"
+              maxLength={80}
+            />
+            <datalist id="resource-type-list">
+              {combinedCategoryOptions.map((option) => (
+                <option key={option} value={option} />
               ))}
-            </select>
+            </datalist>
+          </FieldControl>
+
+          <FieldControl
+            label="Relevant Resource"
+            error={errors.room}
+            hint={values.category?.trim()
+              ? 'Select a matching saved resource or type a custom one.'
+              : 'Choose a resource type first, then select or type the resource.'}
+          >
+            <input
+              value={values.room}
+              onChange={(event) => onChange('room', event.target.value)}
+              className={fieldInputClass(Boolean(errors.room))}
+              placeholder={values.category?.trim() ? 'Select or type resource...' : 'Type resource or choose after selecting type...'}
+              list="resource-name-list"
+              maxLength={120}
+            />
+            <datalist id="resource-name-list">
+              {filteredResourceOptions.map((resource) => (
+                <option key={resource.id} value={resource.name} />
+              ))}
+            </datalist>
           </FieldControl>
 
           <FieldControl label="Priority" required error={errors.priority}>

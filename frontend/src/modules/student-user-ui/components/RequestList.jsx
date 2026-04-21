@@ -1,18 +1,10 @@
 import React from 'react';
-import { ClipboardList, Loader2, MapPin, Search, Filter, Plus, RefreshCw } from 'lucide-react';
+import { Calendar, ClipboardList, Loader2, MapPin, Search, Filter, Plus, RefreshCw } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
-import StatusBadge from './StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_OPTIONS } from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
-
-const formatDate = (value) => {
-  if (!value) return 'Just now';
-
-  return new Intl.DateTimeFormat('en', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value));
-};
+import { formatDateTime } from '../../maintenance/utils/dateTime';
 
 const RequestList = ({ requests, selectedRequestId, onSelect, isLoading, filters, setFilters, onNewRequest, onRefresh, isRefreshing }) => {
   return (
@@ -43,11 +35,9 @@ const RequestList = ({ requests, selectedRequestId, onSelect, isLoading, filters
             className="w-full bg-slate-50/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-10 text-sm font-medium text-slate-800 appearance-none focus:outline-none focus:ring-4 focus:ring-blue-50 focus:border-blue-400 transition cursor-pointer"
           >
             <option value="ALL">All statuses</option>
-            <option value="OPEN">Open</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="CLOSED">Closed</option>
-            <option value="REJECTED">Rejected</option>
+            {INCIDENT_STATUS_OPTIONS.map((status) => (
+              <option key={status.value} value={status.value}>{status.label}</option>
+            ))}
           </select>
         </div>
 
@@ -117,13 +107,16 @@ const RequestList = ({ requests, selectedRequestId, onSelect, isLoading, filters
                       </span>
                       <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-medium text-slate-600">
                         <MapPin size={14} />
-                        {request.location}
+                        {request.location}{request.room ? ` (${request.room})` : ''}
                       </span>
                     </div>
                     <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{request.description}</p>
                   </div>
                   <div className="shrink-0 text-sm text-slate-400 transition group-hover:text-slate-500">
-                    Updated {formatDate(request.updatedAt || request.createdAt)}
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar size={14} />
+                      Submitted {formatDateTime(request.createdAt)}
+                    </span>
                   </div>
                 </div>
               </button>

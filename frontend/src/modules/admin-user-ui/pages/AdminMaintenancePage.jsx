@@ -2,26 +2,16 @@ import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
 import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download } from 'lucide-react';
-import { formatDateTime } from '../../maintenance/utils/dateTime';
+import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
+import StatusBadge, { INCIDENT_STATUS_OPTIONS, formatIncidentStatusLabel } from '../../student-user-ui/components/StatusBadge';
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
-const getStatusBadge = (status) => {
-    switch(status) {
-        case 'OPEN': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Open</span>;
-        case 'IN_PROGRESS': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold uppercase">In Progress</span>;
-        case 'RESOLVED': return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Resolved</span>;
-        case 'CLOSED': return <span className="bg-slate-200 text-slate-500 px-3 py-1 rounded-full text-xs font-bold uppercase">Closed</span>;
-        case 'REJECTED': return <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Rejected</span>;
-        default: return <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold uppercase">{status}</span>;
-    }
-};
-
 const getPriorityColor = (priority) => {
     switch (priority) {
-        case 'CRITICAL': return 'bg-rose-500';
+        case 'EMERGENCY': return 'bg-rose-500';
         case 'HIGH': return 'bg-orange-500';
         case 'MEDIUM': return 'bg-amber-500';
         case 'LOW': return 'bg-emerald-500';
@@ -65,13 +55,10 @@ export const AdminMaintenancePage = () => {
 
     const handleQuickAction = (e, ticketId, newStatus) => {
         e.stopPropagation(); // prevent modal from opening
-        changeStatus(ticketId, newStatus);
-        if (selectedTicket?.id === ticketId) {
-            setSelectedTicket(prev => ({ ...prev, status: newStatus }));
-        }
+        changeStatus(ticketId, { status: newStatus });
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         let hasChanges = false;
         
         if (pendingTechAssignment) {
@@ -80,7 +67,19 @@ export const AdminMaintenancePage = () => {
         }
         
         if (pendingStatus && pendingStatus !== selectedTicket.status) {
-            changeStatus(selectedTicket.id, pendingStatus);
+            const payload = { status: pendingStatus };
+            if (pendingStatus === 'REJECTED') {
+                const rejectionReason = window.prompt('Enter the rejection reason for this ticket:');
+                if (!rejectionReason || !rejectionReason.trim()) {
+                    return;
+                }
+                payload.rejectionReason = rejectionReason.trim();
+            }
+
+            const updated = await changeStatus(selectedTicket.id, payload);
+            if (updated) {
+                setSelectedTicket(updated);
+            }
             hasChanges = true;
         }
         
@@ -206,7 +205,7 @@ export const AdminMaintenancePage = () => {
                                                 <div className="text-xs text-slate-400 font-medium">{new Date(ticket.createdAt).toLocaleDateString()}</div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                {getStatusBadge(ticket.status)}
+                                                <StatusBadge status={ticket.status} />
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                                 {ticket.status === 'OPEN' && (
@@ -249,7 +248,7 @@ export const AdminMaintenancePage = () => {
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white shadow-sm ${getPriorityColor(selectedTicket.priority)}`}>
                                             {selectedTicket.priority} PRIORITY
                                         </span>
-                                        {getStatusBadge(selectedTicket.status)}
+                                        <StatusBadge status={selectedTicket.status} />
                                     </div>
                                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">{selectedTicket.title}</h2>
                                     <p className="text-sm font-semibold text-slate-400 flex items-center gap-2">
@@ -286,6 +285,36 @@ export const AdminMaintenancePage = () => {
                                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={10}/> Created Date</div>
                                         <div className="font-bold text-slate-800 text-sm whitespace-nowrap overflow-hidden text-ellipsis px-1">{new Date(selectedTicket.createdAt).toLocaleDateString()}</div>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-2xl border border-blue-200 bg-blue-50/70 p-5 shadow-inner">
+                                    <div className="mb-4 flex items-center gap-2 text-blue-900">
+                                        <Clock size={18} />
+                                        <h3 className="text-sm font-black uppercase tracking-widest">SLA Overview</h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                                        <div className="rounded-xl border border-blue-100 bg-white/80 p-4">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">Response Target</div>
+                                            <div className="text-sm font-bold text-blue-900">{formatDateTime(selectedTicket.slaResponseDeadline)}</div>
+                                            <div className="mt-2 text-xs text-slate-500">Actual: {formatDateTimeOrFallback(selectedTicket.actualFirstResponseAt)}</div>
+                                        </div>
+                                        <div className="rounded-xl border border-blue-100 bg-white/80 p-4">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">Resolution Target</div>
+                                            <div className="text-sm font-bold text-blue-900">{formatDateTime(selectedTicket.slaResolutionDeadline)}</div>
+                                            <div className="mt-2 text-xs text-slate-500">Actual: {formatDateTimeOrFallback(selectedTicket.actualResolutionAt)}</div>
+                                        </div>
+                                        <div className="rounded-xl border border-blue-100 bg-white/80 p-4">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">First Response Time</div>
+                                            <div className="text-sm font-bold text-blue-900">{formatDurationMinutes(selectedTicket.responseDurationMinutes)}</div>
+                                        </div>
+                                        <div className="rounded-xl border border-blue-100 bg-white/80 p-4">
+                                            <div className="text-[10px] font-black uppercase tracking-widest text-blue-500 mb-1">Resolution Time</div>
+                                            <div className="text-sm font-bold text-blue-900">{formatDurationMinutes(selectedTicket.resolutionDurationMinutes)}</div>
+                                            <div className="mt-2 inline-block rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-blue-700">
+                                                {selectedTicket.slaStatus ? selectedTicket.slaStatus.replace(/_/g, ' ') : 'SLA ACTIVE'}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -402,11 +431,11 @@ export const AdminMaintenancePage = () => {
                                                 onChange={(e) => setPendingStatus(e.target.value)}
                                                 disabled={selectedTicket.status === 'CLOSED'}
                                             >
-                                                {selectedTicket.status === 'OPEN' && <option value="OPEN">Open</option>}
-                                                <option value="IN_PROGRESS">In Progress</option>
-                                                <option value="RESOLVED">Resolved</option>
-                                                <option value="CLOSED">Closed / Archive</option>
-                                                {selectedTicket.status !== 'RESOLVED' && <option value="REJECTED">Reject Request</option>}
+                                                {INCIDENT_STATUS_OPTIONS.map((status) => (
+                                                    <option key={status.value} value={status.value}>
+                                                        {status.value === 'CLOSED' ? 'Closed / Archive' : formatIncidentStatusLabel(status.value)}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>

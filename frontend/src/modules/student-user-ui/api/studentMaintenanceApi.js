@@ -44,6 +44,9 @@ export const createMaintenanceRequest = async (payload) => {
   formData.append('title', payload.title.trim());
   formData.append('description', payload.description.trim());
   formData.append('location', payload.location.trim());
+  if (payload.room) {
+    formData.append('room', payload.room.trim());
+  }
   formData.append('category', payload.category);
   formData.append('priority', payload.priority);
   if (payload.preferredContact) {
