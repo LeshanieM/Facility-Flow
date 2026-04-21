@@ -18,12 +18,15 @@ import MyBookingsPage from './pages/bookings/MyBookingsPage';
 import AdminBookingsPage from './pages/bookings/AdminBookingsPage';
 import AttachmentViewerPage from './modules/maintenance/pages/AttachmentViewerPage';
 import ProfilePage from './pages/ProfilePage';
+import NotificationPage from './pages/NotificationPage';
+import { NotificationProvider } from './context/NotificationContext';
 import './index.css';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <NotificationProvider>
+        <Router>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
@@ -62,6 +65,11 @@ function App() {
           <Route path="/profile" element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/notifications" element={
+            <ProtectedRoute>
+              <NotificationPage />
             </ProtectedRoute>
           } />
 
@@ -106,6 +114,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }
