@@ -73,7 +73,7 @@ class IncidentServiceTest {
                 .description("Projector in Lab 2 is not working")
                 .category("ELECTRICAL")
                 .location("Engineering Block")
-                .status(IncidentStatus.ASSIGNED)
+                .status(IncidentStatus.IN_PROGRESS)
                 .submittedBy(requester)
                 .assignedTechnician(assignedTechnician)
                 .comments(new ArrayList<>())

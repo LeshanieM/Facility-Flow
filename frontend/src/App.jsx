@@ -17,6 +17,7 @@ import CreateBookingPage from './pages/bookings/CreateBookingPage';
 import MyBookingsPage from './pages/bookings/MyBookingsPage';
 import AdminBookingsPage from './pages/bookings/AdminBookingsPage';
 import AttachmentViewerPage from './modules/maintenance/pages/AttachmentViewerPage';
+import ProfilePage from './pages/ProfilePage';
 import './index.css';
 
 function App() {
@@ -56,6 +57,11 @@ function App() {
           <Route path="/facilities" element={
             <ProtectedRoute allowedRoles={['USER', 'ADMIN', 'TECHNICIAN']}>
               <FacilityCataloguePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           } />
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { LogOut, Bell, Search, Menu as MenuIcon } from 'lucide-react';
 
@@ -45,6 +45,29 @@ const Layout = ({ children }) => {
               <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 border-2 border-white rounded-full"></span>
             </button>
             
+            <div className="w-px h-6 bg-slate-200 mx-2"></div>
+
+            <Link 
+              to="/profile" 
+              className="flex items-center gap-3 p-1.5 pr-4 hover:bg-slate-100 rounded-2xl transition-all border border-transparent hover:border-slate-200 group"
+            >
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-primary overflow-hidden shadow-sm">
+                {user?.picture ? (
+                  <img src={user.picture} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  (user?.email || user?.sub)?.[0].toUpperCase()
+                )}
+              </div>
+              <div className="hidden lg:block text-left">
+                <div className="text-xs font-bold text-slate-800 leading-none group-hover:text-primary transition-colors">
+                  {user?.name || (user?.email || user?.sub)?.split('@')[0]}
+                </div>
+                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter mt-0.5">
+                  View Profile
+                </div>
+              </div>
+            </Link>
+
             <div className="w-px h-6 bg-slate-200 mx-2"></div>
             
             <button 
