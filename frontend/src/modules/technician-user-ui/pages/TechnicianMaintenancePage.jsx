@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download, PlayCircle } from 'lucide-react';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../services/api';
@@ -28,6 +28,7 @@ const TechnicianMaintenancePage = () => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [attachmentActionKey, setAttachmentActionKey] = useState('');
+  const detailsRef = useRef(null);
 
   const displayName = useMemo(() => {
     return user?.name || user?.sub || user?.email || 'Technician';
@@ -117,20 +118,7 @@ const TechnicianMaintenancePage = () => {
       } else {
         setSelectedRequest(null);
       }
-
-      const backendMessage = error?.response?.data?.message || '';
-      const missingDetailRoute = typeof backendMessage === 'string'
-        && backendMessage.includes('No static resource api/technician/tickets/');
-
-      if (missingDetailRoute) {
-        pushToast(
-          'error',
-          'Backend restart required',
-          'The running backend does not yet expose the technician detail route. Showing cached ticket data for now.'
-        );
-      } else {
-        pushToast('error', 'Failed to load ticket details', backendMessage);
-      }
+      pushToast('error', 'Failed to load ticket details', error?.response?.data?.message || '');
     } finally {
       setIsDetailLoading(false);
     }
@@ -143,7 +131,15 @@ const TechnicianMaintenancePage = () => {
   useEffect(() => {
     loadDetails(selectedRequestId);
     resetComposer();
-  }, [selectedRequestId, requests]);
+    
+    // Auto-scroll to details if on mobile or if requested
+    if (selectedRequestId && detailsRef.current) {
+        const isMobile = window.innerWidth < 1536; // 2xl breakpoint
+        if (isMobile) {
+            detailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+  }, [selectedRequestId]);
 
   const handleSaveComment = async () => {
     if (!commentText.trim() || !selectedRequestId) return;
@@ -197,6 +193,23 @@ const TechnicianMaintenancePage = () => {
     }
   };
 
+  const handleUpdateStatus = async (newStatus) => {
+      try {
+          const payload = { status: newStatus };
+          if (newStatus === 'RESOLVED') {
+              const resolutionNotes = window.prompt('Enter resolution notes (optional):');
+              if (resolutionNotes && resolutionNotes.trim()) {
+                  payload.resolutionNotes = resolutionNotes.trim();
+              }
+          }
+          const res = await api.patch(`/technician/tickets/${selectedRequest.id}/status`, payload);
+          syncTicketState(res.data);
+          pushToast('success', 'Status Updated', `Ticket is now ${newStatus}`);
+      } catch (err) {
+          pushToast('error', 'Update Failed', err?.response?.data?.message || 'Unauthorized');
+      }
+  };
+
   const comments = selectedRequest?.comments || [];
 
   return (
@@ -232,7 +245,7 @@ const TechnicianMaintenancePage = () => {
                 <div
                   key={req.id}
                   onClick={() => setSelectedRequestId(req.id)}
-                  className={`cursor-pointer rounded-2xl border p-4 transition ${selectedRequestId === req.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300'}`}
+                  className={`cursor-pointer rounded-2xl border p-4 transition ${selectedRequestId === req.id ? 'border-blue-500 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-300'}`}
                 >
                   <p className="font-semibold">{req.ticketId} - {req.title}</p>
                   <div className="mt-2 flex justify-between text-xs text-slate-500">
@@ -244,7 +257,7 @@ const TechnicianMaintenancePage = () => {
               ))}
             </div>
 
-            <div className="space-y-4">
+            <div ref={detailsRef} className="space-y-4">
               {isDetailLoading || (selectedRequestId && !selectedRequest) ? (
                 <SurfaceCard className="flex h-64 items-center justify-center">
                   <Loader2 className="animate-spin text-blue-600" />
@@ -294,36 +307,30 @@ const TechnicianMaintenancePage = () => {
                     </div>
 
                     <div className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">Update Status</p>
-                        <div className="mt-3 flex gap-2">
-                            <select 
-                                value={selectedRequest.status}
-                                onChange={async (e) => {
-                                    const newStatus = e.target.value;
-                                    try {
-                                        const payload = { status: newStatus };
-                                        if (newStatus === 'RESOLVED') {
-                                            const resolutionNotes = window.prompt('Enter resolution notes (optional):');
-                                            if (resolutionNotes && resolutionNotes.trim()) {
-                                                payload.resolutionNotes = resolutionNotes.trim();
-                                            }
-                                        }
-                                        const res = await api.patch(`/technician/tickets/${selectedRequest.id}/status`, payload);
-                                        syncTicketState(res.data);
-                                        pushToast('success', 'Status Updated', `Ticket is now ${newStatus}`);
-                                    } catch (err) {
-                                        pushToast('error', 'Update Failed', err?.response?.data?.message || 'Unauthorized');
-                                    }
-                                }}
-                                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
-                            >
-                                {INCIDENT_STATUS_OPTIONS.filter((status) => status.value !== 'REJECTED').map((status) => (
-                                  <option key={status.value} value={status.value}>{status.label}</option>
-                                ))}
-                            </select>
+                        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">Workflow Control</p>
+                        <div className="mt-3">
+                            {selectedRequest.status === 'ASSIGNED' ? (
+                                <button
+                                    onClick={() => handleUpdateStatus('IN_PROGRESS')}
+                                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 transition"
+                                >
+                                    <PlayCircle size={18} />
+                                    Start Work
+                                </button>
+                            ) : (
+                                <select 
+                                    value={selectedRequest.status}
+                                    onChange={(e) => handleUpdateStatus(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                                >
+                                    {INCIDENT_STATUS_OPTIONS.filter((status) => status.value !== 'REJECTED' && status.value !== 'OPEN').map((status) => (
+                                    <option key={status.value} value={status.value}>{status.label}</option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
-                        <div className="mt-3 text-[10px] text-slate-400 font-medium italic">
-                            Move ticket through the workflow as you progress.
+                        <div className="mt-3 text-[10px] text-slate-400 font-medium italic text-center">
+                            {selectedRequest.status === 'ASSIGNED' ? 'Begin the task to update the requester.' : 'Update status as you progress.'}
                         </div>
                     </div>
                   </div>
@@ -364,11 +371,11 @@ const TechnicianMaintenancePage = () => {
                             key={`${getAttachmentName(attachment)}-${index}`}
                             className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
                           >
-                            <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
-                              <Paperclip size={14} className="text-slate-400" />
-                              <span>{getAttachmentName(attachment)}</span>
+                            <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 truncate max-w-[280px]" title={getAttachmentName(attachment)}>
+                              <Paperclip size={14} className="text-slate-400 shrink-0" />
+                              <span className="truncate">{getAttachmentName(attachment)}</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 shrink-0">
                               <a
                                 href={getViewerUrl(attachment) || '#'}
                                 target="_blank"
@@ -397,75 +404,78 @@ const TechnicianMaintenancePage = () => {
                   </div>
 
                   <div className="mt-8">
-                    <h3 className="mb-4 flex items-center gap-2 font-bold"><MessageSquare size={16}/> Comments & Notes</h3>
+                    <h3 className="mb-4 flex items-center gap-2 font-bold text-slate-800"><MessageSquare size={16}/> Comments & Activity</h3>
                     <div className="mb-6 space-y-3">
                       {comments.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
                           No comments have been added to this ticket yet.
                         </div>
-                      ) : comments.map((comment) => (
-                        <div key={comment.id} className="relative rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      ) : [...comments].reverse().map((comment) => (
+                        <div key={comment.id} className="relative rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-slate-300 transition-colors">
                           <div className="flex justify-between items-start gap-3">
                             <div>
-                              <p className="text-xs font-bold text-slate-700">
-                                {comment.authorName}
-                                <span className="ml-1 font-normal text-slate-400">({comment.authorRole})</span>
-                                <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] uppercase ${comment.authorRole === 'USER' ? 'bg-blue-100 text-blue-800' : (comment.visibleToRequester ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600')}`}>
-                                  {comment.authorRole === 'USER' ? 'Requester added' : (comment.visibleToRequester ? 'Visible to requester' : 'Internal only')}
+                              <div className="flex items-center gap-2">
+                                <p className="text-xs font-bold text-slate-700">{comment.authorName}</p>
+                                {comment.authorRole === 'ADMIN' && (
+                                    <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[9px] font-black uppercase border border-indigo-200">Admin</span>
+                                )}
+                                <span className="font-normal text-slate-400 text-[10px]">({comment.authorRole})</span>
+                                <span className={`rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${comment.authorRole === 'USER' ? 'bg-blue-100 text-blue-800' : (comment.visibleToRequester ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600')}`}>
+                                  {comment.authorRole === 'USER' ? 'Requester' : (comment.visibleToRequester ? 'External' : 'Internal')}
                                 </span>
-                              </p>
-                              <p className="mt-1 text-[11px] text-slate-400">
-                                Created {formatDateTime(getCommentCreatedAt(comment))}
-                                {getCommentUpdatedAt(comment) && getCommentUpdatedAt(comment) !== getCommentCreatedAt(comment) ? ` • Updated ${formatDateTime(getCommentUpdatedAt(comment))}` : ''}
+                              </div>
+                              <p className="mt-1 text-[10px] text-slate-400 font-medium uppercase tracking-wider">
+                                {formatDateTime(getCommentCreatedAt(comment))}
+                                {getCommentUpdatedAt(comment) && getCommentUpdatedAt(comment) !== getCommentCreatedAt(comment) ? ` • Edited` : ''}
                               </p>
                             </div>
                             {canManageComment(comment) && (
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 {(comment.canEdit ?? true) && (
-                                  <button onClick={() => beginEditing(comment)} className="text-blue-500 hover:text-blue-700 transition-colors">
-                                    <Edit2 size={14} />
+                                  <button onClick={() => beginEditing(comment)} className="p-1.5 text-blue-500 hover:bg-white rounded shadow-sm transition">
+                                    <Edit2 size={12} />
                                   </button>
                                 )}
                                 {(comment.canDelete ?? true) && (
-                                  <button onClick={() => handleDeleteComment(comment.id)} className="text-rose-500 hover:text-rose-700 transition-colors">
-                                    <Trash2 size={14} />
+                                  <button onClick={() => handleDeleteComment(comment.id)} className="p-1.5 text-rose-500 hover:bg-white rounded shadow-sm transition">
+                                    <Trash2 size={12} />
                                   </button>
                                 )}
                               </div>
                             )}
                           </div>
-                          <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">{getCommentContent(comment)}</p>
+                          <p className="mt-2 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{getCommentContent(comment)}</p>
                         </div>
                       ))}
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 p-4">
-                      <p className="mb-2 text-sm font-bold">{editingCommentId ? 'Edit Comment' : 'Add Comment'}</p>
+                    <div className="rounded-2xl border border-slate-200 p-5 bg-white shadow-sm">
+                      <p className="mb-3 text-xs font-black uppercase tracking-widest text-slate-400">{editingCommentId ? 'Edit Comment' : 'Add Progress Note'}</p>
                       <textarea
                         value={commentText}
                         onChange={(event) => setCommentText(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Type your comment..."
+                        className="w-full rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm focus:border-blue-300 focus:bg-white focus:outline-none transition-all resize-none"
+                        placeholder="Describe your progress or ask the requester for details..."
                         rows={3}
                       />
-                      <div className="mt-3 flex items-center justify-between">
-                        <label className="flex items-center gap-2 text-sm text-slate-600">
+                      <div className="mt-4 flex items-center justify-between">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={visibleToRequester}
                             onChange={(event) => setVisibleToRequester(event.target.checked)}
-                            className="rounded border-slate-300 text-blue-600"
+                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                           />
                           Visible to Requester
                         </label>
                         <div className="flex gap-2">
                           {editingCommentId && (
-                            <button onClick={resetComposer} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">
+                            <button onClick={resetComposer} className="rounded-xl px-5 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 transition">
                               Cancel
                             </button>
                           )}
-                          <button onClick={handleSaveComment} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                            Save
+                          <button onClick={handleSaveComment} className="rounded-xl bg-blue-600 px-6 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition">
+                            {editingCommentId ? 'Update' : 'Post Update'}
                           </button>
                         </div>
                       </div>

@@ -55,7 +55,8 @@ public class IncidentService {
     );
 
     private static final java.util.Map<IncidentStatus, Set<IncidentStatus>> VALID_TRANSITIONS = java.util.Map.of(
-            IncidentStatus.OPEN, Set.of(IncidentStatus.IN_PROGRESS, IncidentStatus.REJECTED, IncidentStatus.CLOSED),
+            IncidentStatus.OPEN, Set.of(IncidentStatus.ASSIGNED, IncidentStatus.IN_PROGRESS, IncidentStatus.REJECTED, IncidentStatus.CLOSED),
+            IncidentStatus.ASSIGNED, Set.of(IncidentStatus.IN_PROGRESS, IncidentStatus.REJECTED, IncidentStatus.CLOSED),
             IncidentStatus.IN_PROGRESS, Set.of(IncidentStatus.RESOLVED, IncidentStatus.CLOSED, IncidentStatus.REJECTED),
             IncidentStatus.RESOLVED, Set.of(IncidentStatus.CLOSED),
             IncidentStatus.CLOSED, Set.of(),
@@ -287,7 +288,7 @@ public class IncidentService {
         Instant now = Instant.now();
 
         if (incident.getStatus() == IncidentStatus.OPEN) {
-            incident.setStatus(IncidentStatus.IN_PROGRESS);
+            incident.setStatus(IncidentStatus.ASSIGNED);
             applyFirstResponseIfMissing(incident, now);
         }
 

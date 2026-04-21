@@ -1,14 +1,13 @@
 import React from 'react';
-import { Clock, Wrench, CheckCircle, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Clock, Wrench, CheckCircle, ShieldCheck, AlertCircle, UserPlus } from 'lucide-react';
 
-export const INCIDENT_STATUS_ORDER = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
+export const INCIDENT_STATUS_ORDER = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
 
 export const normalizeIncidentStatus = (status) => {
   switch (status) {
     case 'SUBMITTED':
     case 'UNDER_REVIEW':
       return 'OPEN';
-    case 'ASSIGNED':
     case 'ON_HOLD':
       return 'IN_PROGRESS';
     default:
@@ -21,6 +20,11 @@ const statusConfigs = {
     color: 'bg-blue-50 text-blue-700 border-blue-200',
     icon: <Clock size={12} />,
     label: 'Open',
+  },
+  ASSIGNED: {
+    color: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    icon: <UserPlus size={12} />,
+    label: 'Assigned',
   },
   IN_PROGRESS: {
     color: 'bg-orange-50 text-orange-700 border-orange-200',

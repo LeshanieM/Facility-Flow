@@ -45,6 +45,7 @@ const getDisplayName = (user) => {
 const StudentStaffMaintenanceModule = () => {
   const { user } = useAuth();
   const formRef = useRef(null);
+  const detailsRef = useRef(null);
   const [filters, setFilters] = useState({ query: '', status: 'ALL' });
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -101,6 +102,15 @@ const StudentStaffMaintenanceModule = () => {
       clearSubmitStatus();
     }
   }, [activeTab, clearSubmitStatus]);
+
+  useEffect(() => {
+    if (selectedRequestId && detailsRef.current) {
+        const isMobile = window.innerWidth < 1536; // 2xl breakpoint
+        if (isMobile) {
+            detailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+  }, [selectedRequestId]);
 
   const filteredRequests = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
@@ -345,7 +355,7 @@ const StudentStaffMaintenanceModule = () => {
                 />
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60">
+                <div ref={detailsRef} className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60">
                   <RequestDetailsPanel 
                     request={selectedRequest} 
                     isLoading={isDetailLoading} 
