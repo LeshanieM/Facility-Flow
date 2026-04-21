@@ -6,6 +6,10 @@ import {
   getNotifications,
   getRequestDetails,
   cancelMaintenanceRequest,
+  getResources,
+  addComment,
+  editComment,
+  deleteComment,
 } from '../api/studentMaintenanceApi';
 
 const initialForm = {
@@ -14,6 +18,7 @@ const initialForm = {
   location: '',
   category: '',
   priority: 'Medium',
+  preferredContact: '',
   attachments: [],
 };
 
@@ -22,6 +27,8 @@ const normalizeSummary = (summary) => ({
   pending: summary?.pending ?? 0,
   approved: summary?.approved ?? 0,
   completed: summary?.completed ?? 0,
+  rejected: summary?.rejected ?? 0,
+  overdue: summary?.overdue ?? 0,
 });
 
 const extractErrorMessage = (error, fallbackMessage) => {
@@ -39,6 +46,7 @@ const extractErrorMessage = (error, fallbackMessage) => {
 export const useStudentMaintenanceDashboard = () => {
   const [summary, setSummary] = useState(() => normalizeSummary());
   const [requests, setRequests] = useState([]);
+  const [resources, setResources] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -74,15 +82,17 @@ export const useStudentMaintenanceDashboard = () => {
     }
 
     try {
-      const [summaryData, requestsData, notificationsData] = await Promise.all([
+      const [summaryData, requestsData, notificationsData, resourcesData] = await Promise.all([
         getDashboardSummary(),
         getMyRequests(),
         getNotifications(),
+        getResources(),
       ]);
 
       setSummary(normalizeSummary(summaryData));
       setRequests(Array.isArray(requestsData) ? requestsData : []);
       setNotifications(Array.isArray(notificationsData) ? notificationsData : []);
+      setResources(Array.isArray(resourcesData) ? resourcesData : []);
 
       if (!selectedRequestId && Array.isArray(requestsData) && requestsData.length > 0) {
         setSelectedRequestId(requestsData[0].id);
@@ -228,6 +238,42 @@ export const useStudentMaintenanceDashboard = () => {
     }
   };
 
+  const handleAddComment = async (message) => {
+    try {
+      const updated = await addComment(selectedRequestId, { message, visibleToRequester: true });
+      setSelectedRequest(updated);
+      pushToast('success', 'Comment added', 'Your update has been posted to the ticket.');
+      return true;
+    } catch (error) {
+      pushToast('error', 'Action failed', extractErrorMessage(error, 'Unable to add comment.'));
+      return false;
+    }
+  };
+
+  const handleEditComment = async (commentId, message) => {
+    try {
+      const updated = await editComment(selectedRequestId, commentId, { message, visibleToRequester: true });
+      setSelectedRequest(updated);
+      pushToast('success', 'Comment updated', 'Your comment has been modified.');
+      return true;
+    } catch (error) {
+      pushToast('error', 'Action failed', extractErrorMessage(error, 'Unable to update comment.'));
+      return false;
+    }
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      const updated = await deleteComment(selectedRequestId, commentId);
+      setSelectedRequest(updated);
+      pushToast('success', 'Comment deleted', 'Your comment has been removed.');
+      return true;
+    } catch (error) {
+      pushToast('error', 'Action failed', extractErrorMessage(error, 'Unable to delete comment.'));
+      return false;
+    }
+  };
+
   const requestCards = useMemo(() => {
     return requests.map((request) => ({
       id: request.id,
@@ -245,6 +291,7 @@ export const useStudentMaintenanceDashboard = () => {
   return {
     summary,
     requests: requestCards,
+    resources,
     notifications,
     selectedRequest,
     selectedRequestId,
@@ -253,6 +300,9 @@ export const useStudentMaintenanceDashboard = () => {
     formErrors,
     updateField,
     submitRequest,
+    handleAddComment,
+    handleEditComment,
+    handleDeleteComment,
     hasRequests,
     isBootstrapping,
     isRefreshing,

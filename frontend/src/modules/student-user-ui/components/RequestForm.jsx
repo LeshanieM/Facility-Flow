@@ -17,7 +17,7 @@ const categoryOptions = [
 
 const priorityOptions = ['Low', 'Medium', 'High', 'Urgent'];
 
-const RequestForm = ({ values, errors, onChange, onSubmit, isSubmitting, submitMessage, submitError }) => {
+const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSubmitting, submitMessage, submitError }) => {
   return (
     <SurfaceCard className="p-6 sm:p-8">
       <SectionHeader
@@ -59,18 +59,26 @@ const RequestForm = ({ values, errors, onChange, onSubmit, isSubmitting, submitM
             />
           </FieldControl>
 
-          <FieldControl label="Location" required error={errors.location}>
+          <FieldControl label="Location" required error={errors.location} hint="Select a facility or type a custom location.">
             <input
               value={values.location}
               onChange={(event) => onChange('location', event.target.value)}
               className={fieldInputClass(Boolean(errors.location))}
-              placeholder="Science Block, Floor 2, Room 211"
+              placeholder="Select or type location..."
+              list="resource-list"
               maxLength={140}
             />
+            <datalist id="resource-list">
+              {(resources || []).map((res) => (
+                <option key={res.id} value={res.name}>
+                  {res.location ? `${res.name} (${res.location})` : res.name}
+                </option>
+              ))}
+            </datalist>
           </FieldControl>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
           <FieldControl label="Category" required error={errors.category}>
             <select
               value={values.category}
@@ -98,6 +106,15 @@ const RequestForm = ({ values, errors, onChange, onSubmit, isSubmitting, submitM
                 </option>
               ))}
             </select>
+          </FieldControl>
+
+          <FieldControl label="Preferred Contact Details" error={errors.preferredContact}>
+            <input
+              value={values.preferredContact}
+              onChange={(event) => onChange('preferredContact', event.target.value)}
+              className={fieldInputClass(Boolean(errors.preferredContact))}
+              placeholder="e.g. Phone or Slack"
+            />
           </FieldControl>
         </div>
 

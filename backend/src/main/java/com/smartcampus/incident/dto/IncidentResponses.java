@@ -42,6 +42,7 @@ public class IncidentResponses {
         private String adminNotes;
         private String technicianNotes;
         private String resolutionSummary;
+        private String preferredContact;
         private String slaResponseDeadline;
         private String slaResolutionDeadline;
         private String actualFirstResponseAt;

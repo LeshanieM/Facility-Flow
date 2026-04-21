@@ -61,8 +61,9 @@ public class IncidentService {
                 .location(request.getLocation())
                 .room(request.getRoom())
                 .priority(mappedPriority)
-                .status(IncidentStatus.SUBMITTED)
+                .status(IncidentStatus.OPEN)
                 .submittedBy(user)
+                .preferredContact(request.getPreferredContact())
                 .attachments(new ArrayList<>())
                 .createdAt(now)
                 .updatedAt(now)
@@ -112,10 +113,10 @@ public class IncidentService {
         List<Incident> incidents = incidentRepository.findBySubmittedById(userId);
         long totalSubmitted = incidents.size();
         long pending = incidents.stream()
-                .filter(i -> i.getStatus() == IncidentStatus.SUBMITTED || i.getStatus() == IncidentStatus.UNDER_REVIEW)
+                .filter(i -> i.getStatus() == IncidentStatus.OPEN)
                 .count();
         long approved = incidents.stream()
-                .filter(i -> i.getStatus() == IncidentStatus.ASSIGNED || i.getStatus() == IncidentStatus.IN_PROGRESS)
+                .filter(i -> i.getStatus() == IncidentStatus.IN_PROGRESS)
                 .count();
         long completed = incidents.stream()
                 .filter(i -> i.getStatus() == IncidentStatus.RESOLVED || i.getStatus() == IncidentStatus.CLOSED)
@@ -132,7 +133,7 @@ public class IncidentService {
         if (!isRequester(incident, user)) {
             throw new UnauthorizedIncidentAccessException("Cannot cancel another user's incident.");
         }
-        if (incident.getStatus() != IncidentStatus.SUBMITTED) {
+        if (incident.getStatus() != IncidentStatus.OPEN) {
             throw new IllegalIncidentStateException("Incident cannot be cancelled in current status.");
         }
         incident.setStatus(IncidentStatus.CLOSED);
@@ -183,8 +184,8 @@ public class IncidentService {
                 incident.getAssignedTechnician() == null ? ActivityAction.ASSIGNED : ActivityAction.REASSIGNED;
         incident.setAssignedTechnician(technician);
 
-        if (incident.getStatus() == IncidentStatus.SUBMITTED || incident.getStatus() == IncidentStatus.UNDER_REVIEW) {
-            incident.setStatus(IncidentStatus.ASSIGNED);
+        if (incident.getStatus() == IncidentStatus.OPEN) {
+            incident.setStatus(IncidentStatus.IN_PROGRESS);
         }
 
         incident.setUpdatedAt(Instant.now());
@@ -521,6 +522,7 @@ public class IncidentService {
                 incident.getAdminNotes(),
                 incident.getTechnicianNotes(),
                 incident.getResolutionSummary(),
+                incident.getPreferredContact(),
                 incident.getSlaResponseDeadline() != null ? incident.getSlaResponseDeadline().toString() : null,
                 incident.getSlaResolutionDeadline() != null ? incident.getSlaResolutionDeadline().toString() : null,
                 incident.getFirstResponseAt() != null ? incident.getFirstResponseAt().toString() : null,

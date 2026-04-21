@@ -38,7 +38,7 @@ public class Incident {
     private PriorityLevel priority = PriorityLevel.MEDIUM;
     
     @Builder.Default
-    private IncidentStatus status = IncidentStatus.SUBMITTED;
+    private IncidentStatus status = IncidentStatus.OPEN;
 
     @DocumentReference(lazy = true)
     private User submittedBy;
@@ -55,6 +55,7 @@ public class Incident {
     private String adminNotes;
     private String technicianNotes;
     private String resolutionSummary;
+    private String preferredContact;
 
     // SLA tracking
     private Instant firstResponseAt;
