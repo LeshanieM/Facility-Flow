@@ -58,6 +58,49 @@ export const formatIncidentStatusLabel = (status) => {
   return statusConfigs[normalizedStatus]?.label || normalizedStatus.replace(/_/g, ' ');
 };
 
+export const getPriorityConfig = (priority) => {
+  switch (String(priority).toUpperCase()) {
+    case 'EMERGENCY':
+    case 'URGENT':
+      return {
+        color: 'bg-rose-100 text-rose-700 border-rose-200',
+        dot: 'bg-rose-500',
+        label: 'Emergency',
+      };
+    case 'HIGH':
+      return {
+        color: 'bg-orange-100 text-orange-700 border-orange-200',
+        dot: 'bg-orange-500',
+        label: 'High',
+      };
+    case 'MEDIUM':
+      return {
+        color: 'bg-amber-100 text-amber-700 border-amber-200',
+        dot: 'bg-amber-500',
+        label: 'Medium',
+      };
+    case 'LOW':
+    default:
+      return {
+        color: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+        dot: 'bg-emerald-500',
+        label: 'Low',
+      };
+  }
+};
+
+export const PriorityBadge = ({ priority, className = '' }) => {
+  const config = getPriorityConfig(priority);
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-widest transition-colors ${config.color} ${className}`.trim()}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
+      {priority}
+    </span>
+  );
+};
+
 const StatusBadge = ({ status, className = '' }) => {
   const normalizedStatus = normalizeIncidentStatus(status);
   const config = statusConfigs[normalizedStatus] || {

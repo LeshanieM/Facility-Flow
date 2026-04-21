@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench, Paperclip, Eye, Download, Send, Edit2, Trash2, X, Check, Phone, UserPlus } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
-import StatusBadge, { INCIDENT_STATUS_ORDER, formatIncidentStatusLabel, normalizeIncidentStatus } from './StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_ORDER, formatIncidentStatusLabel, normalizeIncidentStatus, PriorityBadge } from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 
-const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || 'Update added.';
+const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || '';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
@@ -135,7 +135,9 @@ const RequestDetailsPanel = ({
 
         <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Priority</p>
-          <p className="mt-3 text-sm font-semibold text-slate-800">{request.priority}</p>
+          <div className="mt-2">
+            <PriorityBadge priority={request.priority} />
+          </div>
           <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             <Phone size={14} />
             <span>Preferred Contact</span>
@@ -272,13 +274,16 @@ const RequestDetailsPanel = ({
           </div>
         </form>
 
-        {updates.length === 0 ? (
+        {updates.filter(u => getCommentContent(u).trim()).length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
             No updates yet. Feel free to add a comment above.
           </div>
         ) : (
           <div className="space-y-4">
-            {[...updates].reverse().map((update, index) => {
+            {[...updates]
+              .filter(u => getCommentContent(u).trim())
+              .reverse()
+              .map((update, index) => {
               const isEditing = editingId === update.id;
               const isMyComment = update.canEdit; // Backend flag for ownership
               const isAdmin = update.authorRole === 'ADMIN';

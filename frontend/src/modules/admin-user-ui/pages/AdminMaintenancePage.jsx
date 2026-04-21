@@ -1,24 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
 import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download, Send, Loader2 } from 'lucide-react';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
-import StatusBadge, { INCIDENT_STATUS_OPTIONS, formatIncidentStatusLabel } from '../../student-user-ui/components/StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_OPTIONS, formatIncidentStatusLabel, PriorityBadge, getPriorityConfig } from '../../student-user-ui/components/StatusBadge';
 
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
-
-const getPriorityColor = (priority) => {
-    switch (priority) {
-        case 'EMERGENCY': return 'bg-rose-500';
-        case 'HIGH': return 'bg-orange-500';
-        case 'MEDIUM': return 'bg-amber-500';
-        case 'LOW': return 'bg-emerald-500';
-        default: return 'bg-slate-300';
-    }
-};
 
 export const AdminMaintenancePage = () => {
     const { tickets, technicians, isLoading, error, changeStatus, assignTicket, addComment, refreshTickets } = useAdminMaintenanceDashboard();
@@ -52,6 +43,22 @@ export const AdminMaintenancePage = () => {
         styleRef.current = styleEl;
         return () => document.head.removeChild(styleEl);
     }, []);
+
+    // Lock body scroll when any modal is open
+    useEffect(() => {
+        const isAnyModalOpen = Boolean(selectedTicket) || actionModal.open;
+        if (isAnyModalOpen) {
+            document.body.style.overflow = 'hidden';
+            document.documentElement.style.overflow = 'hidden'; // Ensure both are locked
+        } else {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        };
+    }, [selectedTicket, actionModal.open]);
 
     const filteredTickets = tickets
         .filter(t => filter === 'ALL' || t.status === filter)
@@ -113,12 +120,12 @@ export const AdminMaintenancePage = () => {
 
     const handleSave = async () => {
         let hasChanges = false;
-        
+
         if (pendingTechAssignment) {
             await assignTicket(selectedTicket.id, pendingTechAssignment);
             hasChanges = true;
         }
-        
+
         if (pendingStatus && pendingStatus !== selectedTicket.status) {
             const updated = await changeStatus(selectedTicket.id, { status: pendingStatus });
             if (updated) {
@@ -126,7 +133,7 @@ export const AdminMaintenancePage = () => {
             }
             hasChanges = true;
         }
-        
+
         if (hasChanges) {
             setSelectedTicket(null);
             setPendingTechAssignment('');
@@ -137,7 +144,7 @@ export const AdminMaintenancePage = () => {
     const handlePostComment = async (e) => {
         e.preventDefault();
         if (!adminComment.trim() || isSubmittingComment) return;
-        
+
         setIsSubmittingComment(true);
         const updated = await addComment(selectedTicket.id, { message: adminComment.trim(), visibleToRequester: true });
         if (updated) {
@@ -186,7 +193,7 @@ export const AdminMaintenancePage = () => {
                         <div className="flex items-center gap-2">
                             <MonitorPlay className="text-slate-400" size={18} />
                             <span className="font-bold text-slate-700 text-sm">Global Filter:</span>
-                            <select 
+                            <select
                                 className="bg-white border border-slate-200 rounded-lg text-sm px-3 py-1.5 focus:ring-2 focus:ring-primary/20 outline-none font-medium text-slate-600"
                                 value={filter}
                                 onChange={(e) => setFilter(e.target.value)}
@@ -225,56 +232,57 @@ export const AdminMaintenancePage = () => {
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
                                     <tr>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">ID / Priority</th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Title & Details</th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Submitted By</th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest">Current Status</th>
-                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-right">Quick Action</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-[180px]">ID / Priority</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest min-w-[200px]">Title & Details</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-[180px]">Submitted By</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest w-[150px]">Current Status</th>
+                                        <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-right w-[140px]">Quick Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-200/50">
                                     {filteredTickets.map(ticket => (
-                                        <tr 
-                                            key={ticket.id} 
+                                        <tr
+                                            key={ticket.id}
                                             onClick={() => setSelectedTicket(ticket)}
                                             className="hover:bg-white/80 transition-all duration-300 group cursor-pointer hover:shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] hover:-translate-y-0.5 relative z-10"
                                         >
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-2 h-10 rounded-full ${getPriorityColor(ticket.priority)}`}></div>
-                                                    <div>
-                                                        <div className="font-black text-slate-800 tracking-tight">{ticket.ticketId}</div>
-                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{ticket.priority}</div>
+                                            <td className="px-6 py-4 w-[180px] align-top">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-[85px] shrink-0">
+                                                        <PriorityBadge priority={ticket.priority} className="w-full justify-center mt-0.5" />
+                                                    </div>
+                                                    <div className="font-black text-slate-800 tracking-tight leading-tight min-w-0 break-words">
+                                                        {ticket.ticketId}
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 max-w-xs">
-                                                <div className="font-bold text-slate-900 truncate mb-1">{ticket.title}</div>
-                                                <div className="text-xs text-slate-500 font-medium truncate flex items-center gap-1.5">
-                                                    <span className="bg-slate-100 text-slate-600 px-2 rounded font-semibold text-[10px] uppercase tracking-wider">{ticket.category}</span>
-                                                    {ticket.location} {ticket.room ? `- ${ticket.room}` : ''}
+                                            <td className="px-6 py-4 min-w-[200px]">
+                                                <div className="font-bold text-slate-900 truncate mb-1" title={ticket.title}>{ticket.title}</div>
+                                                <div className="text-xs text-slate-500 font-medium truncate flex items-center gap-1.5 overflow-hidden">
+                                                    <span className="bg-slate-100 text-slate-600 px-2 rounded font-semibold text-[10px] uppercase tracking-wider shrink-0">{ticket.category}</span>
+                                                    <span className="truncate">{ticket.location} {ticket.room ? `- ${ticket.room}` : ''}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="text-sm font-bold text-slate-700">{ticket.submittedByName || 'Unknown'}</div>
+                                            <td className="px-6 py-4 w-[180px]">
+                                                <div className="text-sm font-bold text-slate-700 truncate" title={ticket.submittedByName}>{ticket.submittedByName || 'Unknown'}</div>
                                                 <div className="text-xs text-slate-400 font-medium">{new Date(ticket.createdAt).toLocaleDateString()}</div>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-6 py-4 w-[150px]">
                                                 <div className="flex items-center h-full">
                                                     <StatusBadge status={ticket.status} />
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-right">
+                                            <td className="px-6 py-4 text-right w-[140px]">
                                                 {ticket.status === 'OPEN' && (
-                                                    <button 
-                                                        onClick={(e) => handleQuickAction(e, ticket.id, 'ASSIGNED')}
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setSelectedTicket(ticket); }}
                                                         className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-md shadow-primary/20 hover:scale-105 transition-all"
                                                     >
                                                         Assign Task
                                                     </button>
                                                 )}
                                                 {(ticket.status === 'ASSIGNED' || ticket.status === 'IN_PROGRESS') && (
-                                                    <button 
+                                                    <button
                                                         onClick={(e) => handleQuickAction(e, ticket.id, 'RESOLVED')}
                                                         className="px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-md shadow-emerald-600/20 hover:scale-105 transition-all"
                                                     >
@@ -294,18 +302,16 @@ export const AdminMaintenancePage = () => {
                 </div>
             </div>
 
-            {/* Details & Assignment Modal - Moved outside for better positioning */}
-            {selectedTicket && (
+            {/* Details & Assignment Modal - Using Portal for proper scroll behavior and layout */}
+            {selectedTicket && createPortal(
                 <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-zoom-in relative">
-                        
+
                         {/* Modal Header */}
                         <div className="px-8 py-6 border-b border-slate-100 flex items-start justify-between bg-white sticky top-0 z-10">
                             <div className="space-y-1">
                                 <div className="flex items-center gap-3 mb-2">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white shadow-sm ${getPriorityColor(selectedTicket.priority)}`}>
-                                        {selectedTicket.priority} PRIORITY
-                                    </span>
+                                    <PriorityBadge priority={selectedTicket.priority} />
                                     <StatusBadge status={selectedTicket.status} />
                                 </div>
                                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">{selectedTicket.title}</h2>
@@ -313,7 +319,7 @@ export const AdminMaintenancePage = () => {
                                     Tracker: <span className="text-primary">{selectedTicket.ticketId}</span>
                                 </p>
                             </div>
-                            <button 
+                            <button
                                 onClick={() => { setSelectedTicket(null); setPendingTechAssignment(''); setPendingStatus(''); }}
                                 className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
                             >
@@ -323,7 +329,7 @@ export const AdminMaintenancePage = () => {
 
                         {/* Modal Body */}
                         <div className="px-8 py-6 overflow-y-auto space-y-8 flex-1 bg-slate-50/30">
-                            
+
                             {/* Info Grid */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
@@ -331,17 +337,17 @@ export const AdminMaintenancePage = () => {
                                     <div className="font-bold text-slate-800 text-sm truncate">{selectedTicket.category.replace('_', ' ')}</div>
                                 </div>
                                 <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><MapPin size={10}/> Location</div>
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><MapPin size={10} /> Location</div>
                                     <div className="font-bold text-slate-800 text-sm truncate">
                                         {selectedTicket.location} {selectedTicket.room && <span className="text-primary">({selectedTicket.room})</span>}
                                     </div>
                                 </div>
                                 <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><UserIcon size={10}/> Requester</div>
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><UserIcon size={10} /> Requester</div>
                                     <div className="font-bold text-slate-800 text-sm truncate">{selectedTicket.submittedByName}</div>
                                 </div>
                                 <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={10}/> Created</div>
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={10} /> Created</div>
                                     <div className="font-bold text-slate-800 text-sm truncate">{new Date(selectedTicket.createdAt).toLocaleDateString()}</div>
                                 </div>
                             </div>
@@ -441,7 +447,7 @@ export const AdminMaintenancePage = () => {
                                     <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Activity & Comments</h3>
                                     <span className="text-[10px] font-bold text-slate-400">{selectedTicket.comments?.length || 0} Updates</span>
                                 </div>
-                                
+
                                 {/* Admin Comment Input */}
                                 <form onSubmit={handlePostComment} className="mb-6 relative">
                                     <textarea
@@ -463,25 +469,28 @@ export const AdminMaintenancePage = () => {
                                     </div>
                                 </form>
 
-                                {selectedTicket.comments?.length ? (
+                                {selectedTicket.comments?.filter(c => getCommentContent(c).trim()).length ? (
                                     <div className="space-y-3">
-                                        {[...selectedTicket.comments].reverse().map((comment) => (
-                                            <div key={comment.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-                                                <div className="flex items-start justify-between gap-4 mb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <p className="text-xs font-black text-slate-800">{comment.authorName}</p>
-                                                        {comment.authorRole === 'ADMIN' && (
-                                                            <span className="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[9px] font-black uppercase border border-indigo-100">Admin</span>
-                                                        )}
-                                                        <span className="text-[10px] font-bold text-slate-400">• {formatDateTime(getCommentCreatedAt(comment))}</span>
+                                        {[...selectedTicket.comments]
+                                            .filter(c => getCommentContent(c).trim())
+                                            .reverse()
+                                            .map((comment) => (
+                                                <div key={comment.id} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+                                                    <div className="flex items-start justify-between gap-4 mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-black text-slate-800">{comment.authorName}</p>
+                                                            {comment.authorRole === 'ADMIN' && (
+                                                                <span className="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[9px] font-black uppercase border border-indigo-100">Admin</span>
+                                                            )}
+                                                            <span className="text-[10px] font-bold text-slate-400">• {formatDateTime(getCommentCreatedAt(comment))}</span>
+                                                        </div>
+                                                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${comment.authorRole === 'USER' ? 'bg-blue-50 text-blue-600' : (comment.visibleToRequester ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500')}`}>
+                                                            {comment.authorRole === 'USER' ? 'Requester' : (comment.visibleToRequester ? 'External' : 'Internal')}
+                                                        </span>
                                                     </div>
-                                                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest ${comment.authorRole === 'USER' ? 'bg-blue-50 text-blue-600' : (comment.visibleToRequester ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500')}`}>
-                                                        {comment.authorRole === 'USER' ? 'Requester' : (comment.visibleToRequester ? 'External' : 'Internal')}
-                                                    </span>
+                                                    <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-wrap">{getCommentContent(comment)}</p>
                                                 </div>
-                                                <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-wrap">{getCommentContent(comment)}</p>
-                                            </div>
-                                        ))}
+                                            ))}
                                     </div>
                                 ) : (
                                     <div className="text-center p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-400">
@@ -489,50 +498,50 @@ export const AdminMaintenancePage = () => {
                                     </div>
                                 )}
                             </div>
+                        </div>
 
-                            {/* Control Panel */}
-                            <div className="bg-indigo-600 p-6 rounded-3xl shadow-xl shadow-indigo-600/20 space-y-6">
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    <div className="flex-1 space-y-2">
-                                        <label className="text-[10px] font-black text-indigo-100 uppercase tracking-widest ml-1">Assign Technician</label>
-                                        <select 
-                                            className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-xl px-4 py-3 outline-none font-bold backdrop-blur-md focus:bg-white/20 transition-all"
-                                            value={pendingTechAssignment || technicians.find(t => t.name === selectedTicket.assignedTechnicianName)?.id || ''}
-                                            onChange={(e) => setPendingTechAssignment(e.target.value)}
-                                            disabled={selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED'}
-                                        >
-                                            <option value="" disabled className="text-slate-800">Choose Specialist...</option>
-                                            {technicians.map(tech => (
-                                                <option key={tech.id} value={tech.id} className="text-slate-800">{tech.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className="flex-1 space-y-2">
-                                        <label className="text-[10px] font-black text-indigo-100 uppercase tracking-widest ml-1">Update Status</label>
-                                        <select 
-                                            className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-xl px-4 py-3 outline-none font-bold backdrop-blur-md focus:bg-white/20 transition-all"
-                                            value={pendingStatus || selectedTicket.status}
-                                            onChange={(e) => handleStatusChangeRequest(e.target.value)}
-                                            disabled={selectedTicket.status === 'CLOSED'}
-                                        >
-                                            {INCIDENT_STATUS_OPTIONS.map((status) => (
-                                                <option key={status.value} value={status.value} className="text-slate-800">
-                                                    {status.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                        {/* Control Panel - Stays inside the flex-col modal container at the bottom */}
+                        <div className="bg-indigo-600 p-6 border-t border-indigo-700/50 space-y-4">
+                            <div className="flex flex-col md:flex-row gap-4">
+                                <div className="flex-1 space-y-2">
+                                    <label className="text-[10px] font-black text-indigo-100 uppercase tracking-widest ml-1">Assign Technician</label>
+                                    <select
+                                        className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-xl px-4 py-3 outline-none font-bold backdrop-blur-md focus:bg-white/20 transition-all"
+                                        value={pendingTechAssignment || technicians.find(t => t.name === selectedTicket.assignedTechnicianName)?.id || ''}
+                                        onChange={(e) => setPendingTechAssignment(e.target.value)}
+                                        disabled={selectedTicket.status === 'RESOLVED' || selectedTicket.status === 'CLOSED'}
+                                    >
+                                        <option value="" disabled className="text-slate-800">Choose Specialist...</option>
+                                        {technicians.map(tech => (
+                                            <option key={tech.id} value={tech.id} className="text-slate-800">{tech.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
 
-                                <button 
-                                    onClick={handleSave}
-                                    disabled={!pendingTechAssignment && (!pendingStatus || pendingStatus === selectedTicket.status)}
-                                    className="w-full bg-white text-indigo-600 text-sm font-black py-4 rounded-2xl shadow-lg hover:bg-slate-50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
-                                >
-                                    Confirm Action Plan
-                                </button>
+                                <div className="flex-1 space-y-2">
+                                    <label className="text-[10px] font-black text-indigo-100 uppercase tracking-widest ml-1">Update Status</label>
+                                    <select
+                                        className="w-full bg-white/10 border border-white/20 text-white text-sm rounded-xl px-4 py-3 outline-none font-bold backdrop-blur-md focus:bg-white/20 transition-all"
+                                        value={pendingStatus || selectedTicket.status}
+                                        onChange={(e) => handleStatusChangeRequest(e.target.value)}
+                                        disabled={selectedTicket.status === 'CLOSED'}
+                                    >
+                                        {INCIDENT_STATUS_OPTIONS.map((status) => (
+                                            <option key={status.value} value={status.value} className="text-slate-800">
+                                                {status.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
+
+                            <button
+                                onClick={handleSave}
+                                disabled={!pendingTechAssignment && (!pendingStatus || pendingStatus === selectedTicket.status)}
+                                className="w-full bg-white text-indigo-600 text-sm font-black py-4 rounded-2xl shadow-lg hover:bg-slate-50 active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100"
+                            >
+                                Confirm Action Plan
+                            </button>
                         </div>
 
                         {/* Action Backdrop Modal (Rejection/Resolution) */}
@@ -546,7 +555,7 @@ export const AdminMaintenancePage = () => {
                                     <div className="p-6 space-y-4">
                                         <div className="space-y-2">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{actionModal.label}</label>
-                                            <textarea 
+                                            <textarea
                                                 autoFocus
                                                 value={actionModal.value}
                                                 onChange={(e) => setActionModal(prev => ({ ...prev, value: e.target.value }))}
@@ -557,13 +566,13 @@ export const AdminMaintenancePage = () => {
                                         </div>
                                     </div>
                                     <div className="p-6 bg-slate-50 flex gap-3">
-                                        <button 
+                                        <button
                                             onClick={() => setActionModal({ open: false, type: '', status: '', title: '', value: '' })}
                                             className="flex-1 px-4 py-3 rounded-xl border border-slate-200 text-sm font-bold text-slate-600 hover:bg-white transition-all"
                                         >
                                             Cancel
                                         </button>
-                                        <button 
+                                        <button
                                             onClick={handleActionConfirm}
                                             disabled={actionModal.type === 'REJECTED' && !actionModal.value.trim()}
                                             className={`flex-1 px-4 py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-all ${actionModal.type === 'REJECTED' ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/20' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20'}`}
@@ -575,7 +584,8 @@ export const AdminMaintenancePage = () => {
                             </div>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </Layout>
     );
