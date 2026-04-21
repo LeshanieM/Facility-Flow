@@ -44,6 +44,27 @@
   .nav-link-inactive {
     @apply text-slate-400 hover:text-slate-200 hover:bg-white/5;
   }
+
+  /* Premium components from version 2 */
+  .premium-card {
+    @apply bg-white border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-2xl transition-all duration-300 hover:shadow-[0_20px_50px_rgba(65,105,225,0.08)] hover:border-primary/20;
+  }
+
+  .glass-panel {
+    @apply backdrop-blur-xl bg-white/80 border border-white/40 shadow-2xl rounded-3xl;
+  }
+
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, rgb(var(--primary)) 0%, #6366f1 100%);
+  }
+
+  .text-gradient-primary {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-indigo-500;
+  }
+
+  .hover-lift {
+    @apply transition-transform duration-300 hover:-translate-y-1 active:scale-95;
+  }
 }
 
 /* Animations */
@@ -54,4 +75,22 @@
 
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-zoom-in {
+  animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

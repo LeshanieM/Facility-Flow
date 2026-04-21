@@ -40,11 +40,11 @@ const BookingStatusBadge = ({ status, size = 'md' }) => {
 
   return (
     <span
-      className={`inline-flex items-center font-semibold rounded-full border ring-2 transition-all ${config.className} ${sizeClasses[size]}`}
+      className={`inline-flex items-center font-semibold rounded-full border shadow-sm ring-2 transition-all duration-300 ${config.className} ${sizeClasses[size]}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${config.dot}`} />
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 shadow-sm ${config.dot}`} />
       <Icon size={size === 'sm' ? 10 : size === 'lg' ? 14 : 12} strokeWidth={2.5} />
-      {config.label}
+      <span className="uppercase tracking-wider">{config.label}</span>
     </span>
   );
 };
