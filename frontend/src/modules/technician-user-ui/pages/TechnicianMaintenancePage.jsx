@@ -8,7 +8,7 @@ import SurfaceCard from '../../student-user-ui/components/SurfaceCard';
 import StatusBadge from '../../student-user-ui/components/StatusBadge';
 import ToastStack from '../../student-user-ui/components/ToastStack';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
-import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
+import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 
 const sortTickets = (items) => [...items].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
@@ -263,23 +263,62 @@ const TechnicianMaintenancePage = () => {
                     <StatusBadge status={selectedRequest.status} />
                   </div>
 
-                  <div className="mt-6 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-                    <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-800"><Clock size={14}/> SLA Metrics</p>
-                    <div className="mt-3 grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-blue-600">Response Due</p>
-                        <p className="font-semibold text-blue-900">{formatDateTime(selectedRequest.slaResponseDeadline)}</p>
-                        <p className="mt-1 text-[10px] uppercase text-slate-500">Actual: {formatDateTime(selectedRequest.actualFirstResponseAt)}</p>
+                  <div className="mt-6 flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-800"><Clock size={14}/> SLA Metrics</p>
+                      <div className="mt-3 grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-blue-600">Response Due</p>
+                          <p className="font-semibold text-blue-900 text-xs">{formatDateTime(selectedRequest.slaResponseDeadline)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-blue-600">Resolution Due</p>
+                          <p className="font-semibold text-blue-900 text-xs">{formatDateTime(selectedRequest.slaResolutionDeadline)}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-blue-600">Resolution Due</p>
-                        <p className="font-semibold text-blue-900">{formatDateTime(selectedRequest.slaResolutionDeadline)}</p>
-                        <p className="mt-1 text-[10px] uppercase text-slate-500">Actual: {formatDateTime(selectedRequest.actualResolutionAt)}</p>
+                      <div className="mt-3 inline-block rounded bg-blue-100 px-3 py-1 text-[10px] font-bold text-blue-900 uppercase">
+                        SLA: {selectedRequest.slaStatus?.replace(/_/g, ' ') || 'ACTIVE'}
                       </div>
                     </div>
-                    <div className="mt-3 inline-block rounded bg-blue-100 px-3 py-1 text-sm font-bold text-blue-900">
-                      Status: {selectedRequest.slaStatus?.replace(/_/g, ' ') || 'Not tracked'}
+
+                    <div className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">Update Status</p>
+                        <div className="mt-3 flex gap-2">
+                            <select 
+                                value={selectedRequest.status}
+                                onChange={async (e) => {
+                                    const newStatus = e.target.value;
+                                    try {
+                                        const res = await api.patch(`/technician/tickets/${selectedRequest.id}/status`, { status: newStatus });
+                                        syncTicketState(res.data);
+                                        pushToast('success', 'Status Updated', `Ticket is now ${newStatus}`);
+                                    } catch (err) {
+                                        pushToast('error', 'Update Failed', err?.response?.data?.message || 'Unauthorized');
+                                    }
+                                }}
+                                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+                            >
+                                <option value="OPEN">Open</option>
+                                <option value="IN_PROGRESS">In Progress</option>
+                                <option value="RESOLVED">Resolved</option>
+                                <option value="CLOSED">Closed</option>
+                            </select>
+                        </div>
+                        <div className="mt-3 text-[10px] text-slate-400 font-medium italic">
+                            Move ticket through the workflow as you progress.
+                        </div>
                     </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Preferred Contact</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-700">{selectedRequest.preferredContact || 'Not provided'}</p>
+                        </div>
+                        <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                            <p className="text-[10px] uppercase font-bold text-slate-400">Created At</p>
+                            <p className="mt-1 text-sm font-semibold text-slate-700">{formatDateTime(selectedRequest.createdAt)}</p>
+                        </div>
                   </div>
 
                   <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
@@ -296,15 +335,15 @@ const TechnicianMaintenancePage = () => {
                               <span>{getAttachmentName(attachment)}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleAttachmentAction(attachment, 'view')}
-                                disabled={!attachment?.viewUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-view`}
-                                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                              <a
+                                href={getViewerUrl(attachment) || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 ${!attachment?.viewUrl ? 'cursor-not-allowed opacity-50 pointer-events-none' : ''}`}
                               >
                                 <Eye size={14} />
                                 View
-                              </button>
+                              </a>
                               <button
                                 type="button"
                                 onClick={() => handleAttachmentAction(attachment, 'download')}

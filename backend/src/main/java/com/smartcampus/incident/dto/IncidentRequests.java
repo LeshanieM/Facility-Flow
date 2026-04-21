@@ -23,6 +23,7 @@ public class IncidentRequests {
         @NotBlank private String location;
         private String room;
         @NotBlank private String priority;
+        private String preferredContact;
         private List<MultipartFile> attachments;
     }
 

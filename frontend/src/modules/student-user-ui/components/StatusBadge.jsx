@@ -1,37 +1,47 @@
 import React from 'react';
+import { Clock, Wrench, CheckCircle, ShieldCheck, AlertCircle } from 'lucide-react';
 
-const statusStyles = {
-  SUBMITTED: 'border-slate-200 bg-slate-50 text-slate-700',
-  UNDER_REVIEW: 'border-amber-200 bg-amber-50 text-amber-700',
-  ASSIGNED: 'border-sky-200 bg-sky-50 text-sky-700',
-  IN_PROGRESS: 'border-orange-200 bg-orange-50 text-orange-700',
-  ON_HOLD: 'border-purple-200 bg-purple-50 text-purple-700',
-  RESOLVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-  CLOSED: 'border-slate-300 bg-slate-100 text-slate-500',
-  REJECTED: 'border-rose-200 bg-rose-50 text-rose-700',
-};
-
-const statusLabels = {
-  SUBMITTED: 'Submitted',
-  UNDER_REVIEW: 'Under Review',
-  ASSIGNED: 'Assigned',
-  IN_PROGRESS: 'In Progress',
-  ON_HOLD: 'On Hold',
-  RESOLVED: 'Resolved',
-  CLOSED: 'Closed',
-  REJECTED: 'Rejected',
+const statusConfigs = {
+  OPEN: {
+    color: 'bg-blue-50 text-blue-700 border-blue-200',
+    icon: <Clock size={12} />,
+    label: 'Open',
+  },
+  IN_PROGRESS: {
+    color: 'bg-orange-50 text-orange-700 border-orange-200',
+    icon: <Wrench size={12} />,
+    label: 'In Progress',
+  },
+  RESOLVED: {
+    color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    icon: <CheckCircle size={12} />,
+    label: 'Resolved',
+  },
+  CLOSED: {
+    color: 'bg-slate-100 text-slate-600 border-slate-200',
+    icon: <ShieldCheck size={12} />,
+    label: 'Closed',
+  },
+  REJECTED: {
+    color: 'bg-rose-50 text-rose-700 border-rose-200',
+    icon: <AlertCircle size={12} />,
+    label: 'Rejected',
+  },
 };
 
 const StatusBadge = ({ status }) => {
-  const key = status || 'PENDING';
+  const config = statusConfigs[status] || {
+    color: 'bg-slate-50 text-slate-700 border-slate-200',
+    icon: null,
+    label: status,
+  };
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold ${
-        statusStyles[key] || 'border-slate-200 bg-slate-100 text-slate-700'
-      }`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-bold transition-colors ${config.color}`}
     >
-      {statusLabels[key] || key}
+      {config.icon}
+      {config.label}
     </span>
   );
 };

@@ -3,18 +3,15 @@ import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
 import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download } from 'lucide-react';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
-import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
+import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
 const getStatusBadge = (status) => {
     switch(status) {
-        case 'SUBMITTED': return <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Submitted</span>;
-        case 'UNDER_REVIEW': return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Under Review</span>;
-        case 'ASSIGNED': return <span className="bg-sky-100 text-sky-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Assigned</span>;
+        case 'OPEN': return <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Open</span>;
         case 'IN_PROGRESS': return <span className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs font-bold uppercase">In Progress</span>;
-        case 'ON_HOLD': return <span className="bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase">On Hold</span>;
         case 'RESOLVED': return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Resolved</span>;
         case 'CLOSED': return <span className="bg-slate-200 text-slate-500 px-3 py-1 rounded-full text-xs font-bold uppercase">Closed</span>;
         case 'REJECTED': return <span className="bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold uppercase">Rejected</span>;
@@ -139,13 +136,11 @@ export const AdminMaintenancePage = () => {
                                 onChange={(e) => setFilter(e.target.value)}
                             >
                                 <option value="ALL">All Incidents</option>
-                                <option value="SUBMITTED">Submitted</option>
-                                <option value="UNDER_REVIEW">Under Review</option>
-                                <option value="ASSIGNED">Assigned</option>
+                                <option value="OPEN">Open</option>
                                 <option value="IN_PROGRESS">In Progress</option>
-                                <option value="ON_HOLD">On Hold</option>
                                 <option value="RESOLVED">Resolved</option>
                                 <option value="CLOSED">Closed</option>
+                                <option value="REJECTED">Rejected</option>
                             </select>
                         </div>
                         <button onClick={refreshTickets} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-bold transition-colors">
@@ -214,20 +209,12 @@ export const AdminMaintenancePage = () => {
                                                 {getStatusBadge(ticket.status)}
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                {ticket.status === 'SUBMITTED' && (
-                                                    <button 
-                                                        onClick={(e) => handleQuickAction(e, ticket.id, 'UNDER_REVIEW')}
-                                                        className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-md shadow-primary/20 hover:scale-105 transition-all"
-                                                    >
-                                                        Review
-                                                    </button>
-                                                )}
-                                                {ticket.status === 'ASSIGNED' && (
+                                                {ticket.status === 'OPEN' && (
                                                     <button 
                                                         onClick={(e) => handleQuickAction(e, ticket.id, 'IN_PROGRESS')}
                                                         className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-md shadow-primary/20 hover:scale-105 transition-all"
                                                     >
-                                                        Mark In Progress
+                                                        Review & Start
                                                     </button>
                                                 )}
                                                 {ticket.status === 'IN_PROGRESS' && (
@@ -324,15 +311,15 @@ export const AdminMaintenancePage = () => {
                                                         <span>{getAttachmentName(attachment)}</span>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleAttachmentAction(attachment, 'view')}
-                                                            disabled={!attachment?.viewUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-view`}
-                                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                                        <a
+                                                            href={getViewerUrl(attachment) || '#'}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className={`inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-50 ${!attachment?.viewUrl ? 'cursor-not-allowed opacity-50 pointer-events-none' : ''}`}
                                                         >
                                                             <Eye size={14} />
                                                             View
-                                                        </button>
+                                                        </a>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleAttachmentAction(attachment, 'download')}
@@ -415,14 +402,11 @@ export const AdminMaintenancePage = () => {
                                                 onChange={(e) => setPendingStatus(e.target.value)}
                                                 disabled={selectedTicket.status === 'CLOSED'}
                                             >
-                                                {selectedTicket.status === 'SUBMITTED' && <option value="SUBMITTED">Submitted</option>}
-                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="UNDER_REVIEW">Under Review</option>}
-                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="ASSIGNED">Assigned</option>}
-                                                <option value="IN_PROGRESS">In Progress (Reopen)</option>
-                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="ON_HOLD">On Hold</option>}
+                                                {selectedTicket.status === 'OPEN' && <option value="OPEN">Open</option>}
+                                                <option value="IN_PROGRESS">In Progress</option>
                                                 <option value="RESOLVED">Resolved</option>
                                                 <option value="CLOSED">Closed / Archive</option>
-                                                {selectedTicket.status !== 'RESOLVED' && selectedTicket.status !== 'CLOSED' && <option value="REJECTED">Reject Request</option>}
+                                                {selectedTicket.status !== 'RESOLVED' && <option value="REJECTED">Reject Request</option>}
                                             </select>
                                         </div>
                                     </div>
