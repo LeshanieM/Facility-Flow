@@ -8,7 +8,7 @@ import { bookingService } from '../../services/bookingService';
 import {
   Search, Filter, RefreshCw, ChevronLeft, ChevronRight,
   CheckCircle2, AlertCircle, Loader2, LayoutList, CalendarDays,
-  Users2, Clock, Inbox, CheckCircle, XCircle
+  Users2, Clock, Inbox, CheckCircle, XCircle, X
 } from 'lucide-react';
 
 const PAGE_SIZE = 10;
@@ -17,10 +17,26 @@ const PAGE_SIZE = 10;
 const Toast = ({ message, type, onDismiss }) => {
   useEffect(() => { const t = setTimeout(onDismiss, 4500); return () => clearTimeout(t); }, [onDismiss]);
   return (
-    <div className={`fixed top-6 right-6 z-[100] flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border text-sm font-semibold animate-fade-in max-w-md
-      ${type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-rose-50 border-rose-200 text-rose-700'}`}>
-      {type === 'success' ? <CheckCircle2 size={17} /> : <AlertCircle size={17} />}
-      {message}
+    <div className={`fixed top-8 right-8 z-[100] flex items-center gap-4 px-6 py-4 rounded-[1.25rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border backdrop-blur-xl animate-slide-in-right max-w-sm
+      ${type === 'success' 
+        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700' 
+        : 'bg-rose-500/10 border-rose-500/20 text-rose-700'}`}>
+      
+      <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0
+        ${type === 'success' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' : 'bg-rose-500 text-white shadow-lg shadow-rose-500/30'}`}>
+        {type === 'success' ? <CheckCircle2 size={20} strokeWidth={3} /> : <AlertCircle size={20} strokeWidth={3} />}
+      </div>
+      
+      <div className="flex flex-col">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50 mb-0.5">
+          {type === 'success' ? 'Success' : 'Attention'}
+        </span>
+        <span className="text-sm font-bold leading-tight">{message}</span>
+      </div>
+      
+      <button onClick={onDismiss} className="ml-2 opacity-30 hover:opacity-100 transition-opacity">
+        <X size={16} />
+      </button>
     </div>
   );
 };
