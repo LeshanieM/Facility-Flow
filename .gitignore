@@ -14,6 +14,7 @@ backend/build/
 backend/.project
 backend/.classpath
 backend/.settings/
+backend/uploads/
 
 # Frontend (React / Node)
 frontend/node_modules/
