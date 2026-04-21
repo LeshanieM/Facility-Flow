@@ -25,6 +25,8 @@ import com.smartcampus.incident.model.IncidentComment;
 import com.smartcampus.incident.repository.IncidentActivityLogRepository;
 import com.smartcampus.incident.repository.IncidentRepository;
 import com.smartcampus.repository.UserRepository;
+import com.smartcampus.notification.enums.NotificationType;
+import com.smartcampus.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,8 +38,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Locale;
-import java.util.UUID;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -57,6 +59,7 @@ public class IncidentService {
     private final SlaService slaService;
     private final UserRepository userRepository;
     private final IncidentAttachmentService incidentAttachmentService;
+    private final NotificationService notificationService;
 
     @Transactional
     public TicketResponse createIncident(CreateTicketRequest request, User user) {
@@ -80,12 +83,41 @@ public class IncidentService {
                 .build();
 
         slaService.calculateDeadlines(incident);
-        Incident saved = incidentRepository.save(incident);
-        List<String> uploadedFiles = incidentAttachmentService.storeAttachments(saved.getId(), request.getAttachments());
-        saved.setAttachments(uploadedFiles);
-        saved = incidentRepository.save(saved);
+        Incident initialSaved = incidentRepository.save(incident);
+        List<String> uploadedFiles = incidentAttachmentService.storeAttachments(initialSaved.getId(), request.getAttachments());
+        initialSaved.setAttachments(uploadedFiles);
+        final Incident saved = incidentRepository.save(initialSaved);
 
         logActivity(saved.getId(), user, ActivityAction.CREATED, "Incident created.");
+
+        // Notify user of creation
+        notificationService.createNotification(
+            user.getId(),
+            "Ticket Submitted",
+            "Your ticket " + saved.getTicketId() + " has been successfully submitted.",
+            NotificationType.TICKET
+        );
+
+        // Notify all admins of new ticket
+        userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+            notificationService.createNotification(
+                admin.getId(),
+                "New Maintenance Ticket",
+                "Ticket " + saved.getTicketId() + " has been submitted and needs review.",
+                NotificationType.TICKET
+            );
+        });
+
+        // Notify all technicians of new ticket
+        userRepository.findByRole(Role.TECHNICIAN).forEach(tech -> {
+            notificationService.createNotification(
+                tech.getId(),
+                "New Ticket Available",
+                "A new maintenance ticket (" + saved.getTicketId() + ") has been submitted.",
+                NotificationType.TICKET
+            );
+        });
+
         return toResponse(saved, user);
     }
 
@@ -154,6 +186,16 @@ public class IncidentService {
         incident.setUpdatedAt(Instant.now());
         incidentRepository.save(incident);
         logActivity(id, user, ActivityAction.CLOSED, "User cancelled the incident.");
+
+        // Notify all admins of cancellation
+        userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+            notificationService.createNotification(
+                admin.getId(),
+                "Ticket Cancelled",
+                "User " + user.getName() + " has cancelled ticket " + incident.getTicketId(),
+                NotificationType.TICKET
+            );
+        });
     }
 
     @Transactional
@@ -187,6 +229,29 @@ public class IncidentService {
         incident.setUpdatedAt(now);
         Incident saved = incidentRepository.save(incident);
         logActivity(id, user, ActivityAction.STATUS_CHANGED, "Status changed to " + newStatus);
+
+        // Notify requester
+        if (incident.getSubmittedBy() != null) {
+            notificationService.createNotification(
+                incident.getSubmittedBy().getId(),
+                "Ticket Status Updated",
+                "Your ticket " + incident.getTicketId() + " status has been changed to " + newStatus,
+                NotificationType.TICKET
+            );
+        }
+
+        // Notify all admins of status change if updated by technician
+        if (user.getRole() == Role.TECHNICIAN) {
+            userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+                notificationService.createNotification(
+                    admin.getId(),
+                    "Technician Status Update",
+                    "Technician " + user.getName() + " changed ticket " + incident.getTicketId() + " to " + newStatus,
+                    NotificationType.TICKET
+                );
+            });
+        }
+
         return toResponse(saved, user);
     }
 
@@ -218,6 +283,25 @@ public class IncidentService {
 
         Incident saved = incidentRepository.save(incident);
         logActivity(id, admin, assignmentAction, "Assigned technician: " + technician.getName());
+
+        // Notify technician
+        notificationService.createNotification(
+            technician.getId(),
+            "New Ticket Assigned",
+            "You have been assigned to ticket " + saved.getTicketId(),
+            NotificationType.TICKET
+        );
+
+        // Notify requester
+        if (saved.getSubmittedBy() != null) {
+            notificationService.createNotification(
+                saved.getSubmittedBy().getId(),
+                "Technician Assigned",
+                "A technician (" + technician.getName() + ") has been assigned to your ticket " + saved.getTicketId(),
+                NotificationType.TICKET
+            );
+        }
+
         return toResponse(saved, admin);
     }
 
@@ -250,6 +334,27 @@ public class IncidentService {
 
         Incident saved = incidentRepository.save(incident);
         logActivity(incidentId, user, ActivityAction.COMMENT_ADDED, "Added comment.");
+
+        // Notify relevant parties
+        // If user is requester, notify technician
+        if (isRequester(incident, user) && incident.getAssignedTechnician() != null) {
+            notificationService.createNotification(
+                incident.getAssignedTechnician().getId(),
+                "New Comment on Ticket",
+                user.getName() + " commented on ticket " + incident.getTicketId(),
+                NotificationType.COMMENT
+            );
+        } 
+        // If user is technician/admin, notify requester
+        else if (incident.getSubmittedBy() != null && !isRequester(incident, user)) {
+            notificationService.createNotification(
+                incident.getSubmittedBy().getId(),
+                "New Comment on Ticket",
+                user.getName() + " commented on your ticket " + incident.getTicketId(),
+                NotificationType.COMMENT
+            );
+        }
+
         return toResponse(saved, user);
     }
 

@@ -20,6 +20,11 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.access.AccessDeniedException;
+import com.smartcampus.notification.enums.NotificationType;
+import com.smartcampus.notification.service.NotificationService;
+import com.smartcampus.repository.UserRepository;
+import com.smartcampus.entity.User;
+import com.smartcampus.entity.Role;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -35,6 +40,8 @@ public class BookingServiceImpl implements BookingService {
     private final ResourceRepository resourceRepository;
     private final BookingMapper bookingMapper;
     private final MongoTemplate mongoTemplate;
+    private final NotificationService notificationService;
+    private final UserRepository userRepository;
 
     @Override
     public BookingResponseDTO createBooking(BookingRequestDTO requestDTO, String currentUserEmail) {
@@ -80,6 +87,27 @@ public class BookingServiceImpl implements BookingService {
                 .build();
 
         Booking savedBooking = bookingRepository.save(booking);
+
+        // Notify user of creation
+        userRepository.findByEmail(savedBooking.getCreatedBy()).ifPresent(user -> {
+            notificationService.createNotification(
+                user.getId(),
+                "Booking Submitted",
+                "Your booking for " + savedBooking.getResourceName() + " has been submitted and is pending approval.",
+                NotificationType.BOOKING
+            );
+        });
+
+        // Notify all admins of new booking
+        userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+            notificationService.createNotification(
+                admin.getId(),
+                "New Booking Request",
+                "A new booking for " + savedBooking.getResourceName() + " requires your approval.",
+                NotificationType.BOOKING
+            );
+        });
+
         return bookingMapper.toDto(savedBooking);
     }
 
@@ -126,7 +154,19 @@ public class BookingServiceImpl implements BookingService {
         
         booking.setStatus(BookingStatus.APPROVED);
         booking.setUpdatedAt(LocalDateTime.now());
-        return bookingMapper.toDto(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+
+        // Notify user
+        userRepository.findByEmail(saved.getCreatedBy()).ifPresent(user -> {
+            notificationService.createNotification(
+                user.getId(),
+                "Booking Approved",
+                "Your booking for " + saved.getResourceName() + " on " + saved.getDate() + " has been approved.",
+                NotificationType.BOOKING
+            );
+        });
+
+        return bookingMapper.toDto(saved);
     }
 
     @Override
@@ -137,7 +177,19 @@ public class BookingServiceImpl implements BookingService {
         booking.setStatus(BookingStatus.REJECTED);
         booking.setRejectionReason(requestDTO.getReason());
         booking.setUpdatedAt(LocalDateTime.now());
-        return bookingMapper.toDto(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+
+        // Notify user
+        userRepository.findByEmail(saved.getCreatedBy()).ifPresent(user -> {
+            notificationService.createNotification(
+                user.getId(),
+                "Booking Rejected",
+                "Your booking for " + saved.getResourceName() + " on " + saved.getDate() + " has been rejected. Reason: " + requestDTO.getReason(),
+                NotificationType.BOOKING
+            );
+        });
+
+        return bookingMapper.toDto(saved);
     }
 
     /**
@@ -159,7 +211,19 @@ public class BookingServiceImpl implements BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         booking.setUpdatedAt(LocalDateTime.now());
-        return bookingMapper.toDto(bookingRepository.save(booking));
+        Booking saved = bookingRepository.save(booking);
+
+        // Notify admins of cancellation
+        userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+            notificationService.createNotification(
+                admin.getId(),
+                "Booking Cancelled",
+                "User " + saved.getCreatedBy() + " has cancelled their booking for " + saved.getResourceName(),
+                NotificationType.BOOKING
+            );
+        });
+
+        return bookingMapper.toDto(saved);
     }
 
     /**
