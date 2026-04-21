@@ -25,6 +25,9 @@ public class BookingController {
 
     private String getCurrentUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication.getPrincipal() instanceof com.smartcampus.entity.User user) {
+            return user.getEmail();
+        }
         return authentication.getName();
     }
 
