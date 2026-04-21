@@ -77,35 +77,37 @@ const ProfilePage = () => {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h2 className="text-4xl font-extrabold tracking-tight text-slate-900">
-              Account Settings
-            </h2>
-            <p className="text-slate-500 font-medium mt-1">
-              Manage your profile and account preferences.
-            </p>
-          </div>
-        </div>
+      <div className="max-w-4xl mx-auto px-4 py-8 animate-fade-in">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+          {/* Left Column: Profile Overview Card */}
+          <div className="flex flex-col">
+            <div className="bg-white rounded-[2rem] p-8 border-2 border-slate-100 shadow-lg shadow-slate-200/30 text-center space-y-8 flex-1 flex flex-col justify-center transition-all duration-500 hover:border-primary/20">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+                  {user?.name || (user?.email || user?.sub)?.split('@')[0]}
+                </h2>
+                <p className="text-primary font-bold uppercase tracking-[0.2em] text-[10px]">
+                  {user?.role}
+                </p>
+              </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Profile Card */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm text-center">
-              <div className="relative inline-block group">
-                <div className="w-32 h-32 rounded-full bg-slate-100 border-4 border-white shadow-xl overflow-hidden flex items-center justify-center text-3xl font-bold text-slate-400 group-hover:scale-105 transition-all duration-500">
+              <div className="relative inline-block group mx-auto">
+                {/* Compact Profile Image */}
+                <div className="w-40 h-40 md:w-48 md:h-48 rounded-full bg-slate-50 p-1.5 border-[8px] border-slate-100 shadow-inner overflow-hidden flex items-center justify-center transition-transform duration-700 group-hover:scale-[1.02]">
                   {preview ? (
                     <img
                       src={preview}
                       alt="Profile"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover rounded-full"
                     />
                   ) : (
-                    (user?.email || user?.sub)?.[0].toUpperCase()
+                    <div className="text-5xl font-black text-slate-200 uppercase">
+                      {(user?.email || user?.sub)?.[0]}
+                    </div>
                   )}
                 </div>
-                <label className="absolute bottom-0 right-0 p-2.5 bg-primary text-white rounded-full shadow-lg cursor-pointer hover:bg-primary/90 hover:scale-110 transition-all border-4 border-white">
+                {/* Compact Image Update Badge */}
+                <label className="absolute bottom-2 right-2 p-2.5 bg-primary text-white rounded-full shadow-xl cursor-pointer hover:bg-primary-dark hover:scale-110 transition-all border-4 border-white z-20">
                   <Camera size={18} />
                   <input
                     type="file"
@@ -115,148 +117,122 @@ const ProfilePage = () => {
                   />
                 </label>
               </div>
-              <div className="mt-6">
-                <h3 className="text-xl font-bold text-slate-900">
-                  {user?.name || (user?.email || user?.sub)?.split('@')[0]}
-                </h3>
-                <p className="text-sm font-semibold text-primary uppercase tracking-widest mt-1">
-                  {user?.role}
-                </p>
-              </div>
-              <div className="mt-8 pt-8 border-t border-slate-100 grid grid-cols-2 gap-4">
-                <div className="text-center">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    Status
-                  </div>
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-100">
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                    Active
-                  </div>
+
+              <div className="pt-4 grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                   <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Account ID</div>
+                   <div className="text-slate-900 font-bold font-mono text-sm">#{user?.id?.slice(-6) || '---'}</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
-                    ID
-                  </div>
-                  <div className="text-sm font-bold text-slate-800">
-                    #{user?.id?.slice(-4) || 'N/A'}
-                  </div>
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                   <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</div>
+                   <div className="text-emerald-600 font-bold flex items-center justify-center gap-1.5 text-sm">
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+                      Active
+                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column - Edit Form */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-8 border-b border-slate-100 bg-slate-50/50">
-                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <User size={20} className="text-primary" />
-                  Personal Information
+          {/* Right Column: Bio & Details Form */}
+          <div className="flex flex-col">
+            <div className="bg-white rounded-[2rem] border-2 border-slate-100 shadow-lg shadow-slate-200/30 overflow-hidden flex-1 flex flex-col">
+              <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+                <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                   Bio & details
+                   <div className="h-2 w-2 bg-primary rounded-full" />
                 </h3>
               </div>
-              <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">
-                      Full Name
-                    </label>
-                    <div className="relative group">
-                      <User
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors"
-                        size={18}
-                      />
+              
+              <form onSubmit={handleSubmit} className="p-8 flex-1 flex flex-col space-y-8">
+                <div className="space-y-6">
+                  {/* Personal Name Entry */}
+                  <div className="space-y-2 group">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">My Identity Name</label>
+                    <div className="relative">
+                      <User className="absolute left-0 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={18} />
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder="Enter your full name"
-                        className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 focus:bg-white focus:border-primary/50 focus:ring-4 focus:ring-primary/5 outline-none transition-all font-medium"
+                        placeholder="Enter your name"
+                        className="w-full pl-7 pr-4 py-2.5 bg-transparent border-b border-slate-200 text-slate-900 font-black text-lg focus:border-primary outline-none transition-all placeholder:text-slate-200"
                       />
                     </div>
                   </div>
+
+                  {/* Role Display */}
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">
-                      Email Address
-                    </label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Assigned Role</label>
                     <div className="relative">
-                      <Mail
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                        size={18}
-                      />
-                      <input
-                        type="email"
-                        value={user?.email || user?.sub || ''}
-                        disabled
-                        className="w-full pl-12 pr-4 py-3.5 bg-slate-100 border border-slate-200 rounded-2xl text-slate-500 font-medium cursor-not-allowed"
-                      />
+                      <Shield className="absolute left-0 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                      <div className="w-full pl-7 py-2.5 border-b border-slate-200 text-slate-400 font-black text-lg cursor-default uppercase tracking-tight">
+                        {user?.role}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Email Display */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Contact Email</label>
+                    <div className="relative">
+                      <Mail className="absolute left-0 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                      <div className="w-full pl-7 py-2.5 border-b border-slate-200 text-slate-400 font-black text-lg truncate cursor-not-allowed">
+                        {user?.email || user?.sub}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Additional Metadata Visuals */}
+                <div className="pt-4 border-t border-slate-50 flex flex-wrap gap-4">
+                   <div className="flex-1 min-w-[150px] space-y-2">
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Badges</label>
+                      <div className="flex gap-1.5">
+                         <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center border border-primary/20" title="Verified User">
+                            <Shield size={16} />
+                         </div>
+                         <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center border border-emerald-200" title="Active Status">
+                            <CheckCircle2 size={16} />
+                         </div>
+                      </div>
+                   </div>
+                   <div className="flex-1 min-w-[150px] space-y-2">
+                      <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Platform Tags</label>
+                      <div className="flex flex-wrap gap-1.5">
+                         <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[8px] font-bold uppercase border border-slate-200">#Security</span>
+                         <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[8px] font-bold uppercase border border-slate-200">#FacilityFlow</span>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="mt-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex-1">
                     {error && (
-                      <p className="text-rose-600 text-sm font-bold">{error}</p>
+                      <p className="text-rose-600 font-black text-[10px] bg-rose-50 px-4 py-2 rounded-xl border border-rose-100">
+                        {error}
+                      </p>
                     )}
                     {success && (
-                      <p className="text-emerald-600 text-sm font-bold flex items-center gap-1.5 animate-bounce-in">
-                        <CheckCircle2 size={16} />
-                        Profile updated successfully!
+                      <p className="text-emerald-600 font-black text-[10px] bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100 flex items-center gap-1.5 animate-bounce-in">
+                        <CheckCircle2 size={14} /> Sync Complete
                       </p>
                     )}
                   </div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full sm:w-auto px-8 py-3.5 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:bg-primary/90 hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed transition-all"
+                    className="w-full sm:w-auto px-8 py-3 bg-primary text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:bg-primary-dark hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 transition-all duration-300"
                   >
                     {loading ? (
                       <Loader2 size={18} className="animate-spin" />
                     ) : (
                       <Save size={18} />
                     )}
-                    Save Changes
+                    Save Profile
                   </button>
                 </div>
               </form>
-            </div>
-
-            {/* Additional Info Cards */}
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm group hover:border-primary/30 transition-all">
-                <h4 className="text-slate-400 text-xs font-black uppercase tracking-widest mb-4">
-                  Account Type
-                </h4>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                    <Shield size={20} />
-                  </div>
-                  <div>
-                    <div className="text-slate-900 font-bold">{user?.role}</div>
-                    <div className="text-slate-400 text-xs font-medium">
-                      Full System Access
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm group hover:border-primary/30 transition-all">
-                <h4 className="text-slate-400 text-xs font-black uppercase tracking-widest mb-4">
-                  Connected Email
-                </h4>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                    <Mail size={20} />
-                  </div>
-                  <div>
-                    <div className="text-slate-900 font-bold truncate max-w-[150px]">
-                      {(user?.email || user?.sub)?.split('@')[0]}
-                    </div>
-                    <div className="text-slate-400 text-xs font-medium">
-                      Google Auth
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
