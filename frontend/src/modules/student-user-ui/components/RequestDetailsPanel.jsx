@@ -1,20 +1,20 @@
-import React from 'react';
-import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench, Paperclip, Eye, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench, Paperclip, Eye, Download, Send, Edit2, Trash2, X, Check, Phone } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
 import StatusBadge from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
-import { downloadAttachment, getAttachmentName, viewAttachment } from '../../maintenance/utils/attachmentActions';
+import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
+
 const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || 'Update added.';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
-const timelineSteps = ['SUBMITTED', 'UNDER_REVIEW', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+const timelineSteps = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
 
 const statusStepIndex = (status) => {
   if (status === 'REJECTED') return 0;
-  if (status === 'ON_HOLD') return 3; // roughly at In_Progress
   return Math.max(timelineSteps.indexOf(status), 0);
 };
 
@@ -22,7 +22,20 @@ const getUpdates = (request) => {
   return request?.comments || [];
 };
 
-const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => {
+const RequestDetailsPanel = ({ 
+  request, 
+  isLoading, 
+  onCancel, 
+  isCancelling,
+  onAddComment,
+  onEditComment,
+  onDeleteComment
+}) => {
+  const [newComment, setNewComment] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editValue, setEditValue] = useState('');
+
   if (isLoading) {
     return (
       <SurfaceCard className="p-6 sm:p-7">
@@ -49,6 +62,27 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
   const activeIndex = statusStepIndex(request.status);
   const updates = getUpdates(request);
 
+  const handlePostComment = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim() || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    const success = await onAddComment(newComment.trim());
+    if (success) setNewComment('');
+    setIsSubmitting(false);
+  };
+
+  const handleStartEdit = (comment) => {
+    setEditingId(comment.id);
+    setEditValue(getCommentContent(comment));
+  };
+
+  const handleSaveEdit = async (commentId) => {
+    if (!editValue.trim()) return;
+    const success = await onEditComment(commentId, editValue.trim());
+    if (success) setEditingId(null);
+  };
+
   return (
     <SurfaceCard className="p-6 sm:p-7">
       <SectionHeader
@@ -63,10 +97,10 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
               onClick={() => {
                 if (window.confirm("Are you sure you want to cancel this ticket?")) onCancel();
               }}
-              disabled={request.status !== 'SUBMITTED' || isCancelling}
-              title={request.status !== 'SUBMITTED' ? "Cancellation only allowed when status is SUBMITTED" : "Cancel ticket"}
+              disabled={request.status !== 'OPEN' || isCancelling}
+              title={request.status !== 'OPEN' ? "Cancellation only allowed when status is OPEN" : "Cancel ticket"}
               className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                request.status !== 'SUBMITTED' 
+                request.status !== 'OPEN' 
                   ? 'cursor-not-allowed bg-slate-100 text-slate-400' 
                   : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
               }`}
@@ -87,7 +121,9 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
             <MapPin size={14} />
             <span>Location</span>
           </div>
-          <p className="mt-3 text-sm font-semibold text-slate-800">{request.location}</p>
+          <p className="mt-3 text-sm font-semibold text-slate-800">
+            {request.location} {request.room ? `(${request.room})` : ''}
+          </p>
           <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             <Tag size={14} />
             <span>Category</span>
@@ -98,33 +134,37 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
         <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Priority</p>
           <p className="mt-3 text-sm font-semibold text-slate-800">{request.priority}</p>
-          <p className="mt-5 text-xs uppercase tracking-[0.2em] text-slate-400">Created</p>
-          <p className="mt-3 text-sm font-semibold text-slate-800">{formatDateTime(request.createdAt)}</p>
+          <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+            <Phone size={14} />
+            <span>Preferred Contact</span>
+          </div>
+          <p className="mt-3 text-sm font-semibold text-slate-800">{request.preferredContact || 'Not provided'}</p>
         </div>
 
         <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">SLA Tracker</p>
-          <div className="mt-3 inline-block rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-            {request.slaStatus ? request.slaStatus.replace(/_/g, ' ') : 'NOT TRACKED'}
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Timeline</p>
+          <p className="mt-3 text-sm font-semibold text-slate-700">
+            <span className="text-slate-500 font-normal">Created:</span> {formatDateTime(request.createdAt)}
+          </p>
+          {request.actualResolutionAt && (
+            <p className="mt-1 text-xs font-semibold text-emerald-700">
+              <span className="text-emerald-600 font-normal">Resolved:</span> {formatDateTime(request.actualResolutionAt)}
+            </p>
+          )}
+          <div className="mt-5 inline-block rounded border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 tracking-wider">
+            {request.slaStatus ? request.slaStatus.replace(/_/g, ' ') : 'SLA ACTIVE'}
           </div>
-          <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Due / Resolved</p>
-          <p className="mt-1 text-xs font-semibold text-slate-700">
-            <span className="text-slate-500 font-normal">Response:</span> {request.actualFirstResponseAt ? formatDateTime(request.actualFirstResponseAt) : formatDateTime(request.slaResponseDeadline)}
-          </p>
-          <p className="mt-1 text-xs font-semibold text-slate-700">
-            <span className="text-slate-500 font-normal">Resolution:</span> {request.actualResolutionAt ? formatDateTime(request.actualResolutionAt) : formatDateTime(request.slaResolutionDeadline)}
-          </p>
         </div>
       </div>
 
       <div className="mt-8 rounded-[26px] border border-slate-200 bg-slate-50/80 p-5 sm:p-6">
         <div className="mb-4 flex items-center gap-2 text-slate-800">
           <Clock3 size={18} />
-          <h4 className="text-lg font-bold">Status tracker</h4>
+          <h4 className="text-lg font-bold">Progress timeline</h4>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {timelineSteps.map((step, index) => {
-            const isComplete = request.status === 'REJECTED' ? index === 0 : index <= activeIndex;
+            const isComplete = index <= activeIndex;
             const label = step.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
             return (
               <div
@@ -142,24 +182,100 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-          <div className="flex items-center gap-2 text-slate-700">
-            <UserCircle2 size={18} />
-            <p className="text-sm font-semibold">Assigned technician</p>
-          </div>
-          <p className="mt-3 text-sm text-slate-600">
-            {request.assignedTechnicianName || 'Not assigned yet'}
-          </p>
+      <div className="mt-8 rounded-[26px] border border-slate-200 bg-white p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-2 text-slate-800">
+          <Clock3 size={18} />
+          <h4 className="text-lg font-bold">Comments and updates</h4>
         </div>
 
-        <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-          <div className="flex items-center gap-2 text-slate-700">
-            <Wrench size={18} />
-            <p className="text-sm font-semibold">Latest activity</p>
+        {/* Comment Input */}
+        <form onSubmit={handlePostComment} className="mb-6 relative">
+          <textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Add a comment or follow-up question..."
+            rows={2}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 p-4 pb-14 text-sm focus:border-blue-300 focus:bg-white focus:outline-none transition-all resize-none"
+          />
+          <div className="absolute bottom-3 right-3">
+             <button
+              type="submit"
+              disabled={isSubmitting || !newComment.trim()}
+              className="flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-blue-600/20 hover:bg-blue-700 disabled:bg-slate-300 disabled:shadow-none transition"
+             >
+                {isSubmitting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Post Update
+             </button>
           </div>
-          <p className="mt-3 text-sm text-slate-600">{formatDateTime(request.updatedAt || request.createdAt)}</p>
-        </div>
+        </form>
+
+        {updates.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+            No updates yet. Feel free to add a comment above.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {[...updates].reverse().map((update, index) => {
+              const isEditing = editingId === update.id;
+              const isMyComment = update.canEdit; // Backend flag for ownership
+
+              return (
+                <div key={update.id || index} className="group relative rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-4 hover:border-slate-300 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-bold ${isMyComment ? 'text-blue-700' : 'text-slate-800'}`}>
+                          {update.authorName || 'User'}
+                        </p>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          {update.authorRole} • {formatDateTime(getCommentUpdatedAt(update) || getCommentCreatedAt(update))}
+                        </span>
+                      </div>
+                      
+                      {isEditing ? (
+                        <div className="mt-3 space-y-2">
+                          <textarea
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="w-full rounded-lg border border-blue-200 bg-white p-3 text-sm focus:outline-none"
+                            rows={3}
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => setEditingId(null)} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200"><X size={16} /></button>
+                            <button onClick={() => handleSaveEdit(update.id)} className="rounded-lg bg-blue-600 p-1.5 text-white hover:bg-blue-700"><Check size={16} /></button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm leading-6 text-slate-600 whitespace-pre-wrap">
+                          {getCommentContent(update)}
+                        </p>
+                      )}
+                    </div>
+                    
+                    {isMyComment && !isEditing && (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => handleStartEdit(update)}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-blue-600 shadow-sm transition"
+                          title="Edit"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={() => { if(window.confirm('Delete comment?')) onDeleteComment(update.id) }}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-rose-600 shadow-sm transition"
+                          title="Delete"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="mt-8 rounded-[26px] border border-slate-200 bg-white p-5 sm:p-6">
@@ -174,15 +290,15 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
               <div key={`${getAttachmentName(attachment)}-${index}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm font-semibold text-slate-800">{getAttachmentName(attachment)}</div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => viewAttachment(attachment).catch((error) => window.alert(error?.response?.data?.message || error?.message || 'Unable to open the attachment.'))}
-                    disabled={!attachment?.viewUrl}
-                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  <a
+                    href={getViewerUrl(attachment) || '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 ${!attachment?.viewUrl ? 'cursor-not-allowed opacity-50 pointer-events-none' : ''}`}
                   >
                     <Eye size={14} />
                     View
-                  </button>
+                  </a>
                   <button
                     type="button"
                     onClick={() => downloadAttachment(attachment).catch((error) => window.alert(error?.response?.data?.message || error?.message || 'Unable to download the attachment.'))}
@@ -199,40 +315,6 @@ const RequestDetailsPanel = ({ request, isLoading, onCancel, isCancelling }) => 
         ) : (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
             No attachments were uploaded for this ticket.
-          </div>
-        )}
-      </div>
-
-      <div className="mt-8 rounded-[26px] border border-slate-200 bg-white p-5 sm:p-6">
-        <div className="mb-4 flex items-center gap-2 text-slate-800">
-          <Clock3 size={18} />
-          <h4 className="text-lg font-bold">Comments and updates</h4>
-        </div>
-
-        {updates.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-            Updates from technicians or administrators will appear here when available.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {updates.map((update, index) => (
-              <div key={update.id || `${index}-${getCommentCreatedAt(update) || getCommentUpdatedAt(update) || 'update'}`} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-800">
-                      {update.authorName || update.author?.name || update.createdBy?.name || 'Facilities team'}
-                      {update.authorRole ? <span className="ml-1 font-normal text-slate-400">({update.authorRole})</span> : null}
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      {getCommentContent(update)}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-slate-400">
-                    {formatDateTime(getCommentUpdatedAt(update) || getCommentCreatedAt(update))}
-                  </span>
-                </div>
-              </div>
-            ))}
           </div>
         )}
       </div>

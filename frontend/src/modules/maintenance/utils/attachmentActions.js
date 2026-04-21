@@ -13,22 +13,30 @@ const createBlobUrl = (response) => {
   return URL.createObjectURL(blob);
 };
 
+export const getViewerUrl = (attachment) => {
+  if (!attachment?.viewUrl) return null;
+  const name = getAttachmentName(attachment);
+  const type = attachment.contentType || 'application/octet-stream';
+  
+  const params = new URLSearchParams();
+  params.set('url', attachment.viewUrl);
+  params.set('name', name);
+  params.set('type', type);
+  
+  return `/maintenance/attachment-viewer?${params.toString()}`;
+};
+
 export const viewAttachment = async (attachment) => {
-  if (!attachment?.viewUrl) {
+  const viewerUrl = getViewerUrl(attachment);
+  if (!viewerUrl) {
     throw new Error('This attachment is not available for preview.');
   }
 
-  const previewWindow = window.open('', '_blank', 'noopener,noreferrer');
-  const response = await api.get(attachment.viewUrl, { responseType: 'blob' });
-  const blobUrl = createBlobUrl(response);
-
-  if (previewWindow) {
-    previewWindow.location.href = blobUrl;
-  } else {
-    window.location.href = blobUrl;
+  const previewWindow = window.open(viewerUrl, '_blank');
+  
+  if (!previewWindow) {
+    throw new Error('Popup blocked. Please allow popups to view the attachment.');
   }
-
-  window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
 };
 
 export const downloadAttachment = async (attachment) => {

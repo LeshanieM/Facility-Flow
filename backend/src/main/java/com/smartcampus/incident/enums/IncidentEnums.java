@@ -10,11 +10,8 @@ public class IncidentEnums {
     }
 
     public enum IncidentStatus {
-        SUBMITTED,
-        UNDER_REVIEW,
-        ASSIGNED,
+        OPEN,
         IN_PROGRESS,
-        ON_HOLD,
         RESOLVED,
         CLOSED,
         REJECTED

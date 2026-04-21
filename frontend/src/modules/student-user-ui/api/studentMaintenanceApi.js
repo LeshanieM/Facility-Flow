@@ -24,6 +24,11 @@ export const getMyRequests = async () => {
   return response.data;
 };
 
+export const getResources = async () => {
+  const response = await studentMaintenanceApi.get('/resources');
+  return response.data;
+};
+
 export const getRequestDetails = async (requestId) => {
   const response = await studentMaintenanceApi.get(`/requests/${requestId}`);
   return response.data;
@@ -41,6 +46,9 @@ export const createMaintenanceRequest = async (payload) => {
   formData.append('location', payload.location.trim());
   formData.append('category', payload.category);
   formData.append('priority', payload.priority);
+  if (payload.preferredContact) {
+    formData.append('preferredContact', payload.preferredContact.trim());
+  }
 
   if (payload.attachments && payload.attachments.length > 0) {
     payload.attachments.forEach(file => {
@@ -59,6 +67,21 @@ export const createMaintenanceRequest = async (payload) => {
 
 export const cancelMaintenanceRequest = async (requestId) => {
   const response = await studentMaintenanceApi.patch(`/requests/${requestId}/cancel`);
+  return response.data;
+};
+
+export const addComment = async (requestId, payload) => {
+  const response = await studentMaintenanceApi.post(`/requests/${requestId}/comments`, payload);
+  return response.data;
+};
+
+export const editComment = async (requestId, commentId, payload) => {
+  const response = await studentMaintenanceApi.put(`/requests/${requestId}/comments/${commentId}`, payload);
+  return response.data;
+};
+
+export const deleteComment = async (requestId, commentId) => {
+  const response = await studentMaintenanceApi.delete(`/requests/${requestId}/comments/${commentId}`);
   return response.data;
 };
 

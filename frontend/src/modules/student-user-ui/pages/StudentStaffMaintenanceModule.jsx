@@ -50,6 +50,7 @@ const StudentStaffMaintenanceModule = () => {
   const {
     summary,
     requests,
+    resources,
     notifications,
     selectedRequest,
     selectedRequestId,
@@ -58,6 +59,9 @@ const StudentStaffMaintenanceModule = () => {
     formErrors,
     updateField,
     submitRequest,
+    handleAddComment,
+    handleEditComment,
+    handleDeleteComment,
     hasRequests,
     isBootstrapping,
     isRefreshing,
@@ -120,9 +124,8 @@ const StudentStaffMaintenanceModule = () => {
 
   const displaySummary = useMemo(() => {
     const totalSubmitted = requests.length;
-    const pending = requests.filter((request) =>
-      request.status === 'SUBMITTED' || request.status === 'UNDER_REVIEW'
-    ).length;
+    const pending = requests.filter((request) => request.status === 'OPEN').length;
+    const inProgress = requests.filter((request) => request.status === 'IN_PROGRESS').length;
     const completed = requests.filter((request) =>
       ['RESOLVED', 'CLOSED'].includes(request.status)
     ).length;
@@ -131,6 +134,7 @@ const StudentStaffMaintenanceModule = () => {
       ...summary,
       totalSubmitted,
       pending,
+      inProgress,
       completed,
     };
   }, [requests, summary]);
@@ -256,7 +260,7 @@ const StudentStaffMaintenanceModule = () => {
                   />
                   <SummaryCard
                     label="In Progress"
-                    value={requests.filter((request) => request.status === 'IN_PROGRESS').length}
+                    value={displaySummary.inProgress}
                     hint="Currently being worked on"
                     accentClass="bg-orange-50 text-orange-700"
                   />
@@ -313,6 +317,7 @@ const StudentStaffMaintenanceModule = () => {
                   <RequestForm
                     values={formValues}
                     errors={formErrors}
+                    resources={resources}
                     onChange={updateField}
                     onSubmit={submitRequest}
                     isSubmitting={isSubmitting}
@@ -345,6 +350,9 @@ const StudentStaffMaintenanceModule = () => {
                     isLoading={isDetailLoading} 
                     onCancel={() => cancelRequest(selectedRequestId)}
                     isCancelling={isCancelling}
+                    onAddComment={handleAddComment}
+                    onEditComment={handleEditComment}
+                    onDeleteComment={handleDeleteComment}
                   />
                 </div>
               </div>
