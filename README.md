@@ -1,8 +1,8 @@
 # IT3030 PAF Assignment 2026 – FacilityFlow - Smart Campus Operations Hub
 
-## Facility Flow | Smart Campus Operations Hub
+## Facility Flow | Smart Campus Operations Hub 
 
-Facility Flow is a Smart Campus Operations Hub designed for a university Smart Campus ecosystem. It provides a secure, role-based infrastructure for students, staff, and administrators.
+Facility Flow is a Smart Campus Operations Hub designed for a university Smart Campus ecosystem. It provides a secure, role-based infrastructure for staff(users), technicians and admins.
 
 This repository contains components from all 4 team members.
 
@@ -10,10 +10,12 @@ This repository contains components from all 4 team members.
 
 | Member | Module / Responsibility | Endpoints / Components |
 | :--- | :--- | :--- |
-| Member 1 | Facilities catalogue | `/api/resources` endpoints, Resource UI |
-| Member 2 | Booking workflow | `/api/bookings`, conflict check, Booking UI |
-| Member 3 | Incident tickets | `/api/tickets`, attachments, Technician updates |
-| Member 4 | Notifications & OAuth | `/api/notifications`, OAuth integration, role management |
+| Member 1 | Notifications & OAuth | `/api/notifications`, OAuth integration, role management |
+| Member 2 | Incident tickets | `/api/tickets`, attachments, Technician updates |
+| Member 3 | Facilities catalogue | `/api/resources` endpoints, Resource UI |
+| Member 4 | Booking workflow | `/api/bookings`, conflict check, Booking UI |
+
+
 
 ---
 
@@ -96,8 +98,8 @@ To enable Google Login:
 ---
 
 ## 💡 Role-Based Features
-- **USER**: Access to personal **Dashboard**, **Facility Bookings**, and **Campus Maps**.
-- **TECHNICIAN**: Access to the **Technician Console**, **Pending Tasks**, and **Maintenance Logs**.
+- **USER**: Access to personal **Dashboard**, **Facility Bookings**, and **Maintenance Tickets**.
+- **TECHNICIAN**: Access to the **Technician Console**, **Pending Tasks**, and **Maintenance Work**.
 - **ADMIN**: Full access to **User Management**, **Role Assignments**, and **Security Logs**.
 
-*Project developed for University Smart Campus Operations Hub.*
+*Facility-Flow - Project developed for University Smart Campus Operations Hub.*
