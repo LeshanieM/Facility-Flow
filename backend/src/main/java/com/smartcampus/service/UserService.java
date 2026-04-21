@@ -27,4 +27,11 @@ public class UserService {
     public void deleteUser(String id) {
         userRepository.deleteById(id);
     }
+
+    public User updateProfile(String id, String name, String picture) {
+        User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+        if (name != null) user.setName(name);
+        if (picture != null) user.setPicture(picture);
+        return userRepository.save(user);
+    }
 }

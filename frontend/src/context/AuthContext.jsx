@@ -8,16 +8,37 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode(token);
-        setUser(decoded);
-      } catch (e) {
-        localStorage.removeItem('token');
+    const fetchUser = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await fetch('http://localhost:8092/api/user/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+          } else {
+            // Token might be invalid or expired
+            const decoded = jwtDecode(token);
+            setUser(decoded);
+          }
+        } catch (e) {
+          console.error("Error fetching user profile:", e);
+          try {
+            const decoded = jwtDecode(token);
+            setUser(decoded);
+          } catch (decodeErr) {
+            localStorage.removeItem('token');
+          }
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    fetchUser();
   }, []);
 
   const login = (token) => {
@@ -31,8 +52,12 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateUser = (userData) => {
+    setUser(prev => ({ ...prev, ...userData }));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, updateUser, loading }}>
       {!loading && children}
     </AuthContext.Provider>
   );
