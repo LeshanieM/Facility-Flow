@@ -15,6 +15,8 @@ export default {
           DEFAULT: '#4169E1',
           dark: '#314fb3',
           light: '#6687eb',
+          darker: '#243a8a',
+          gold: '#f5c842',
         },
         slate: {
           850: '#1e293b',
