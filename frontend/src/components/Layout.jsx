@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { LogOut, Bell, Search, Menu as MenuIcon } from 'lucide-react';
+import logo from '../assets/logo.jpeg';
 
 const Layout = ({ children }) => {
   const { logout, user } = useAuth();
@@ -21,10 +22,16 @@ const Layout = ({ children }) => {
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
         {/* Top Header */}
         <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-8 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <h1 className="text-lg font-bold text-slate-800 hidden md:block">
-               {user?.role === 'ADMIN' ? 'Control Center' : 'Campus Hub'}
-            </h1>
+          <div className="flex items-center gap-4">
+            <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+              <div className="w-8 h-8 rounded-lg overflow-hidden shadow-sm border border-white/20">
+                <img src={logo} alt="Facility Flow Logo" className="w-full h-full object-cover" />
+              </div>
+              <h1 className="text-xl font-black hidden md:block tracking-tight font-['Playfair_Display',serif] uppercase">
+                <span style={{ color: '#243a8a' }}>Facility </span>
+                <span style={{ color: '#6687eb' }}>Flow</span>
+              </h1>
+            </Link>
             
             <div className="relative group w-64 md:w-80">
               <Search 

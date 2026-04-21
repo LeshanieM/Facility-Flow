@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import heroImage from "../assets/hero.png";
+import logo from "../assets/logo.jpeg";
 
 const colors = {
   DEFAULT: "#4169E1",
@@ -57,11 +58,12 @@ export default function CampusPortal() {
       {/* Header */}
       <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-4 sm:px-8 flex items-center justify-between shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-black text-sm shadow-md">
-            F
+          <div className="w-8 h-8 rounded-lg overflow-hidden shadow-md border border-slate-100">
+            <img src={logo} alt="Facility Flow" className="w-full h-full object-cover" />
           </div>
-          <h2 className="text-lg font-black text-slate-900 tracking-tight leading-tight uppercase">
-            {user?.role === "ADMIN" ? "Control Center" : "Campus Hub"}
+          <h2 className="text-lg font-black tracking-tight leading-tight font-['Playfair_Display',serif] uppercase">
+            <span style={{ color: '#243a8a' }}>Facility </span>
+            <span style={{ color: '#6687eb' }}>Flow</span>
           </h2>
         </div>
         <button
@@ -98,16 +100,15 @@ export default function CampusPortal() {
           {/* Left text */}
           <div className="flex-shrink-0 w-full lg:w-[380px] text-center lg:text-left">
             <div className="font-['Playfair_Display',serif] text-5xl md:text-6xl font-black text-white leading-none mb-2 tracking-[-2px]">
-              CAM<span style={{ color: colors.gold }}>PUS</span>
+              FACILITY <span style={{ color: colors.gold }}>FLOW</span>
             </div>
             <div className="text-[11px] font-semibold text-white/55 tracking-[0.14em] uppercase mb-5">
-              University Portal
+              Smart Campus Hub
             </div>
             <p className="text-[15px] text-white/85 leading-relaxed mb-8 max-w-[360px] mx-auto lg:mx-0">
-              Access university facilities, from collaborative study pods to
-              cutting-edge research labs. Your{" "}
-              <strong className="text-white font-semibold">intelligent portal</strong>{" "}
-              for a connected campus experience.
+              Book facilities, report incidents, and manage campus resources — all in one{" "}
+              <strong className="text-white font-semibold">intelligent platform</strong>{" "}
+              built for a connected university experience.
             </p>
             <button
               onClick={() => navigate("/login")}
