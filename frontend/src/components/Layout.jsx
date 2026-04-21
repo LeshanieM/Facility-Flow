@@ -2,21 +2,69 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { LogOut, Bell, Search, Menu as MenuIcon } from 'lucide-react';
+import NotificationDropdown from './NotificationDropdown';
+import { useNotifications } from '../context/NotificationContext';
+import { LogOut, Bell, Search, Menu as MenuIcon, Calendar, Ticket, MessageSquare, X } from 'lucide-react';
 import logo from '../assets/logo.jpeg';
 
 const Layout = ({ children }) => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { toasts, removeToast } = useNotifications();
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
+  const getToastIcon = (type) => {
+    switch (type) {
+      case 'BOOKING': return <Calendar size={18} className="text-blue-500" />;
+      case 'TICKET': return <Ticket size={18} className="text-amber-500" />;
+      case 'COMMENT': return <MessageSquare size={18} className="text-emerald-500" />;
+      default: return <Bell size={18} className="text-primary" />;
+    }
+  };
+
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans selection:bg-primary/20">
+    <div className="flex min-h-screen bg-slate-50 font-sans selection:bg-primary/20 relative overflow-x-hidden">
+      {/* Floating Toasts */}
+      <div className="fixed top-20 right-8 z-[100] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+        {toasts.map(toast => (
+          <div 
+            key={toast.toastId} 
+            className="pointer-events-auto bg-white/90 backdrop-blur-xl border-l-4 border-primary rounded-2xl shadow-2xl shadow-primary/20 p-4 animate-in slide-in-from-right duration-500 flex gap-4 cursor-pointer hover:scale-105 transition-transform"
+            style={{ 
+              borderColor: toast.type === 'BOOKING' ? '#3b82f6' : 
+                          toast.type === 'TICKET' ? '#f59e0b' : 
+                          toast.type === 'COMMENT' ? '#10b981' : '#4169E1'
+            }}
+            onClick={() => {
+              removeToast(toast.toastId);
+              navigate('/notifications');
+            }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center flex-shrink-0">
+              {getToastIcon(toast.type)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-bold text-slate-800 truncate">{toast.title}</h4>
+              <p className="text-xs text-slate-500 line-clamp-2 mt-1">{toast.message}</p>
+            </div>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                removeToast(toast.toastId);
+              }}
+              className="p-1 hover:bg-slate-100 rounded-lg self-start transition-colors"
+            >
+              <X size={14} className="text-slate-400" />
+            </button>
+          </div>
+        ))}
+      </div>
+
       <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
       <div className={`flex-1 flex flex-col transition-all duration-300 ${isCollapsed ? 'ml-20' : 'ml-64'}`}>
@@ -47,10 +95,7 @@ const Layout = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="p-2.5 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl transition-all relative">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2.5 w-2 h-2 bg-rose-500 border-2 border-white rounded-full"></span>
-            </button>
+            <NotificationDropdown />
             
             <div className="w-px h-6 bg-slate-200 mx-2"></div>
 
