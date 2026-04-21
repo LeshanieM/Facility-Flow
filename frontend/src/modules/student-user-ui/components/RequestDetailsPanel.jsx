@@ -156,6 +156,37 @@ const RequestDetailsPanel = ({
         </div>
       </div>
 
+      {/* Assigned Technician */}
+      {request.assignedTechnicianName && (
+        <div className="mt-4 rounded-[24px] border border-indigo-200 bg-indigo-50/60 p-5">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-indigo-400">
+            <UserCircle2 size={14} />
+            <span>Assigned Technician</span>
+          </div>
+          <p className="mt-3 text-sm font-semibold text-indigo-800">{request.assignedTechnicianName}</p>
+        </div>
+      )}
+
+      {/* Rejection Reason */}
+      {request.status === 'REJECTED' && request.rejectionReason && (
+        <div className="mt-4 rounded-[24px] border border-rose-200 bg-rose-50/70 p-5">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
+            <span>Rejection Reason</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-rose-800 whitespace-pre-wrap">{request.rejectionReason}</p>
+        </div>
+      )}
+
+      {/* Resolution Notes */}
+      {request.status === 'RESOLVED' && (request.resolutionNotes || request.resolutionSummary) && (
+        <div className="mt-4 rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-5">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-500">
+            <span>Resolution Notes</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-emerald-800 whitespace-pre-wrap">{request.resolutionNotes || request.resolutionSummary}</p>
+        </div>
+      )}
+
       <div className="mt-8 rounded-[26px] border border-blue-200 bg-blue-50/70 p-5 sm:p-6">
         <div className="mb-4 flex items-center gap-2 text-blue-900">
           <Clock3 size={18} />

@@ -54,6 +54,14 @@ public class IncidentService {
             IncidentStatus.REJECTED
     );
 
+    private static final java.util.Map<IncidentStatus, Set<IncidentStatus>> VALID_TRANSITIONS = java.util.Map.of(
+            IncidentStatus.OPEN, Set.of(IncidentStatus.IN_PROGRESS, IncidentStatus.REJECTED, IncidentStatus.CLOSED),
+            IncidentStatus.IN_PROGRESS, Set.of(IncidentStatus.RESOLVED, IncidentStatus.CLOSED, IncidentStatus.REJECTED),
+            IncidentStatus.RESOLVED, Set.of(IncidentStatus.CLOSED),
+            IncidentStatus.CLOSED, Set.of(),
+            IncidentStatus.REJECTED, Set.of()
+    );
+
     private final IncidentRepository incidentRepository;
     private final IncidentActivityLogRepository activityLogRepository;
     private final SlaService slaService;
@@ -205,7 +213,7 @@ public class IncidentService {
         ensureCanManageTicket(incident, user);
 
         IncidentStatus newStatus = normalizeRequestedStatus(request.getStatus());
-        validateStatusTransitionRequest(newStatus, user, request.getRejectionReason());
+        validateStatusTransitionRequest(incident.getStatus(), newStatus, user, request.getRejectionReason());
 
         Instant now = Instant.now();
         incident.setStatus(newStatus);
@@ -223,6 +231,10 @@ public class IncidentService {
         }
         if (newStatus == IncidentStatus.REJECTED) {
             incident.setRejectionReason(request.getRejectionReason().trim());
+        }
+        if (newStatus == IncidentStatus.RESOLVED && request.getResolutionNotes() != null
+                && !request.getResolutionNotes().trim().isEmpty()) {
+            incident.setResolutionSummary(request.getResolutionNotes().trim());
         }
 
         slaService.evaluateSlaBreach(incident);
@@ -657,6 +669,7 @@ public class IncidentService {
                 incident.getAdminNotes(),
                 incident.getTechnicianNotes(),
                 incident.getResolutionSummary(),
+                incident.getResolutionSummary(),
                 incident.getPreferredContact(),
                 incident.getSlaResponseDeadline() != null ? incident.getSlaResponseDeadline().toString() : null,
                 incident.getSlaResolutionDeadline() != null ? incident.getSlaResolutionDeadline().toString() : null,
@@ -771,11 +784,23 @@ public class IncidentService {
         return normalized;
     }
 
-    private void validateStatusTransitionRequest(IncidentStatus newStatus, User user, String rejectionReason) {
+    private void validateStatusTransitionRequest(IncidentStatus currentStatus, IncidentStatus newStatus, User user, String rejectionReason) {
+        // Enforce valid status transitions
+        Set<IncidentStatus> allowed = VALID_TRANSITIONS.getOrDefault(currentStatus, Set.of());
+        if (!allowed.contains(newStatus)) {
+            throw new InvalidRequestException(
+                    "Cannot transition from " + currentStatus + " to " + newStatus + ".");
+        }
+
         if (newStatus == IncidentStatus.REJECTED) {
             requireRole(user, Role.ADMIN);
             if (rejectionReason == null || rejectionReason.trim().isEmpty()) {
                 throw new InvalidRequestException("Rejection reason is required when rejecting a ticket.");
+            }
+        }
+        if (newStatus == IncidentStatus.RESOLVED) {
+            if (user.getRole() != Role.ADMIN && user.getRole() != Role.TECHNICIAN) {
+                throw new UnauthorizedIncidentAccessException("Only Admin or assigned Technician can resolve a ticket.");
             }
         }
     }

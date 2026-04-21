@@ -76,6 +76,13 @@ export const AdminMaintenancePage = () => {
                 payload.rejectionReason = rejectionReason.trim();
             }
 
+            if (pendingStatus === 'RESOLVED') {
+                const resolutionNotes = window.prompt('Enter resolution notes (optional):');
+                if (resolutionNotes && resolutionNotes.trim()) {
+                    payload.resolutionNotes = resolutionNotes.trim();
+                }
+            }
+
             const updated = await changeStatus(selectedTicket.id, payload);
             if (updated) {
                 setSelectedTicket(updated);
@@ -326,6 +333,22 @@ export const AdminMaintenancePage = () => {
                                     </p>
                                 </div>
 
+                                {/* Rejection Reason */}
+                                {selectedTicket.status === 'REJECTED' && selectedTicket.rejectionReason && (
+                                    <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5">
+                                        <h3 className="text-sm font-black text-rose-700 mb-2 uppercase tracking-widest">Rejection Reason</h3>
+                                        <p className="text-sm leading-relaxed text-rose-800 whitespace-pre-wrap">{selectedTicket.rejectionReason}</p>
+                                    </div>
+                                )}
+
+                                {/* Resolution Notes */}
+                                {selectedTicket.status === 'RESOLVED' && (selectedTicket.resolutionNotes || selectedTicket.resolutionSummary) && (
+                                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5">
+                                        <h3 className="text-sm font-black text-emerald-700 mb-2 uppercase tracking-widest">Resolution Notes</h3>
+                                        <p className="text-sm leading-relaxed text-emerald-800 whitespace-pre-wrap">{selectedTicket.resolutionNotes || selectedTicket.resolutionSummary}</p>
+                                    </div>
+                                )}
+
                                 <div>
                                     <h3 className="text-sm font-black text-slate-900 mb-3 uppercase tracking-widest">Attachments</h3>
                                     {selectedTicket.attachments?.length ? (
@@ -386,8 +409,8 @@ export const AdminMaintenancePage = () => {
                                                                 {getCommentUpdatedAt(comment) && getCommentUpdatedAt(comment) !== getCommentCreatedAt(comment) ? ` • Updated ${formatDateTime(getCommentUpdatedAt(comment))}` : ''}
                                                             </p>
                                                         </div>
-                                                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${comment.visibleToRequester ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
-                                                            {comment.visibleToRequester ? 'Requester Visible' : 'Internal'}
+                                                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${comment.authorRole === 'USER' ? 'bg-blue-100 text-blue-700' : (comment.visibleToRequester ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600')}`}>
+                                                            {comment.authorRole === 'USER' ? 'Requester added' : (comment.visibleToRequester ? 'Requester Visible' : 'Internal')}
                                                         </span>
                                                     </div>
                                                     <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">

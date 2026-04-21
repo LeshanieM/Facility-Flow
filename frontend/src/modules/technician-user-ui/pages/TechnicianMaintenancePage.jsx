@@ -301,7 +301,14 @@ const TechnicianMaintenancePage = () => {
                                 onChange={async (e) => {
                                     const newStatus = e.target.value;
                                     try {
-                                        const res = await api.patch(`/technician/tickets/${selectedRequest.id}/status`, { status: newStatus });
+                                        const payload = { status: newStatus };
+                                        if (newStatus === 'RESOLVED') {
+                                            const resolutionNotes = window.prompt('Enter resolution notes (optional):');
+                                            if (resolutionNotes && resolutionNotes.trim()) {
+                                                payload.resolutionNotes = resolutionNotes.trim();
+                                            }
+                                        }
+                                        const res = await api.patch(`/technician/tickets/${selectedRequest.id}/status`, payload);
                                         syncTicketState(res.data);
                                         pushToast('success', 'Status Updated', `Ticket is now ${newStatus}`);
                                     } catch (err) {
@@ -331,6 +338,22 @@ const TechnicianMaintenancePage = () => {
                             <p className="mt-1 text-sm font-semibold text-slate-700">{formatDateTime(selectedRequest.createdAt)}</p>
                         </div>
                   </div>
+
+                  {/* Rejection Reason */}
+                  {selectedRequest.status === 'REJECTED' && selectedRequest.rejectionReason && (
+                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50/70 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-rose-700">Rejection Reason</p>
+                      <p className="mt-2 text-sm leading-6 text-rose-800 whitespace-pre-wrap">{selectedRequest.rejectionReason}</p>
+                    </div>
+                  )}
+
+                  {/* Resolution Notes */}
+                  {selectedRequest.status === 'RESOLVED' && (selectedRequest.resolutionNotes || selectedRequest.resolutionSummary) && (
+                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Resolution Notes</p>
+                      <p className="mt-2 text-sm leading-6 text-emerald-800 whitespace-pre-wrap">{selectedRequest.resolutionNotes || selectedRequest.resolutionSummary}</p>
+                    </div>
+                  )}
 
                   <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700"><Paperclip size={14}/> Attachments</p>
@@ -387,8 +410,8 @@ const TechnicianMaintenancePage = () => {
                               <p className="text-xs font-bold text-slate-700">
                                 {comment.authorName}
                                 <span className="ml-1 font-normal text-slate-400">({comment.authorRole})</span>
-                                <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] uppercase ${comment.visibleToRequester ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-                                  {comment.visibleToRequester ? 'Visible to requester' : 'Internal only'}
+                                <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] uppercase ${comment.authorRole === 'USER' ? 'bg-blue-100 text-blue-800' : (comment.visibleToRequester ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600')}`}>
+                                  {comment.authorRole === 'USER' ? 'Requester added' : (comment.visibleToRequester ? 'Visible to requester' : 'Internal only')}
                                 </span>
                               </p>
                               <p className="mt-1 text-[11px] text-slate-400">

@@ -33,6 +33,7 @@ public class IncidentRequests {
     public static class UpdateStatusRequest {
         @NotNull private IncidentStatus status;
         private String rejectionReason;
+        private String resolutionNotes;
     }
 
     @Data
