@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
-import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench, Paperclip, Eye, Download, Send, Edit2, Trash2, X, Check, Phone } from 'lucide-react';
+import { Clock3, Loader2, MapPin, Tag, UserCircle2, Wrench, Paperclip, Eye, Download, Send, Edit2, Trash2, X, Check, Phone, UserPlus } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
-import StatusBadge, { INCIDENT_STATUS_ORDER, formatIncidentStatusLabel, normalizeIncidentStatus } from './StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_ORDER, formatIncidentStatusLabel, normalizeIncidentStatus, PriorityBadge } from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 
-const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || 'Update added.';
+const getCommentContent = (comment) => comment?.content || comment?.message || comment?.comment || comment?.text || '';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
 const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt || null;
 
 const statusStepIndex = (status) => {
   const normalizedStatus = normalizeIncidentStatus(status);
-  if (normalizedStatus === 'REJECTED') return 0;
-  return Math.max(INCIDENT_STATUS_ORDER.indexOf(normalizedStatus), 0);
+  return INCIDENT_STATUS_ORDER.indexOf(normalizedStatus);
 };
 
 const getUpdates = (request) => {
@@ -82,6 +81,10 @@ const RequestDetailsPanel = ({
     if (success) setEditingId(null);
   };
 
+  const timelineSteps = request.status === 'REJECTED' 
+    ? ['OPEN', 'REJECTED'] 
+    : INCIDENT_STATUS_ORDER.filter(s => s !== 'REJECTED');
+
   return (
     <SurfaceCard className="p-6 sm:p-7">
       <SectionHeader
@@ -132,7 +135,9 @@ const RequestDetailsPanel = ({
 
         <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Priority</p>
-          <p className="mt-3 text-sm font-semibold text-slate-800">{request.priority}</p>
+          <div className="mt-2">
+            <PriorityBadge priority={request.priority} />
+          </div>
           <div className="mt-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             <Phone size={14} />
             <span>Preferred Contact</span>
@@ -155,6 +160,37 @@ const RequestDetailsPanel = ({
           </div>
         </div>
       </div>
+
+      {/* Assigned Technician */}
+      {request.assignedTechnicianName && (
+        <div className="mt-4 rounded-[24px] border border-indigo-200 bg-indigo-50/60 p-5">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-indigo-400">
+            <UserPlus size={14} />
+            <span>Assigned Technician</span>
+          </div>
+          <p className="mt-3 text-sm font-semibold text-indigo-800">{request.assignedTechnicianName}</p>
+        </div>
+      )}
+
+      {/* Rejection Reason */}
+      {request.status === 'REJECTED' && request.rejectionReason && (
+        <div className="mt-4 rounded-[24px] border border-rose-200 bg-rose-50/70 p-5">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
+            <span>Rejection Reason</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-rose-800 whitespace-pre-wrap">{request.rejectionReason}</p>
+        </div>
+      )}
+
+      {/* Resolution Notes */}
+      {request.status === 'RESOLVED' && (request.resolutionNotes || request.resolutionSummary) && (
+        <div className="mt-4 rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-5">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-500">
+            <span>Resolution Notes</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-emerald-800 whitespace-pre-wrap">{request.resolutionNotes || request.resolutionSummary}</p>
+        </div>
+      )}
 
       <div className="mt-8 rounded-[26px] border border-blue-200 bg-blue-50/70 p-5 sm:p-6">
         <div className="mb-4 flex items-center gap-2 text-blue-900">
@@ -188,16 +224,19 @@ const RequestDetailsPanel = ({
           <Clock3 size={18} />
           <h4 className="text-lg font-bold">Progress timeline</h4>
         </div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          {INCIDENT_STATUS_ORDER.slice(0, 4).map((step, index) => {
-            const isComplete = index <= activeIndex;
+        <div className={`grid gap-3 ${timelineSteps.length === 2 ? 'grid-cols-2 max-w-sm' : 'grid-cols-2 md:grid-cols-5'}`}>
+          {timelineSteps.map((step) => {
+            const stepIdx = INCIDENT_STATUS_ORDER.indexOf(step);
+            const isComplete = stepIdx <= activeIndex || (request.status === 'REJECTED' && step === 'REJECTED');
             const label = formatIncidentStatusLabel(step);
             return (
               <div
                 key={step}
                 className={`rounded-xl border px-3 py-2 text-center text-[10px] font-bold uppercase tracking-wider transition ${
                   isComplete
-                    ? 'border-blue-200 bg-white text-blue-700 shadow-sm'
+                    ? step === 'REJECTED' 
+                      ? 'border-rose-200 bg-rose-50 text-rose-700 shadow-sm'
+                      : 'border-blue-200 bg-white text-blue-700 shadow-sm'
                     : 'border-slate-200 bg-slate-100 text-slate-400'
                 }`}
               >
@@ -235,15 +274,19 @@ const RequestDetailsPanel = ({
           </div>
         </form>
 
-        {updates.length === 0 ? (
+        {updates.filter(u => getCommentContent(u).trim()).length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
             No updates yet. Feel free to add a comment above.
           </div>
         ) : (
           <div className="space-y-4">
-            {[...updates].reverse().map((update, index) => {
+            {[...updates]
+              .filter(u => getCommentContent(u).trim())
+              .reverse()
+              .map((update, index) => {
               const isEditing = editingId === update.id;
               const isMyComment = update.canEdit; // Backend flag for ownership
+              const isAdmin = update.authorRole === 'ADMIN';
 
               return (
                 <div key={update.id || index} className="group relative rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-4 hover:border-slate-300 transition-colors">
@@ -253,6 +296,11 @@ const RequestDetailsPanel = ({
                         <p className={`text-sm font-bold ${isMyComment ? 'text-blue-700' : 'text-slate-800'}`}>
                           {update.authorName || 'User'}
                         </p>
+                        {isAdmin && (
+                          <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-indigo-700 border border-indigo-200">
+                            Admin
+                          </span>
+                        )}
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                           {update.authorRole} • {formatDateTime(getCommentUpdatedAt(update) || getCommentCreatedAt(update))}
                         </span>
@@ -314,7 +362,12 @@ const RequestDetailsPanel = ({
           <div className="space-y-3">
             {request.attachments.map((attachment, index) => (
               <div key={`${getAttachmentName(attachment)}-${index}`} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm font-semibold text-slate-800">{getAttachmentName(attachment)}</div>
+                <div 
+                  className="text-sm font-semibold text-slate-800 truncate max-w-[250px]" 
+                  title={getAttachmentName(attachment)}
+                >
+                  {getAttachmentName(attachment)}
+                </div>
                 <div className="flex items-center gap-2">
                   <a
                     href={getViewerUrl(attachment) || '#'}

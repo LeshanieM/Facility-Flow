@@ -1,11 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download } from 'lucide-react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download, PlayCircle, MapPin, Tag, UserCircle2, Calendar, Phone, CheckCircle2, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../services/api';
 import SectionHeader from '../../student-user-ui/components/SectionHeader';
 import SurfaceCard from '../../student-user-ui/components/SurfaceCard';
-import StatusBadge, { INCIDENT_STATUS_OPTIONS } from '../../student-user-ui/components/StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_OPTIONS, PriorityBadge } from '../../student-user-ui/components/StatusBadge';
 import ToastStack from '../../student-user-ui/components/ToastStack';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
@@ -28,6 +29,7 @@ const TechnicianMaintenancePage = () => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [attachmentActionKey, setAttachmentActionKey] = useState('');
+  const detailsRef = useRef(null);
 
   const displayName = useMemo(() => {
     return user?.name || user?.sub || user?.email || 'Technician';
@@ -91,7 +93,7 @@ const TechnicianMaintenancePage = () => {
         if (currentId && nextRequests.some((item) => item.id === currentId)) {
           return currentId;
         }
-        return nextRequests[0]?.id || null;
+        return null;
       });
     } catch (error) {
       pushToast('error', 'Failed to load assigned tickets', error?.response?.data?.message || '');
@@ -117,20 +119,7 @@ const TechnicianMaintenancePage = () => {
       } else {
         setSelectedRequest(null);
       }
-
-      const backendMessage = error?.response?.data?.message || '';
-      const missingDetailRoute = typeof backendMessage === 'string'
-        && backendMessage.includes('No static resource api/technician/tickets/');
-
-      if (missingDetailRoute) {
-        pushToast(
-          'error',
-          'Backend restart required',
-          'The running backend does not yet expose the technician detail route. Showing cached ticket data for now.'
-        );
-      } else {
-        pushToast('error', 'Failed to load ticket details', backendMessage);
-      }
+      pushToast('error', 'Failed to load ticket details', error?.response?.data?.message || '');
     } finally {
       setIsDetailLoading(false);
     }
@@ -143,7 +132,12 @@ const TechnicianMaintenancePage = () => {
   useEffect(() => {
     loadDetails(selectedRequestId);
     resetComposer();
-  }, [selectedRequestId, requests]);
+    
+    // Auto-scroll to details when a ticket is selected
+    if (selectedRequestId && detailsRef.current) {
+        detailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedRequestId]);
 
   const handleSaveComment = async () => {
     if (!commentText.trim() || !selectedRequestId) return;
@@ -197,7 +191,39 @@ const TechnicianMaintenancePage = () => {
     }
   };
 
+  const handleUpdateStatus = async (newStatus) => {
+      try {
+          const payload = { status: newStatus };
+          if (newStatus === 'RESOLVED') {
+              const resolutionNotes = window.prompt('Enter resolution notes (optional):');
+              if (resolutionNotes && resolutionNotes.trim()) {
+                  payload.resolutionNotes = resolutionNotes.trim();
+              }
+          }
+          const res = await api.patch(`/technician/tickets/${selectedRequest.id}/status`, payload);
+          syncTicketState(res.data);
+          pushToast('success', 'Status Updated', `Ticket is now ${newStatus}`);
+      } catch (err) {
+          pushToast('error', 'Update Failed', err?.response?.data?.message || 'Unauthorized');
+      }
+  };
+
   const comments = selectedRequest?.comments || [];
+
+  // Scroll lock for modal
+  useEffect(() => {
+      if (selectedRequestId && selectedRequest) {
+          document.body.style.overflow = 'hidden';
+          document.documentElement.style.overflow = 'hidden';
+      } else {
+          document.body.style.overflow = '';
+          document.documentElement.style.overflow = '';
+      }
+      return () => {
+          document.body.style.overflow = '';
+          document.documentElement.style.overflow = '';
+      };
+  }, [selectedRequestId, selectedRequest]);
 
   return (
     <Layout>
@@ -220,238 +246,266 @@ const TechnicianMaintenancePage = () => {
         </SurfaceCard>
 
         {isLoading ? (
-          <div className="flex h-32 items-center justify-center"><Loader2 className="animate-spin text-blue-600" /></div>
+          <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
         ) : (
-          <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[380px_1fr]">
-            <div className="space-y-3">
-              {requests.length === 0 ? (
-                <SurfaceCard className="p-6 text-sm text-slate-500">
-                  No assigned tickets are available right now.
+          <>
+            {requests.length === 0 ? (
+                <SurfaceCard className="p-12 text-center">
+                    <EmptyState 
+                        icon={<Wrench size={40} className="text-slate-300 mx-auto mb-4" />}
+                        title="No assigned tasks"
+                        description="You currently have no maintenance tickets assigned to you. Enjoy the quiet!"
+                    />
                 </SurfaceCard>
-              ) : requests.map((req) => (
-                <div
-                  key={req.id}
-                  onClick={() => setSelectedRequestId(req.id)}
-                  className={`cursor-pointer rounded-2xl border p-4 transition ${selectedRequestId === req.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200 bg-white hover:border-blue-300'}`}
-                >
-                  <p className="font-semibold">{req.ticketId} - {req.title}</p>
-                  <div className="mt-2 flex justify-between text-xs text-slate-500">
-                    <span>{req.priority}</span>
-                    <StatusBadge status={req.status} className="scale-90 origin-right" />
-                  </div>
-                  <p className="mt-2 text-xs text-slate-400">Updated {formatDateTime(req.updatedAt || req.createdAt)}</p>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {requests.map((req) => (
+                        <div
+                            key={req.id}
+                            onClick={() => setSelectedRequestId(req.id)}
+                            className="group relative bg-white/80 backdrop-blur-sm rounded-[24px] border border-slate-200 p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer flex flex-col h-full"
+                        >
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="p-2 bg-slate-50 rounded-xl group-hover:bg-blue-50 transition-colors">
+                                    <Wrench size={20} className="text-slate-400 group-hover:text-blue-500" />
+                                </div>
+                                <StatusBadge status={req.status} />
+                            </div>
+                            
+                            <h3 className="font-black text-slate-800 text-lg mb-2 line-clamp-2 leading-tight group-hover:text-blue-700 transition-colors">
+                                {req.title}
+                            </h3>
+                            
+                            <div className="mt-auto space-y-3">
+                                <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                                    <MapPin size={12} />
+                                    <span className="truncate">{req.location}</span>
+                                </div>
+                                
+                                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                                    <PriorityBadge priority={req.priority} />
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                        {req.ticketId}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
-              ))}
-            </div>
+            )}
 
-            <div className="space-y-4">
-              {isDetailLoading || (selectedRequestId && !selectedRequest) ? (
-                <SurfaceCard className="flex h-64 items-center justify-center">
-                  <Loader2 className="animate-spin text-blue-600" />
-                </SurfaceCard>
-              ) : !selectedRequest ? (
-                <SurfaceCard className="p-6 text-sm text-slate-500">
-                  Select an assigned ticket to review comments and progress notes.
-                </SurfaceCard>
-              ) : (
-                <SurfaceCard className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h2 className="text-xl font-black">{selectedRequest.title}</h2>
-                      <p className="mt-1 text-slate-500">{selectedRequest.location} - {selectedRequest.category}</p>
-                    </div>
-                    <StatusBadge status={selectedRequest.status} />
-                  </div>
-
-                  <div className="mt-6 flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 rounded-2xl border border-blue-200 bg-blue-50 p-4">
-                      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-800"><Clock size={14}/> SLA Metrics</p>
-                      <div className="mt-3 grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-blue-600">Response Due</p>
-                          <p className="font-semibold text-blue-900 text-xs">{formatDateTime(selectedRequest.slaResponseDeadline)}</p>
-                          <p className="mt-2 text-[11px] text-slate-500">Actual: {formatDateTimeOrFallback(selectedRequest.actualFirstResponseAt)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-blue-600">Resolution Due</p>
-                          <p className="font-semibold text-blue-900 text-xs">{formatDateTime(selectedRequest.slaResolutionDeadline)}</p>
-                          <p className="mt-2 text-[11px] text-slate-500">Actual: {formatDateTimeOrFallback(selectedRequest.actualResolutionAt)}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-blue-600">First Response Time</p>
-                          <p className="font-semibold text-blue-900 text-xs">{formatDurationMinutes(selectedRequest.responseDurationMinutes)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-blue-600">Resolution Time</p>
-                          <p className="font-semibold text-blue-900 text-xs">{formatDurationMinutes(selectedRequest.resolutionDurationMinutes)}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 inline-block rounded bg-blue-100 px-3 py-1 text-[10px] font-bold text-blue-900 uppercase">
-                        SLA: {selectedRequest.slaStatus?.replace(/_/g, ' ') || 'ACTIVE'}
-                      </div>
-                    </div>
-
-                    <div className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">Update Status</p>
-                        <div className="mt-3 flex gap-2">
-                            <select 
-                                value={selectedRequest.status}
-                                onChange={async (e) => {
-                                    const newStatus = e.target.value;
-                                    try {
-                                        const res = await api.patch(`/technician/tickets/${selectedRequest.id}/status`, { status: newStatus });
-                                        syncTicketState(res.data);
-                                        pushToast('success', 'Status Updated', `Ticket is now ${newStatus}`);
-                                    } catch (err) {
-                                        pushToast('error', 'Update Failed', err?.response?.data?.message || 'Unauthorized');
-                                    }
-                                }}
-                                className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold shadow-sm outline-none focus:ring-2 focus:ring-blue-100"
+            {/* Ticket Details Modal */}
+            {selectedRequestId && selectedRequest && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white w-full max-w-5xl max-h-[90vh] rounded-[32px] shadow-2xl overflow-hidden flex flex-col relative animate-in zoom-in-95 duration-300">
+                        {/* Modal Header */}
+                        <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b border-slate-100 px-8 py-6 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600">
+                                    <Wrench size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-slate-900 leading-tight">{selectedRequest.title}</h2>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{selectedRequest.ticketId}</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-300" />
+                                        <span className="text-xs font-medium text-slate-500">{selectedRequest.location}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => { setSelectedRequestId(null); setSelectedRequest(null); }}
+                                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
                             >
-                                {INCIDENT_STATUS_OPTIONS.filter((status) => status.value !== 'REJECTED').map((status) => (
-                                  <option key={status.value} value={status.value}>{status.label}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="mt-3 text-[10px] text-slate-400 font-medium italic">
-                            Move ticket through the workflow as you progress.
-                        </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                            <p className="text-[10px] uppercase font-bold text-slate-400">Preferred Contact</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-700">{selectedRequest.preferredContact || 'Not provided'}</p>
-                        </div>
-                        <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
-                            <p className="text-[10px] uppercase font-bold text-slate-400">Created At</p>
-                            <p className="mt-1 text-sm font-semibold text-slate-700">{formatDateTime(selectedRequest.createdAt)}</p>
-                        </div>
-                  </div>
-
-                  <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700"><Paperclip size={14}/> Attachments</p>
-                    {selectedRequest.attachments?.length ? (
-                      <div className="mt-3 space-y-3">
-                        {selectedRequest.attachments.map((attachment, index) => (
-                          <div
-                            key={`${getAttachmentName(attachment)}-${index}`}
-                            className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div className="inline-flex items-center gap-2 text-sm font-medium text-slate-700">
-                              <Paperclip size={14} className="text-slate-400" />
-                              <span>{getAttachmentName(attachment)}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <a
-                                href={getViewerUrl(attachment) || '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className={`inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 ${!attachment?.viewUrl ? 'cursor-not-allowed opacity-50 pointer-events-none' : ''}`}
-                              >
-                                <Eye size={14} />
-                                View
-                              </a>
-                              <button
-                                type="button"
-                                onClick={() => handleAttachmentAction(attachment, 'download')}
-                                disabled={!attachment?.downloadUrl || attachmentActionKey === `${attachment?.id || getAttachmentName(attachment)}-download`}
-                                className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                <Download size={14} />
-                                Download
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="mt-3 text-sm text-slate-500">No attachments were uploaded for this ticket.</p>
-                    )}
-                  </div>
-
-                  <div className="mt-8">
-                    <h3 className="mb-4 flex items-center gap-2 font-bold"><MessageSquare size={16}/> Comments & Notes</h3>
-                    <div className="mb-6 space-y-3">
-                      {comments.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                          No comments have been added to this ticket yet.
-                        </div>
-                      ) : comments.map((comment) => (
-                        <div key={comment.id} className="relative rounded-xl border border-slate-200 bg-slate-50 p-4">
-                          <div className="flex justify-between items-start gap-3">
-                            <div>
-                              <p className="text-xs font-bold text-slate-700">
-                                {comment.authorName}
-                                <span className="ml-1 font-normal text-slate-400">({comment.authorRole})</span>
-                                <span className={`ml-2 rounded px-1.5 py-0.5 text-[10px] uppercase ${comment.visibleToRequester ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
-                                  {comment.visibleToRequester ? 'Visible to requester' : 'Internal only'}
-                                </span>
-                              </p>
-                              <p className="mt-1 text-[11px] text-slate-400">
-                                Created {formatDateTime(getCommentCreatedAt(comment))}
-                                {getCommentUpdatedAt(comment) && getCommentUpdatedAt(comment) !== getCommentCreatedAt(comment) ? ` • Updated ${formatDateTime(getCommentUpdatedAt(comment))}` : ''}
-                              </p>
-                            </div>
-                            {canManageComment(comment) && (
-                              <div className="flex items-center gap-3">
-                                {(comment.canEdit ?? true) && (
-                                  <button onClick={() => beginEditing(comment)} className="text-blue-500 hover:text-blue-700 transition-colors">
-                                    <Edit2 size={14} />
-                                  </button>
-                                )}
-                                {(comment.canDelete ?? true) && (
-                                  <button onClick={() => handleDeleteComment(comment.id)} className="text-rose-500 hover:text-rose-700 transition-colors">
-                                    <Trash2 size={14} />
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <p className="mt-2 text-sm text-slate-800 whitespace-pre-wrap">{getCommentContent(comment)}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 p-4">
-                      <p className="mb-2 text-sm font-bold">{editingCommentId ? 'Edit Comment' : 'Add Comment'}</p>
-                      <textarea
-                        value={commentText}
-                        onChange={(event) => setCommentText(event.target.value)}
-                        className="w-full rounded-lg border border-slate-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        placeholder="Type your comment..."
-                        rows={3}
-                      />
-                      <div className="mt-3 flex items-center justify-between">
-                        <label className="flex items-center gap-2 text-sm text-slate-600">
-                          <input
-                            type="checkbox"
-                            checked={visibleToRequester}
-                            onChange={(event) => setVisibleToRequester(event.target.checked)}
-                            className="rounded border-slate-300 text-blue-600"
-                          />
-                          Visible to Requester
-                        </label>
-                        <div className="flex gap-2">
-                          {editingCommentId && (
-                            <button onClick={resetComposer} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100">
-                              Cancel
+                                <X size={24} />
                             </button>
-                          )}
-                          <button onClick={handleSaveComment} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-                            Save
-                          </button>
                         </div>
-                      </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                {/* Main Content */}
+                                <div className="lg:col-span-2 space-y-8">
+                                    {/* Description */}
+                                    <div>
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Incident Description</h4>
+                                        <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 leading-relaxed text-slate-700">
+                                            {selectedRequest.description}
+                                        </div>
+                                    </div>
+
+                                    {/* Attachments */}
+                                    <div>
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 flex items-center gap-2">
+                                            <Paperclip size={14} /> Attachments
+                                        </h4>
+                                        {selectedRequest.attachments?.length ? (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                {selectedRequest.attachments.map((attachment, idx) => (
+                                                    <div key={idx} className="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-xl">
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <Paperclip size={16} className="text-slate-400 shrink-0" />
+                                                            <span className="text-xs font-bold text-slate-700 truncate">{getAttachmentName(attachment)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <a href={getViewerUrl(attachment)} target="_blank" rel="noreferrer" className="p-1.5 hover:bg-slate-100 rounded text-blue-600"><Eye size={16} /></a>
+                                                            <button onClick={() => handleAttachmentAction(attachment, 'download')} className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><Download size={16} /></button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs font-medium text-slate-400 italic">No files attached to this request.</p>
+                                        )}
+                                    </div>
+
+                                    {/* Comments Section */}
+                                    <div className="pt-4 border-t border-slate-100">
+                                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-4 flex items-center gap-2">
+                                            <MessageSquare size={14} /> Activity & Notes
+                                        </h4>
+                                        
+                                        <div className="space-y-4 mb-6">
+                                            {comments.length === 0 ? (
+                                                <p className="text-xs text-slate-400 italic">No activity recorded yet.</p>
+                                            ) : [...comments].reverse().map(comment => (
+                                                <div key={comment.id} className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs font-black text-slate-800">{comment.authorName}</span>
+                                                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${comment.authorRole === 'USER' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                                                {comment.authorRole === 'USER' ? 'Requester' : 'Team'}
+                                                            </span>
+                                                            <span className="text-[10px] text-slate-400">{formatDateTime(getCommentCreatedAt(comment))}</span>
+                                                        </div>
+                                                        {canManageComment(comment) && (
+                                                            <div className="flex items-center gap-1">
+                                                                <button onClick={() => beginEditing(comment)} className="p-1 hover:bg-white rounded text-slate-400 hover:text-blue-600 transition-colors"><Edit2 size={12} /></button>
+                                                                <button onClick={() => handleDeleteComment(comment.id)} className="p-1 hover:bg-white rounded text-slate-400 hover:text-rose-600 transition-colors"><Trash2 size={12} /></button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-sm text-slate-600 whitespace-pre-wrap">{getCommentContent(comment)}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Comment Composer */}
+                                        <div className="bg-white border border-blue-100 rounded-2xl p-5 shadow-sm">
+                                            <textarea 
+                                                value={commentText}
+                                                onChange={(e) => setCommentText(e.target.value)}
+                                                className="w-full text-sm focus:outline-none min-h-[80px] resize-none"
+                                                placeholder="Add a progress note or update..."
+                                            />
+                                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-50">
+                                                <label className="flex items-center gap-2 text-xs font-bold text-slate-500 cursor-pointer">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={visibleToRequester}
+                                                        onChange={(e) => setVisibleToRequester(e.target.checked)}
+                                                        className="rounded text-blue-600"
+                                                    />
+                                                    Share with Requester
+                                                </label>
+                                                <div className="flex gap-2">
+                                                    {editingCommentId && <button onClick={resetComposer} className="px-4 py-2 text-xs font-bold text-slate-500">Cancel</button>}
+                                                    <button 
+                                                        onClick={handleSaveComment}
+                                                        className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                                                    >
+                                                        {editingCommentId ? 'Update' : 'Post Note'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Sidebar Stats */}
+                                <div className="space-y-6">
+                                    {/* Action Panel */}
+                                    <div className="bg-slate-900 rounded-[28px] p-6 text-white shadow-xl">
+                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Task Management</h4>
+                                        <div className="space-y-4">
+                                            {(selectedRequest.status === 'ASSIGNED' || selectedRequest.status === 'OPEN') ? (
+                                                <button
+                                                    onClick={() => handleUpdateStatus('IN_PROGRESS')}
+                                                    className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 rounded-2xl flex items-center justify-center gap-3 font-black text-sm shadow-lg shadow-indigo-500/30 transition-all"
+                                                >
+                                                    <PlayCircle size={20} />
+                                                    Start My Work
+                                                </button>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    <div className="text-[10px] text-slate-500 uppercase font-bold px-1">Update Progress</div>
+                                                    <select 
+                                                        value={selectedRequest.status}
+                                                        onChange={(e) => handleUpdateStatus(e.target.value)}
+                                                        className="w-full bg-slate-800 border-none rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-indigo-400 outline-none"
+                                                    >
+                                                        {INCIDENT_STATUS_OPTIONS.filter((s) => !['OPEN', 'REJECTED'].includes(s.value)).map(s => (
+                                                            <option key={s.value} value={s.value}>{s.label}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                            
+                                            {selectedRequest.status !== 'RESOLVED' && selectedRequest.status !== 'CLOSED' && (
+                                                <button
+                                                    onClick={() => handleUpdateStatus('RESOLVED')}
+                                                    className="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl flex items-center justify-center gap-2 font-bold text-xs transition-all"
+                                                >
+                                                    <CheckCircle2 size={16} className="text-emerald-400" />
+                                                    Mark as Resolved
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Info Grid */}
+                                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-6">
+                                        <div>
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Priority</h5>
+                                            <PriorityBadge priority={selectedRequest.priority} />
+                                        </div>
+                                        <div>
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Category</h5>
+                                            <p className="text-sm font-bold text-slate-800 uppercase tracking-tight">{selectedRequest.category}</p>
+                                        </div>
+                                        <div>
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Requested By</h5>
+                                            <p className="text-sm font-bold text-slate-800">{selectedRequest.submittedByName || 'Student'}</p>
+                                            <p className="text-[10px] text-slate-500 mt-1">{selectedRequest.preferredContact || 'No contact provided'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* SLA Stats */}
+                                    <div className="bg-blue-50/50 rounded-3xl p-6 border border-blue-100">
+                                        <h5 className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-4">SLA Benchmarks</h5>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-blue-600 uppercase">Resolution Target</p>
+                                                <p className="text-xs font-black text-blue-900 mt-1">{formatDateTime(selectedRequest.slaResolutionDeadline)}</p>
+                                            </div>
+                                            <div className="pt-3 border-t border-blue-100">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-[10px] font-bold text-blue-600 uppercase">Status</span>
+                                                    <span className="text-[10px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase">
+                                                        {selectedRequest.slaStatus || 'Active'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                  </div>
-                </SurfaceCard>
-              )}
-            </div>
-          </div>
+                </div>,
+                document.body
+            )}
+          </>
         )}
       </div>
     </Layout>

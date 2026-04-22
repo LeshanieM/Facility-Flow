@@ -61,6 +61,18 @@ export const useAdminMaintenanceDashboard = () => {
         }
     };
 
+    const addComment = async (ticketId, commentPayload) => {
+        try {
+            const response = await api.post(`/admin/tickets/${ticketId}/comments`, commentPayload);
+            setTickets(current => current.map(t => t.id === ticketId ? { ...t, ...response.data } : t));
+            return response.data;
+        } catch (err) {
+            console.error('Failed to add admin comment', err);
+            alert(err?.response?.data?.message || 'Failed to add comment.');
+            return null;
+        }
+    };
+
     return {
         tickets,
         technicians,
@@ -68,6 +80,7 @@ export const useAdminMaintenanceDashboard = () => {
         error,
         changeStatus,
         assignTicket,
+        addComment,
         refreshTickets: loadTickets
     };
 };

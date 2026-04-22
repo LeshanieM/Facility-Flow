@@ -26,6 +26,7 @@ public class IncidentEnums {
 
     private static final Set<IncidentStatus> ACTIVE_WORKFLOW_STATUSES = EnumSet.of(
             IncidentStatus.OPEN,
+            IncidentStatus.ASSIGNED,
             IncidentStatus.IN_PROGRESS,
             IncidentStatus.RESOLVED,
             IncidentStatus.CLOSED,
@@ -39,7 +40,7 @@ public class IncidentEnums {
 
         return switch (status) {
             case SUBMITTED, UNDER_REVIEW -> IncidentStatus.OPEN;
-            case ASSIGNED, ON_HOLD -> IncidentStatus.IN_PROGRESS;
+            case ON_HOLD -> IncidentStatus.IN_PROGRESS;
             default -> status;
         };
     }

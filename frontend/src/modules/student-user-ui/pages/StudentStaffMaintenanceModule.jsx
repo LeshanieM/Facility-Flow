@@ -45,6 +45,7 @@ const getDisplayName = (user) => {
 const StudentStaffMaintenanceModule = () => {
   const { user } = useAuth();
   const formRef = useRef(null);
+  const detailsRef = useRef(null);
   const [filters, setFilters] = useState({ query: '', status: 'ALL' });
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -102,6 +103,12 @@ const StudentStaffMaintenanceModule = () => {
     }
   }, [activeTab, clearSubmitStatus]);
 
+  useEffect(() => {
+    if (selectedRequestId && detailsRef.current) {
+        detailsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [selectedRequestId]);
+
   const filteredRequests = useMemo(() => {
     const query = filters.query.trim().toLowerCase();
 
@@ -126,10 +133,11 @@ const StudentStaffMaintenanceModule = () => {
   const displaySummary = useMemo(() => {
     const totalSubmitted = requests.length;
     const pending = requests.filter((request) => request.status === 'OPEN').length;
-    const inProgress = requests.filter((request) => request.status === 'IN_PROGRESS').length;
+    const inProgress = requests.filter((request) => request.status === 'IN_PROGRESS' || request.status === 'ASSIGNED').length;
     const completed = requests.filter((request) =>
       ['RESOLVED', 'CLOSED'].includes(request.status)
     ).length;
+    const rejected = requests.filter((request) => request.status === 'REJECTED').length;
 
     return {
       ...summary,
@@ -137,6 +145,7 @@ const StudentStaffMaintenanceModule = () => {
       pending,
       inProgress,
       completed,
+      rejected,
     };
   }, [requests, summary]);
 
@@ -246,7 +255,7 @@ const StudentStaffMaintenanceModule = () => {
           <>
             {activeTab === 'overview' && (
               <div className="space-y-8 relative z-10">
-                <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                   <SummaryCard
                     label="Total requests"
                     value={displaySummary.totalSubmitted}
@@ -263,13 +272,19 @@ const StudentStaffMaintenanceModule = () => {
                     label="In Progress"
                     value={displaySummary.inProgress}
                     hint="Currently being worked on"
-                    accentClass="bg-orange-50 text-orange-700"
+                    accentClass="bg-indigo-50 text-indigo-700"
                   />
                   <SummaryCard
                     label="Completed"
                     value={displaySummary.completed}
                     hint="Resolved requests"
                     accentClass="bg-emerald-50 text-emerald-700"
+                  />
+                  <SummaryCard
+                    label="Rejected"
+                    value={displaySummary.rejected}
+                    hint="Tickets not approved"
+                    accentClass="bg-rose-50 text-rose-700"
                   />
                 </section>
 
@@ -345,7 +360,7 @@ const StudentStaffMaintenanceModule = () => {
                 />
                 </div>
 
-                <div className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60">
+                <div ref={detailsRef} className="bg-white/80 backdrop-blur-md rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/60">
                   <RequestDetailsPanel 
                     request={selectedRequest} 
                     isLoading={isDetailLoading} 

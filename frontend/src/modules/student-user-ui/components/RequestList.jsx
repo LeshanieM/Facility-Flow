@@ -2,7 +2,7 @@ import React from 'react';
 import { Calendar, ClipboardList, Loader2, MapPin, Search, Filter, Plus, RefreshCw } from 'lucide-react';
 import EmptyState from './EmptyState';
 import SectionHeader from './SectionHeader';
-import StatusBadge, { INCIDENT_STATUS_OPTIONS } from './StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_OPTIONS, PriorityBadge } from './StatusBadge';
 import SurfaceCard from './SurfaceCard';
 import { formatDateTime } from '../../maintenance/utils/dateTime';
 
@@ -102,9 +102,7 @@ const RequestList = ({ requests, selectedRequestId, onSelect, isLoading, filters
                       <span className="rounded-full bg-white px-3 py-1 font-medium text-slate-600">
                         {request.category}
                       </span>
-                      <span className="rounded-full bg-white px-3 py-1 font-medium text-slate-600">
-                        {request.priority}
-                      </span>
+                      <PriorityBadge priority={request.priority} />
                       <span className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-medium text-slate-600">
                         <MapPin size={14} />
                         {request.location}{request.room ? ` (${request.room})` : ''}
