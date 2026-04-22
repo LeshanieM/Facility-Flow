@@ -11,6 +11,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import axios from 'axios';
+import CONFIG from '../config';
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuth();
@@ -50,7 +51,7 @@ const ProfilePage = () => {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.put(
-        'http://localhost:8092/api/user/profile',
+        `${CONFIG.API_BASE_URL}/user/profile`,
         formData,
         {
           headers: {
