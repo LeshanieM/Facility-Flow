@@ -20,6 +20,7 @@ export const AdminMaintenancePage = () => {
     const [attachmentActionKey, setAttachmentActionKey] = useState('');
     const [adminComment, setAdminComment] = useState('');
     const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+    const [visibleToRequester, setVisibleToRequester] = useState(false);
     const [actionModal, setActionModal] = useState({ open: false, type: '', status: '', title: '', value: '' });
     const styleRef = useRef(null);
 
@@ -146,10 +147,14 @@ export const AdminMaintenancePage = () => {
         if (!adminComment.trim() || isSubmittingComment) return;
 
         setIsSubmittingComment(true);
-        const updated = await addComment(selectedTicket.id, { message: adminComment.trim(), visibleToRequester: true });
+        const updated = await addComment(selectedTicket.id, { 
+            message: adminComment.trim(), 
+            visibleToRequester: visibleToRequester 
+        });
         if (updated) {
             setSelectedTicket(updated);
             setAdminComment('');
+            setVisibleToRequester(false); // Default to internal
         }
         setIsSubmittingComment(false);
     };
@@ -457,7 +462,16 @@ export const AdminMaintenancePage = () => {
                                         rows={2}
                                         className="w-full rounded-2xl border border-slate-200 bg-white p-4 pb-14 text-sm focus:border-primary/30 focus:ring-4 focus:ring-primary/5 outline-none transition-all resize-none shadow-sm"
                                     />
-                                    <div className="absolute bottom-3 right-3">
+                                    <div className="absolute bottom-3 left-4 right-3 flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={visibleToRequester}
+                                                onChange={(e) => setVisibleToRequester(e.target.checked)}
+                                                className="rounded text-primary focus:ring-primary border-slate-300"
+                                            />
+                                            Share with Requester
+                                        </label>
                                         <button
                                             type="submit"
                                             disabled={isSubmittingComment || !adminComment.trim()}

@@ -83,6 +83,7 @@ export const useStudentMaintenanceDashboard = () => {
     }
 
     try {
+
       const [summaryData, requestsData, notificationsData, resourcesData] = await Promise.all([
         getDashboardSummary(),
         getMyRequests(),
@@ -94,10 +95,6 @@ export const useStudentMaintenanceDashboard = () => {
       setRequests(Array.isArray(requestsData) ? requestsData : []);
       setNotifications(Array.isArray(notificationsData) ? notificationsData : []);
       setResources(Array.isArray(resourcesData) ? resourcesData : []);
-
-      if (!selectedRequestId && Array.isArray(requestsData) && requestsData.length > 0) {
-        setSelectedRequestId(requestsData[0].id);
-      }
     } catch (error) {
       const message = extractErrorMessage(error, 'Unable to load your incident ticketing and maintenance dashboard right now.');
       setPageError(message);
@@ -111,7 +108,6 @@ export const useStudentMaintenanceDashboard = () => {
   useEffect(() => {
     loadDashboard();
   }, []);
-
   useEffect(() => {
     if (!selectedRequestId) {
       setSelectedRequest(null);

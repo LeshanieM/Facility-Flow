@@ -93,7 +93,7 @@ const TechnicianMaintenancePage = () => {
         if (currentId && nextRequests.some((item) => item.id === currentId)) {
           return currentId;
         }
-        return nextRequests[0]?.id || null;
+        return null;
       });
     } catch (error) {
       pushToast('error', 'Failed to load assigned tickets', error?.response?.data?.message || '');
