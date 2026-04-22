@@ -15,7 +15,13 @@ export default defineConfig(({ mode }) => {
           target: backendTarget,
           changeOrigin: true,
         },
-        '/oauth2': {
+        // Only proxy the OAuth2 login initiation — NOT /oauth2/redirect (that's a frontend React route)
+        '/oauth2/authorization': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
+        // Spring Security's internal OAuth2 callback endpoint
+        '/login/oauth2': {
           target: backendTarget,
           changeOrigin: true,
         },
