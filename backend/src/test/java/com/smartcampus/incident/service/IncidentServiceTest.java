@@ -13,6 +13,7 @@ import com.smartcampus.incident.model.Incident;
 import com.smartcampus.incident.model.IncidentComment;
 import com.smartcampus.incident.repository.IncidentActivityLogRepository;
 import com.smartcampus.incident.repository.IncidentRepository;
+import com.smartcampus.notification.service.NotificationService;
 import com.smartcampus.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,8 @@ class IncidentServiceTest {
     @Mock
     private IncidentActivityLogRepository activityLogRepository;
 
+    @Mock
+    private NotificationService notificationService;
     @Mock
     private SlaService slaService;
 
