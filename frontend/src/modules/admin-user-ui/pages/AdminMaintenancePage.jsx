@@ -6,6 +6,8 @@ import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPl
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 import StatusBadge, { INCIDENT_STATUS_OPTIONS, formatIncidentStatusLabel, PriorityBadge, getPriorityConfig } from '../../student-user-ui/components/StatusBadge';
+import { AnalyticsTabToggle } from '../../maintenance/components/DashboardAnalytics';
+import AdminIncidentAnalyticsOverview from '../components/AdminIncidentAnalyticsOverview';
 
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
 const getCommentCreatedAt = (comment) => comment?.createdAt || comment?.timestamp || null;
@@ -14,6 +16,7 @@ const getCommentUpdatedAt = (comment) => comment?.updatedAt || comment?.editedAt
 export const AdminMaintenancePage = () => {
     const { tickets, technicians, isLoading, error, changeStatus, assignTicket, addComment, refreshTickets } = useAdminMaintenanceDashboard();
     const [filter, setFilter] = useState('ALL');
+    const [dashTab, setDashTab] = useState('analytics');
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [pendingTechAssignment, setPendingTechAssignment] = useState('');
     const [pendingStatus, setPendingStatus] = useState('');
@@ -191,8 +194,28 @@ export const AdminMaintenancePage = () => {
                     </div>
                 </div>
 
+                {/* Analytics / Tickets Tab Toggle */}
+                <div className="flex items-center justify-between gap-4 relative z-10">
+                    <AnalyticsTabToggle
+                        activeTab={dashTab}
+                        onTabChange={setDashTab}
+                        analyticsLabel="📊 Analytics"
+                        ticketsLabel="🎫 Ticket Queue"
+                    />
+                </div>
+
+                {/* Analytics Dashboard */}
+                {dashTab === 'analytics' && (
+                    <AdminIncidentAnalyticsOverview
+                        tickets={tickets}
+                        isLoading={isLoading}
+                        error={error}
+                        onRefresh={refreshTickets}
+                    />
+                )}
+
                 {/* Dashboard Datatable */}
-                <div className="glass-card overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 bg-white/60 backdrop-blur-xl rounded-[24px] relative z-10">
+                {dashTab === 'tickets' && <div className="glass-card overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 bg-white/60 backdrop-blur-xl rounded-[24px] relative z-10">
                     {/* Toolbar */}
                     <div className="p-4 border-b border-white/50 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/40">
                         <div className="flex items-center gap-2">
@@ -304,7 +327,7 @@ export const AdminMaintenancePage = () => {
                             </table>
                         )}
                     </div>
-                </div>
+                </div>}
             </div>
 
             {/* Details & Assignment Modal - Using Portal for proper scroll behavior and layout */}

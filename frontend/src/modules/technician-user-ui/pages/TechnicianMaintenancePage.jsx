@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download, PlayCircle, MapPin, Tag, UserCircle2, Calendar, Phone, CheckCircle2, X } from 'lucide-react';
+import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download, PlayCircle, MapPin, Tag, UserCircle2, Calendar, Phone, CheckCircle2, X, BarChart3, Zap, AlertCircle, Layers } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
@@ -10,6 +10,10 @@ import StatusBadge, { INCIDENT_STATUS_OPTIONS, PriorityBadge } from '../../stude
 import ToastStack from '../../student-user-ui/components/ToastStack';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
+import {
+  KpiCard, DistributionBar, InsightList, AnalyticsSection, AnalyticsTabToggle,
+  buildStatusSegments, buildPrioritySegments,
+} from '../../maintenance/components/DashboardAnalytics';
 
 const sortTickets = (items) => [...items].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
@@ -29,6 +33,7 @@ const TechnicianMaintenancePage = () => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [attachmentActionKey, setAttachmentActionKey] = useState('');
+  const [dashTab, setDashTab] = useState('analytics');
   const detailsRef = useRef(null);
 
   const displayName = useMemo(() => {
@@ -210,6 +215,40 @@ const TechnicianMaintenancePage = () => {
 
   const comments = selectedRequest?.comments || [];
 
+  /* ─── Analytics Computations (frontend-only, from existing requests) ─── */
+  const analytics = useMemo(() => {
+    const total = requests.length;
+    const pending = requests.filter(r => r.status === 'OPEN' || r.status === 'ASSIGNED').length;
+    const inProgress = requests.filter(r => r.status === 'IN_PROGRESS').length;
+    const completed = requests.filter(r => r.status === 'RESOLVED' || r.status === 'CLOSED').length;
+
+    const statusSegments = buildStatusSegments(requests);
+    const prioritySegments = buildPrioritySegments(requests);
+
+    const recentlyUpdated = [...requests]
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 5)
+      .map(r => ({
+        key: r.id,
+        label: r.title,
+        sublabel: `${r.ticketId || ''} • ${r.location || ''}`.replace(/^ • /, ''),
+        value: (r.status || '').replace(/_/g, ' '),
+      }));
+
+    const needingAction = requests
+      .filter(r => r.status === 'ASSIGNED' || r.status === 'OPEN')
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .slice(0, 5)
+      .map(r => ({
+        key: r.id,
+        label: r.title,
+        sublabel: r.location || '',
+        value: (r.priority || 'Medium'),
+      }));
+
+    return { total, pending, inProgress, completed, statusSegments, prioritySegments, recentlyUpdated, needingAction };
+  }, [requests]);
+
   // Scroll lock for modal
   useEffect(() => {
       if (selectedRequestId && selectedRequest) {
@@ -249,6 +288,70 @@ const TechnicianMaintenancePage = () => {
           <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
         ) : (
           <>
+            {/* Analytics / Tickets Tab Toggle */}
+            <div className="flex items-center gap-4">
+              <AnalyticsTabToggle
+                activeTab={dashTab}
+                onTabChange={setDashTab}
+                analyticsLabel="📊 Analytics"
+                ticketsLabel="🔧 My Tasks"
+              />
+            </div>
+
+            {/* Analytics Dashboard */}
+            {dashTab === 'analytics' && (
+              <div className="space-y-6 animate-fade-in">
+                {/* KPI Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <KpiCard icon={<Wrench size={18} />} label="My Assigned" value={analytics.total} accent="blue" />
+                  <KpiCard icon={<Clock size={18} />} label="Pending / Open" value={analytics.pending} accent="amber" />
+                  <KpiCard icon={<Zap size={18} />} label="In Progress" value={analytics.inProgress} accent="orange" />
+                  <KpiCard icon={<CheckCircle2 size={18} />} label="Completed" value={analytics.completed} accent="emerald" />
+                </div>
+
+                {/* Work Insights */}
+                <AnalyticsSection>
+                  <div className="flex items-center gap-2 mb-2">
+                    <BarChart3 size={16} className="text-slate-400" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Work Insights</h3>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <DistributionBar title="Tickets by Status" segments={analytics.statusSegments} />
+                    <DistributionBar title="Tickets by Priority" segments={analytics.prioritySegments} />
+                  </div>
+                </AnalyticsSection>
+
+                {/* Activity */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <AnalyticsSection>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Layers size={16} className="text-slate-400" />
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Recently Updated</h3>
+                    </div>
+                    <InsightList
+                      title="Last 5 Updated Tickets"
+                      items={analytics.recentlyUpdated}
+                      emptyMessage="No recent updates"
+                    />
+                  </AnalyticsSection>
+
+                  <AnalyticsSection>
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle size={16} className="text-amber-500" />
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Needs Action</h3>
+                    </div>
+                    <InsightList
+                      title="Not Yet Started"
+                      items={analytics.needingAction}
+                      emptyMessage="All tasks have been started 🎉"
+                    />
+                  </AnalyticsSection>
+                </div>
+              </div>
+            )}
+
+            {/* Existing Ticket Cards */}
+            {dashTab === 'tickets' && (<>
             {requests.length === 0 ? (
                 <SurfaceCard className="p-12 text-center">
                     <EmptyState 
@@ -505,6 +608,7 @@ const TechnicianMaintenancePage = () => {
                 </div>,
                 document.body
             )}
+            </>)}
           </>
         )}
       </div>

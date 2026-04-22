@@ -6,6 +6,10 @@ import { ClipboardList, Clock, CheckCircle, MapPin, X, AlertCircle, Edit2, Trash
 
 const TechDashboard = () => {
     const { user } = useAuth();
+    const firstName = String(user?.name || user?.email || user?.sub || 'Technician')
+        .trim()
+        .split(' ')[0]
+        .split('@')[0];
     const [tasks, setTasks] = useState([]);
     const [filter, setFilter] = useState('ALL');
     const [loading, setLoading] = useState(true);
@@ -152,7 +156,7 @@ const TechDashboard = () => {
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 relative z-10">
                     <div>
                         <h1 className="text-4xl font-black text-slate-900 tracking-tight drop-shadow-sm">Technician Console</h1>
-                        <p className="text-slate-600 font-medium text-lg mt-1">Hello, <span className="text-emerald-600 font-bold">{user?.sub?.split('@')[0]}</span>. Your operations workstation is ready.</p>
+                        <p className="text-slate-600 font-medium text-lg mt-1">Welcome, <span className="text-emerald-600 font-bold">{firstName}</span>. Your operations workstation is ready.</p>
                     </div>
                 </div>
 
