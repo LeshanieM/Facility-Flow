@@ -62,6 +62,18 @@ const parseHourLabel = (timeValue) => {
   return `${String(hour).padStart(2, '0')}:00`;
 };
 
+const SectionHeading = ({ icon, title }) => (
+  <div className="mb-4 flex items-center gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 px-4 py-3 shadow-lg shadow-slate-900/10">
+    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-white ring-1 ring-white/20">
+      {icon}
+    </div>
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/60">Admin Overview</p>
+      <h3 className="text-sm font-black uppercase tracking-[0.16em] text-white">{title}</h3>
+    </div>
+  </div>
+);
+
 const AdminOverviewDashboard = () => {
   const [users, setUsers] = useState(EMPTY_ARRAY);
   const [resources, setResources] = useState(EMPTY_ARRAY);
@@ -253,10 +265,7 @@ const AdminOverviewDashboard = () => {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <AnalyticsSection>
-          <div className="mb-2 flex items-center gap-2">
-            <UserCog size={16} className="text-slate-400" />
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Users Overview</h3>
-          </div>
+          <SectionHeading icon={<UserCog size={18} />} title="Users Overview" />
           <div className="grid grid-cols-3 gap-3">
             <KpiCard label="Admins" value={analytics.adminUsers} accent="indigo" />
             <KpiCard label="Technicians" value={analytics.technicianUsers} accent="emerald" />
@@ -266,10 +275,7 @@ const AdminOverviewDashboard = () => {
         </AnalyticsSection>
 
         <AnalyticsSection>
-          <div className="mb-2 flex items-center gap-2">
-            <Building2 size={16} className="text-slate-400" />
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Facilities Snapshot</h3>
-          </div>
+          <SectionHeading icon={<Building2 size={18} />} title="Facilities Snapshot" />
           <div className="grid grid-cols-3 gap-3">
             <KpiCard label="Total" value={analytics.totalResources} accent="blue" />
             <KpiCard label="Active" value={analytics.activeResources} accent="emerald" />
@@ -286,10 +292,7 @@ const AdminOverviewDashboard = () => {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <AnalyticsSection>
-          <div className="mb-2 flex items-center gap-2">
-            <Ticket size={16} className="text-slate-400" />
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Incident Operations</h3>
-          </div>
+          <SectionHeading icon={<Ticket size={18} />} title="Incident Operations" />
           <DistributionBar title="Ticket Status" segments={analytics.ticketStatusSegments} />
           <InsightList
             title="Most Reported Locations"
@@ -304,10 +307,7 @@ const AdminOverviewDashboard = () => {
         </AnalyticsSection>
 
         <AnalyticsSection>
-          <div className="mb-2 flex items-center gap-2">
-            <TrendingUp size={16} className="text-slate-400" />
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Booking Usage Analytics</h3>
-          </div>
+          <SectionHeading icon={<TrendingUp size={18} />} title="Booking Usage Analytics" />
           <div className="grid grid-cols-3 gap-3">
             <KpiCard label="Total" value={analytics.totalBookings} accent="slate" />
             <KpiCard label="Pending" value={analytics.pendingBookings} accent="amber" />
@@ -333,10 +333,7 @@ const AdminOverviewDashboard = () => {
       </div>
 
       <AnalyticsSection>
-        <div className="mb-2 flex items-center gap-2">
-          <Activity size={16} className="text-slate-400" />
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-900">Operations Highlights</h3>
-        </div>
+        <SectionHeading icon={<Activity size={18} />} title="Operations Highlights" />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <InsightList
             title="Peak Booking Hours"
