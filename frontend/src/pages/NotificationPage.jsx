@@ -4,7 +4,7 @@ import { Bell, Check, Calendar, Ticket, MessageSquare, Info, Filter, ArrowLeft, 
 import notificationService from '../services/notificationService';
 import NotificationPreferences from '../components/NotificationPreferences';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance';
 
 const NotificationPage = () => {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ const NotificationPage = () => {
 
   const fetchPrefs = async () => {
     try {
-      const response = await axios.get(`/api/notifications/preferences/${user.id}`);
+      const response = await axiosInstance.get(`/notifications/preferences`);
       if (response.data && response.data.length > 0) {
         const merged = prefs.map(p => {
           const remote = response.data.find(r => r.category === p.category);
@@ -53,12 +53,13 @@ const NotificationPage = () => {
   }, [user]);
 
   const togglePref = async (index) => {
+    const prevPrefs = prefs;
     const newPrefs = [...prefs];
     newPrefs[index].enabled = !newPrefs[index].enabled;
     setPrefs(newPrefs);
     
     try {
-      await axios.put(`/api/notifications/preferences/${user.id}`, null, {
+      await axiosInstance.put(`/notifications/preferences`, null, {
         params: {
           category: newPrefs[index].category,
           emailEnabled: true, // Keep email on for now or fetch existing
@@ -66,6 +67,7 @@ const NotificationPage = () => {
         }
       });
     } catch (err) {
+      setPrefs(prevPrefs);
       console.error('Failed to update preference', err);
     }
   };

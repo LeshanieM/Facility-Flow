@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, Mail, Smartphone, Save, Loader2, ShieldCheck, X } from 'lucide-react';
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance';
 import { useAuth } from '../context/AuthContext';
 
 const NotificationPreferences = ({ onClose }) => {
@@ -16,7 +16,7 @@ const NotificationPreferences = ({ onClose }) => {
   useEffect(() => {
     const fetchPrefs = async () => {
       try {
-        const response = await axios.get(`/api/notifications/preferences/${user.id}`);
+        const response = await axiosInstance.get(`/notifications/preferences`);
         if (response.data && response.data.length > 0) {
           setPreferences(response.data);
         }
@@ -27,7 +27,7 @@ const NotificationPreferences = ({ onClose }) => {
       }
     };
     fetchPrefs();
-  }, [user.id]);
+  }, [user?.id]);
 
   const togglePreference = (index, field) => {
     const newPrefs = [...preferences];
@@ -39,7 +39,7 @@ const NotificationPreferences = ({ onClose }) => {
     setSaving(true);
     try {
       for (const pref of preferences) {
-        await axios.put(`/api/notifications/preferences/${user.id}`, null, {
+        await axiosInstance.put(`/notifications/preferences`, null, {
           params: {
             category: pref.category,
             emailEnabled: pref.emailEnabled,

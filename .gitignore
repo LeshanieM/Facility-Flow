@@ -19,6 +19,7 @@ backend/uploads/
 # Frontend (React / Node)
 frontend/node_modules/
 frontend/build/
+frontend/dist/
 frontend/.pnp
 frontend/.pnp.js
 frontend/coverage/
@@ -33,6 +34,10 @@ frontend/.env.production.local
 # Playwright (E2E)
 frontend/test-results/
 frontend/playwright-report/
+
+
+# Frontend build output (Vite)
+frontend/dist/
 
 # Logs and OS
 logs/
