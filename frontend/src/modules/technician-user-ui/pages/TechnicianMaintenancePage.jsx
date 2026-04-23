@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download, PlayCircle, MapPin, Tag, UserCircle2, Calendar, Phone, CheckCircle2, X, BarChart3, Zap, AlertCircle, Layers } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import Layout from '../../../components/Layout';
@@ -23,6 +24,7 @@ const normalizeIdentity = (value) => String(value || '').trim().toLowerCase();
 
 const TechnicianMaintenancePage = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [requests, setRequests] = useState([]);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -34,6 +36,7 @@ const TechnicianMaintenancePage = () => {
   const [toasts, setToasts] = useState([]);
   const [attachmentActionKey, setAttachmentActionKey] = useState('');
   const [dashTab, setDashTab] = useState('analytics');
+  const [ticketFilter, setTicketFilter] = useState('ALL');
   const detailsRef = useRef(null);
 
   const displayName = useMemo(() => {
@@ -214,6 +217,27 @@ const TechnicianMaintenancePage = () => {
   };
 
   const comments = selectedRequest?.comments || [];
+  const quickFocus = searchParams.get('focus');
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'tickets' || tabParam === 'analytics') {
+      setDashTab(tabParam);
+    }
+
+    const mappedFilter = quickFocus === 'not-started'
+      ? 'NOT_STARTED'
+      : quickFocus === 'in-progress'
+        ? 'IN_PROGRESS'
+        : quickFocus === 'high-priority'
+          ? 'HIGH_PRIORITY'
+          : quickFocus === 'recent'
+            ? 'RECENT'
+            : quickFocus === 'resume'
+              ? 'RESUME'
+              : 'ALL';
+    setTicketFilter(mappedFilter);
+  }, [searchParams, quickFocus]);
 
   /* ─── Analytics Computations (frontend-only, from existing requests) ─── */
   const analytics = useMemo(() => {
@@ -248,6 +272,38 @@ const TechnicianMaintenancePage = () => {
 
     return { total, pending, inProgress, completed, statusSegments, prioritySegments, recentlyUpdated, needingAction };
   }, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    const now = Date.now();
+    const highPrioritySet = new Set(['HIGH', 'URGENT', 'EMERGENCY']);
+
+    if (ticketFilter === 'NOT_STARTED') {
+      return requests.filter((req) => req.status === 'OPEN' || req.status === 'ASSIGNED');
+    }
+    if (ticketFilter === 'IN_PROGRESS') {
+      return requests.filter((req) => req.status === 'IN_PROGRESS');
+    }
+    if (ticketFilter === 'HIGH_PRIORITY') {
+      return requests.filter((req) => highPrioritySet.has(String(req.priority || '').toUpperCase()));
+    }
+    if (ticketFilter === 'RECENT') {
+      return [...requests]
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+        .slice(0, 10);
+    }
+    if (ticketFilter === 'RESUME') {
+      return requests.filter((req) => req.status === 'IN_PROGRESS' || req.status === 'ON_HOLD');
+    }
+
+    return requests;
+  }, [requests, ticketFilter]);
+
+  const clearQuickFocus = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('focus');
+    nextParams.set('tab', 'tickets');
+    setSearchParams(nextParams);
+  };
 
   // Scroll lock for modal
   useEffect(() => {
@@ -352,6 +408,25 @@ const TechnicianMaintenancePage = () => {
 
             {/* Existing Ticket Cards */}
             {dashTab === 'tickets' && (<>
+            {quickFocus && (
+              <SurfaceCard className="p-4 sm:p-5 border border-blue-100 bg-blue-50/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500">Quick Focus</p>
+                    <p className="text-sm font-semibold text-slate-700">
+                      Showing {filteredRequests.length} ticket{filteredRequests.length === 1 ? '' : 's'} for this dashboard shortcut.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearQuickFocus}
+                    className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-blue-700 hover:bg-blue-50"
+                  >
+                    Show All Tickets
+                  </button>
+                </div>
+              </SurfaceCard>
+            )}
             {requests.length === 0 ? (
                 <SurfaceCard className="p-12 text-center">
                     <EmptyState 
@@ -362,7 +437,7 @@ const TechnicianMaintenancePage = () => {
                 </SurfaceCard>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {requests.map((req) => (
+                    {filteredRequests.map((req) => (
                         <div
                             key={req.id}
                             onClick={() => setSelectedRequestId(req.id)}
