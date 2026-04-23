@@ -1,9 +1,15 @@
 import React from 'react';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
+import AdminOverviewDashboard from '../modules/admin-user-ui/components/AdminOverviewDashboard';
 
 const Dashboard = () => {
     const { user } = useAuth();
+    const isAdmin = user?.role === 'ADMIN';
+    const firstName = String(user?.name || user?.email || user?.sub || 'there')
+        .trim()
+        .split(' ')[0]
+        .split('@')[0];
 
     return (
         <Layout>
@@ -12,7 +18,7 @@ const Dashboard = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
                         <h2 className="text-4xl font-extrabold tracking-tight">
-                            Welcome back, <span className="text-primary">{user?.sub?.split('@')[0]}</span>!
+                            Welcome, <span className="text-primary">{firstName}</span>
                         </h2>
                         <p className="text-slate-500 font-medium mt-1">Here is your campus operations overview.</p>
                     </div>
@@ -24,10 +30,13 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* Content Area (Currently Clean) */}
-                <div className="grid grid-cols-1 gap-8 opacity-0">
-                    {/* Future modules can be added here */}
-                </div>
+                {isAdmin ? (
+                    <AdminOverviewDashboard />
+                ) : (
+                    <div className="grid grid-cols-1 gap-8 opacity-0">
+                        {/* Future modules can be added here */}
+                    </div>
+                )}
             </div>
         </Layout>
     );

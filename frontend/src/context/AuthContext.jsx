@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import CONFIG from '../config';
 
 const AuthContext = createContext();
 
@@ -12,7 +13,7 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const response = await fetch('http://localhost:8092/api/user/me', {
+          const response = await fetch(`${CONFIG.API_BASE_URL}/user/me`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }

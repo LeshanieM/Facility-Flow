@@ -13,6 +13,10 @@ import {
   MapPin,
   AlertTriangle,
   Camera,
+  BarChart3,
+  TrendingUp,
+  Layers,
+  Clock,
 } from 'lucide-react';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
@@ -29,6 +33,10 @@ import { formatIncidentStatusLabel } from '../components/StatusBadge';
 import TabNavigation from '../components/TabNavigation';
 import ToastStack from '../components/ToastStack';
 import { useStudentMaintenanceDashboard } from '../hooks/useStudentMaintenanceDashboard';
+import {
+  DistributionBar, MiniBarChart, InsightList, AnalyticsSection,
+  buildStatusSegments, buildPrioritySegments, getDayOfWeekBars,
+} from '../../maintenance/components/DashboardAnalytics';
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -129,6 +137,36 @@ const StudentStaffMaintenanceModule = () => {
       .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
       .slice(0, 3);
   }, [requests]);
+
+  /* ─── Analytics Computations for Overview tab ─── */
+  const overviewAnalytics = useMemo(() => {
+    const statusSegments = buildStatusSegments(requests);
+    const prioritySegments = buildPrioritySegments(requests);
+    const dayBars = getDayOfWeekBars(requests);
+
+    const recentRequests = [...requests]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 5)
+      .map(r => ({
+        key: r.id,
+        label: r.title,
+        sublabel: r.location || '',
+        value: (r.status || '').replace(/_/g, ' '),
+      }));
+
+    const latestUpdates = [...requests]
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      .slice(0, 5)
+      .map(r => ({
+        key: r.id,
+        label: r.title,
+        sublabel: r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : '',
+        value: (r.status || '').replace(/_/g, ' '),
+      }));
+
+    return { statusSegments, prioritySegments, dayBars, recentRequests, latestUpdates };
+  }, [requests]);
+
 
   const displaySummary = useMemo(() => {
     const totalSubmitted = requests.length;
@@ -324,6 +362,56 @@ const StudentStaffMaintenanceModule = () => {
                     ))}
                   </div>
                 </SurfaceCard>
+
+                {/* Analytics Insights */}
+                <AnalyticsSection>
+                  <div className="flex items-center gap-2 mb-2">
+                    <BarChart3 size={16} className="text-slate-400" />
+                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Request Distribution</h3>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <DistributionBar title="My Requests by Status" segments={overviewAnalytics.statusSegments} />
+                    <DistributionBar title="My Requests by Priority" segments={overviewAnalytics.prioritySegments} />
+                  </div>
+                </AnalyticsSection>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <AnalyticsSection>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Layers size={16} className="text-slate-400" />
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Recent Requests</h3>
+                    </div>
+                    <InsightList
+                      title="Last 5 Submissions"
+                      items={overviewAnalytics.recentRequests}
+                      emptyMessage="No requests submitted yet"
+                    />
+                  </AnalyticsSection>
+
+                  <AnalyticsSection>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock size={16} className="text-slate-400" />
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Latest Updates</h3>
+                    </div>
+                    <InsightList
+                      title="Most Recently Changed"
+                      items={overviewAnalytics.latestUpdates}
+                      emptyMessage="No updates yet"
+                    />
+                  </AnalyticsSection>
+
+                  <AnalyticsSection>
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp size={16} className="text-slate-400" />
+                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Submission Trends</h3>
+                    </div>
+                    <MiniBarChart
+                      title="Requests by Day of Week"
+                      bars={overviewAnalytics.dayBars}
+                      emptyMessage="Not enough data for trends"
+                    />
+                  </AnalyticsSection>
+                </div>
               </div>
             )}
 
