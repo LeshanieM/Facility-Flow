@@ -8,6 +8,7 @@
 # Backend (Spring Boot / Maven)
 backend/target/
 backend/*.log
+backend/*.err
 backend/.mvn/wrapper/maven-wrapper.jar
 backend/src/main/resources/application.yml
 backend/build/
@@ -30,6 +31,8 @@ frontend/.env.local
 frontend/.env.development.local
 frontend/.env.test.local
 frontend/.env.production.local
+frontend/.env
+frontend/.env.test
 
 # Playwright (E2E)
 frontend/test-results/
@@ -45,3 +48,7 @@ logs/
 Thumbs.db
 config.bat
 node_modules
+
+# Debug / scratch scripts
+check_tickets.mjs
+*.mjs
