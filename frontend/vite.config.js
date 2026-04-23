@@ -8,6 +8,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    define: {
+      global: 'window',
+    },
     server: {
       port: 3000,
       proxy: {
@@ -24,6 +27,10 @@ export default defineConfig(({ mode }) => {
         '/login/oauth2': {
           target: backendTarget,
           changeOrigin: true,
+        },
+        '/ws': {
+          target: backendTarget,
+          ws: true,
         },
       },
     },
