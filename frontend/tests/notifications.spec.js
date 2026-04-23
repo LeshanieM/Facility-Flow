@@ -21,17 +21,24 @@ function signJwt(payload, secret) {
   return `${part1}.${part2}.${signature}`;
 }
 
-// Secret found in backend/src/main/resources/application.yml
-const JWT_SECRET =
-  '3dbdeb3482a58802f5fdc7bb412cbd8dec633a96aa805a31c3e2607a1159b001';
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `Missing required env var ${name}. Create frontend/.env.test (or set it in CI) to run this test.`,
+    );
+  }
+  return value;
+}
+
+const JWT_SECRET = requiredEnv('TEST_JWT_SECRET');
 
 test.describe('Notifications page (E2E with Backend)', () => {
- 
   const TEST_USER = {
-    email: 'leshlaptop32@gmail.com',
-    id: '69cf0ca4582d9e0f295041e1', 
-    name: 'LESH',
-    role: 'USER',
+    email: requiredEnv('TEST_USER_EMAIL'),
+    id: requiredEnv('TEST_USER_ID'),
+    name: requiredEnv('TEST_USER_NAME'),
+    role: process.env.TEST_USER_ROLE || 'USER',
   };
 
   test.beforeEach(async ({ page }) => {
@@ -63,38 +70,51 @@ test.describe('Notifications page (E2E with Backend)', () => {
 
     // 2. Ensure we have at least one notification by calling the backend's test endpoint
     // We do this via the page context so it uses the token in localStorage
-    await page.evaluate(async () => {
+    const createdNotification = await page.evaluate(async () => {
       const token = localStorage.getItem('token');
-      await fetch('/api/notifications/test', {
+      const res = await fetch('/api/notifications/test', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      return await res.json();
     });
 
     // 3. Reload to see the new notification
     await page.reload();
 
     // 4. Verify the notification appears (the test endpoint uses "Test Notification")
-    const testNotification = page.getByText(/Test Notification/i).first();
-    await expect(testNotification).toBeVisible();
+    const createdMessage = createdNotification?.message || 'Test Notification';
+    const createdMessageText = page.getByText(createdMessage).first();
+    await expect(createdMessageText).toBeVisible({ timeout: 15000 });
+    const testNotificationRow = createdMessageText.locator(
+      'xpath=ancestor::div[contains(@class,"group")][1]',
+    );
 
     // 5. Test filtering to 'Unread'
     await page.getByRole('button', { name: 'Unread' }).click();
-    await expect(testNotification).toBeVisible();
+    await expect(createdMessageText).toBeVisible({ timeout: 15000 });
 
     // 6. Test 'Mark as read'
-    const initialCount = await page.getByTitle('Mark as read').count();
-    
-    const unreadRow = page
-      .locator('div.p-6.flex.gap-4', { hasText: /Test Notification/i })
-      .first();
-    const markReadButton = unreadRow.getByTitle('Mark as read');
+    const markReadButton = testNotificationRow.getByRole('button', { name: 'Mark as read' });
 
-    await unreadRow.hover();
-    await expect(markReadButton).toBeVisible();
+    await testNotificationRow.scrollIntoViewIfNeeded();
+    await testNotificationRow.hover();
+    await expect(markReadButton).toBeVisible({ timeout: 15000 });
+    const markReadResponsePromise = page.waitForResponse((res) => {
+      const url = res.url();
+      return (
+        res.request().method() === 'PATCH' &&
+        url.includes('/api/notifications/') &&
+        url.endsWith('/read')
+      );
+    });
     await markReadButton.click();
+    const markReadResponse = await markReadResponsePromise;
+    expect(markReadResponse.ok()).toBeTruthy();
 
     // 7. Verify the count decreased (disappears from 'Unread' list)
-    await expect(page.getByTitle('Mark as read')).toHaveCount(initialCount - 1);
+    await page.reload();
+    await page.getByRole('button', { name: 'Unread' }).click();
+    await expect(page.getByText(createdMessage)).toHaveCount(0, { timeout: 15000 });
   });
 
   test('shows real empty state when no notifications exist', async ({

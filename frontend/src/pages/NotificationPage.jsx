@@ -73,10 +73,15 @@ const NotificationPage = () => {
   };
 
   const handleMarkAsRead = async (id) => {
+    const previous = notifications;
     try {
+      // Optimistic UI: immediately mark as read to keep UX snappy
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+      );
       await notificationService.markAsRead(id);
-      setNotifications(notifications.map(n => n.id === id ? { ...n, read: true } : n));
     } catch (error) {
+      setNotifications(previous);
       console.error('Failed to mark notification as read:', error);
     }
   };
@@ -84,7 +89,7 @@ const NotificationPage = () => {
   const handleMarkAllRead = async () => {
     try {
       await notificationService.markAllAsRead();
-      setNotifications(notifications.map(n => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     } catch (error) {
       console.error('Failed to mark all as read:', error);
     }
@@ -93,7 +98,7 @@ const NotificationPage = () => {
   const handleDelete = async (id) => {
     try {
       await notificationService.deleteNotification(id);
-      setNotifications(notifications.filter(n => n.id !== id));
+      setNotifications((prev) => prev.filter((n) => n.id !== id));
     } catch (error) {
       console.error('Failed to delete notification:', error);
     }
@@ -174,6 +179,7 @@ const NotificationPage = () => {
             ))}
             <button 
               onClick={handleMarkAllRead}
+              aria-label="Mark all as read"
               className="p-2.5 ml-3 hover:bg-slate-50 rounded-xl transition-colors border border-slate-100 text-slate-400 shadow-sm"
             >
               <Check size={18} />
@@ -262,6 +268,7 @@ const NotificationPage = () => {
                    {!n.read && (
                     <button 
                       onClick={() => handleMarkAsRead(n.id)}
+                      aria-label="Mark as read"
                       className="p-3 text-emerald-500 hover:bg-emerald-50 rounded-2xl border border-emerald-100 transition-all shadow-sm bg-white"
                     >
                       <Check size={20} />
@@ -269,6 +276,7 @@ const NotificationPage = () => {
                    )}
                    <button 
                     onClick={() => handleDelete(n.id)}
+                    aria-label="Delete notification"
                     className="p-3 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all border border-slate-100 shadow-sm bg-white"
                    >
                     <Trash2 size={20} />
