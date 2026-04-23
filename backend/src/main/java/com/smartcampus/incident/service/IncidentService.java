@@ -27,6 +27,7 @@ import com.smartcampus.incident.repository.IncidentRepository;
 import com.smartcampus.repository.UserRepository;
 import com.smartcampus.notification.enums.NotificationType;
 import com.smartcampus.notification.service.NotificationService;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +70,23 @@ public class IncidentService {
     private final UserRepository userRepository;
     private final IncidentAttachmentService incidentAttachmentService;
     private final NotificationService notificationService;
+
+    @PostConstruct
+    @Transactional
+    public void migrateLegacyIncidentPriorities() {
+        List<Incident> incidents = incidentRepository.findAll();
+        List<Incident> migrated = incidents.stream()
+                .filter(incident -> incident.getPriority() == PriorityLevel.HIGH)
+                .peek(incident -> {
+                    incident.setPriority(PriorityLevel.EMERGENCY);
+                    incident.setUpdatedAt(Instant.now());
+                })
+                .collect(Collectors.toList());
+
+        if (!migrated.isEmpty()) {
+            incidentRepository.saveAll(migrated);
+        }
+    }
 
     @Transactional
     public TicketResponse createIncident(CreateTicketRequest request, User user) {

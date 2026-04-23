@@ -142,7 +142,12 @@ const StudentStaffMaintenanceModule = () => {
   /* ─── Analytics Computations for Overview tab ─── */
   const overviewAnalytics = useMemo(() => {
     const statusSegments = buildStatusSegments(requests);
-    const prioritySegments = buildPrioritySegments(requests);
+    const requesterPriorityTickets = requests.map((request) => ({
+      ...request,
+      // Requester view requirement: treat HIGH as Emergency in priority distribution.
+      priority: String(request.priority || '').toUpperCase() === 'HIGH' ? 'EMERGENCY' : request.priority,
+    }));
+    const prioritySegments = buildPrioritySegments(requesterPriorityTickets);
     const dayBars = getDayOfWeekBars(requests);
 
     const recentRequests = [...requests]
