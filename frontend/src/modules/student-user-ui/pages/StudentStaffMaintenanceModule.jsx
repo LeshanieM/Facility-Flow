@@ -29,7 +29,7 @@ import RequestList from '../components/RequestList';
 import RequestDetailsPanel from '../components/RequestDetailsPanel';
 import SkeletonBlock from '../components/SkeletonBlock';
 import SurfaceCard from '../components/SurfaceCard';
-import { formatIncidentStatusLabel } from '../components/StatusBadge';
+import { formatIncidentStatusLabel, normalizeIncidentStatus } from '../components/StatusBadge';
 import TabNavigation from '../components/TabNavigation';
 import ToastStack from '../components/ToastStack';
 import { useStudentMaintenanceDashboard } from '../hooks/useStudentMaintenanceDashboard';
@@ -127,7 +127,8 @@ const StudentStaffMaintenanceModule = () => {
         request.location?.toLowerCase().includes(query) ||
         request.category?.toLowerCase().includes(query);
 
-      const matchesStatus = filters.status === 'ALL' || request.status === filters.status;
+      const normalizedStatus = normalizeIncidentStatus(request.status);
+      const matchesStatus = filters.status === 'ALL' || normalizedStatus === filters.status;
       return matchesQuery && matchesStatus;
     }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [filters, requests]);
@@ -151,7 +152,7 @@ const StudentStaffMaintenanceModule = () => {
         key: r.id,
         label: r.title,
         sublabel: r.location || '',
-        value: (r.status || '').replace(/_/g, ' '),
+        value: formatIncidentStatusLabel(r.status),
       }));
 
     const latestUpdates = [...requests]
@@ -161,7 +162,7 @@ const StudentStaffMaintenanceModule = () => {
         key: r.id,
         label: r.title,
         sublabel: r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : '',
-        value: (r.status || '').replace(/_/g, ' '),
+        value: formatIncidentStatusLabel(r.status),
       }));
 
     return { statusSegments, prioritySegments, dayBars, recentRequests, latestUpdates };
@@ -170,12 +171,12 @@ const StudentStaffMaintenanceModule = () => {
 
   const displaySummary = useMemo(() => {
     const totalSubmitted = requests.length;
-    const pending = requests.filter((request) => request.status === 'OPEN').length;
-    const inProgress = requests.filter((request) => request.status === 'IN_PROGRESS' || request.status === 'ASSIGNED').length;
+    const pending = requests.filter((request) => normalizeIncidentStatus(request.status) === 'OPEN').length;
+    const inProgress = requests.filter((request) => ['IN_PROGRESS', 'ASSIGNED'].includes(normalizeIncidentStatus(request.status))).length;
     const completed = requests.filter((request) =>
-      ['RESOLVED', 'CLOSED'].includes(request.status)
+      ['RESOLVED', 'CLOSED'].includes(normalizeIncidentStatus(request.status))
     ).length;
-    const rejected = requests.filter((request) => request.status === 'REJECTED').length;
+    const rejected = requests.filter((request) => normalizeIncidentStatus(request.status) === 'REJECTED').length;
 
     return {
       ...summary,

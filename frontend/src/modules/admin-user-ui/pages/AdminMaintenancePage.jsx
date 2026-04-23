@@ -5,7 +5,7 @@ import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashbo
 import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download, Send, Loader2 } from 'lucide-react';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
-import StatusBadge, { INCIDENT_STATUS_OPTIONS, formatIncidentStatusLabel, PriorityBadge, getPriorityConfig } from '../../student-user-ui/components/StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_OPTIONS, INCIDENT_STATUS_UPDATE_OPTIONS, PriorityBadge, normalizeIncidentStatus } from '../../student-user-ui/components/StatusBadge';
 import { AnalyticsTabToggle } from '../../maintenance/components/DashboardAnalytics';
 import AdminIncidentAnalyticsOverview from '../components/AdminIncidentAnalyticsOverview';
 
@@ -65,7 +65,7 @@ export const AdminMaintenancePage = () => {
     }, [selectedTicket, actionModal.open]);
 
     const filteredTickets = tickets
-        .filter(t => filter === 'ALL' || t.status === filter)
+        .filter(t => filter === 'ALL' || normalizeIncidentStatus(t.status) === filter)
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const handleQuickAction = (e, ticketId, newStatus) => {
@@ -301,7 +301,7 @@ export const AdminMaintenancePage = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right w-[140px]">
-                                                {ticket.status === 'OPEN' && (
+                                                {normalizeIncidentStatus(ticket.status) === 'OPEN' && (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); setSelectedTicket(ticket); }}
                                                         className="px-4 py-1.5 bg-primary text-white text-xs font-bold rounded-lg shadow-md shadow-primary/20 hover:scale-105 transition-all"
@@ -309,7 +309,7 @@ export const AdminMaintenancePage = () => {
                                                         Assign Task
                                                     </button>
                                                 )}
-                                                {(ticket.status === 'ASSIGNED' || ticket.status === 'IN_PROGRESS') && (
+                                                {['ASSIGNED', 'IN_PROGRESS'].includes(normalizeIncidentStatus(ticket.status)) && (
                                                     <button
                                                         onClick={(e) => handleQuickAction(e, ticket.id, 'RESOLVED')}
                                                         className="px-4 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-md shadow-emerald-600/20 hover:scale-105 transition-all"
@@ -317,7 +317,7 @@ export const AdminMaintenancePage = () => {
                                                         Resolve
                                                     </button>
                                                 )}
-                                                {(ticket.status === 'RESOLVED' || ticket.status === 'REJECTED' || ticket.status === 'CLOSED') && (
+                                                {['RESOLVED', 'REJECTED', 'CLOSED'].includes(normalizeIncidentStatus(ticket.status)) && (
                                                     <span className="text-xs font-bold text-slate-400">Archived</span>
                                                 )}
                                             </td>
@@ -417,11 +417,11 @@ export const AdminMaintenancePage = () => {
 
                             {/* Rejection/Resolution View */}
                             {(selectedTicket.rejectionReason || selectedTicket.resolutionSummary) && (
-                                <div className={`rounded-2xl border p-5 ${selectedTicket.status === 'REJECTED' ? 'border-rose-100 bg-rose-50/50' : 'border-emerald-100 bg-emerald-50/50'}`}>
-                                    <h3 className={`text-xs font-black mb-2 uppercase tracking-widest ${selectedTicket.status === 'REJECTED' ? 'text-rose-700' : 'text-emerald-700'}`}>
-                                        {selectedTicket.status === 'REJECTED' ? 'Rejection' : 'Resolution'} Notes
+                                <div className={`rounded-2xl border p-5 ${normalizeIncidentStatus(selectedTicket.status) === 'REJECTED' ? 'border-rose-100 bg-rose-50/50' : 'border-emerald-100 bg-emerald-50/50'}`}>
+                                    <h3 className={`text-xs font-black mb-2 uppercase tracking-widest ${normalizeIncidentStatus(selectedTicket.status) === 'REJECTED' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                                        {normalizeIncidentStatus(selectedTicket.status) === 'REJECTED' ? 'Rejection' : 'Resolution'} Notes
                                     </h3>
-                                    <p className={`text-sm leading-relaxed whitespace-pre-wrap ${selectedTicket.status === 'REJECTED' ? 'text-rose-800' : 'text-emerald-800'}`}>
+                                    <p className={`text-sm leading-relaxed whitespace-pre-wrap ${normalizeIncidentStatus(selectedTicket.status) === 'REJECTED' ? 'text-rose-800' : 'text-emerald-800'}`}>
                                         {selectedTicket.rejectionReason || selectedTicket.resolutionSummary}
                                     </p>
                                 </div>
@@ -563,7 +563,7 @@ export const AdminMaintenancePage = () => {
                                         onChange={(e) => handleStatusChangeRequest(e.target.value)}
                                         disabled={selectedTicket.status === 'CLOSED'}
                                     >
-                                        {INCIDENT_STATUS_OPTIONS.map((status) => (
+                                        {INCIDENT_STATUS_UPDATE_OPTIONS.map((status) => (
                                             <option key={status.value} value={status.value} className="text-slate-800">
                                                 {status.label}
                                             </option>

@@ -18,7 +18,7 @@ const initialForm = {
   location: '',
   room: '',
   category: '',
-  priority: 'Medium',
+  priority: 'MEDIUM',
   preferredContact: '',
   attachments: [],
 };

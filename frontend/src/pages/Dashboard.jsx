@@ -4,8 +4,8 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import AdminOverviewDashboard from '../modules/admin-user-ui/components/AdminOverviewDashboard';
 import api from '../services/api';
-import { AlertCircle, CheckCircle2, Clock3, FolderKanban, RefreshCw, Wrench, Zap } from 'lucide-react';
-import StatusBadge, { PriorityBadge, normalizeIncidentStatus } from '../modules/student-user-ui/components/StatusBadge';
+import { AlertCircle, CheckCircle2, Clock3, FolderKanban, RefreshCw, Wrench } from 'lucide-react';
+import StatusBadge, { PriorityBadge, normalizeIncidentPriority, normalizeIncidentStatus } from '../modules/student-user-ui/components/StatusBadge';
 import SurfaceCard from '../modules/student-user-ui/components/SurfaceCard';
 import {
     AnalyticsSection,
@@ -46,10 +46,10 @@ const TechnicianDashboard = () => {
         const normalized = tickets.map((ticket) => ({
             ...ticket,
             normalizedStatus: normalizeIncidentStatus(ticket.status),
-            normalizedPriority: String(ticket.priority || '').toUpperCase(),
+            normalizedPriority: normalizeIncidentPriority(ticket.priority),
         }));
 
-        const highPrioritySet = new Set(['HIGH', 'URGENT', 'EMERGENCY']);
+        const highPrioritySet = new Set(['HIGH', 'EMERGENCY']);
         const total = normalized.length;
         const openNotStarted = normalized.filter((ticket) => ['OPEN', 'ASSIGNED'].includes(ticket.normalizedStatus)).length;
         const inProgress = normalized.filter((ticket) => ticket.normalizedStatus === 'IN_PROGRESS').length;
@@ -89,13 +89,15 @@ const TechnicianDashboard = () => {
     }, [tickets]);
 
     const quickLinks = [
-        { label: 'View My Assigned Tickets', to: '/tech/tasks?tab=tickets&focus=all', icon: <FolderKanban size={16} /> },
-        { label: 'View In Progress Tickets', to: '/tech/tasks?tab=tickets&focus=in-progress', icon: <Wrench size={16} /> },
-        { label: 'View High Priority Tickets', to: '/tech/tasks?tab=tickets&focus=high-priority', icon: <AlertCircle size={16} /> },
-        { label: 'View Recently Updated', to: '/tech/tasks?tab=tickets&focus=recent', icon: <Clock3 size={16} /> },
-        { label: 'View Not Yet Started', to: '/tech/tasks?tab=tickets&focus=not-started', icon: <Zap size={16} /> },
-        { label: 'Resume Work', to: '/tech/tasks?tab=tickets&focus=resume', icon: <CheckCircle2 size={16} /> },
+        { label: 'Not Yet Started', helper: 'Open and assigned queue', to: '/tech/tasks?tab=tickets&focus=not-started', icon: <FolderKanban size={16} /> },
+        { label: 'In Progress', helper: 'Continue active work', to: '/tech/tasks?tab=tickets&focus=in-progress', icon: <Wrench size={16} /> },
+        { label: 'High / Urgent', helper: 'Priority response tickets', to: '/tech/tasks?tab=tickets&focus=high-priority', icon: <AlertCircle size={16} /> },
+        { label: 'Recently Updated', helper: 'Latest activity first', to: '/tech/tasks?tab=tickets&focus=recent', icon: <Clock3 size={16} /> },
     ];
+
+    const completionPct = analytics.total > 0
+        ? Math.round((analytics.resolved / analytics.total) * 100)
+        : 0;
 
     return (
         <div className="space-y-8">
@@ -123,17 +125,43 @@ const TechnicianDashboard = () => {
 
             <AnalyticsSection>
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Quick Access</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-blue-50 p-4 sm:p-5 xl:col-span-1">
+                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-indigo-500">Work Pulse</p>
+                        <div className="mt-3 flex items-center gap-4">
+                            <div className="relative h-16 w-16 rounded-full bg-slate-100">
+                                <div
+                                    className="absolute inset-0 rounded-full"
+                                    style={{
+                                        background: `conic-gradient(#4f46e5 ${completionPct * 3.6}deg, #e2e8f0 0deg)`,
+                                    }}
+                                />
+                                <div className="absolute inset-[7px] rounded-full bg-white flex items-center justify-center">
+                                    <span className="text-xs font-black text-indigo-700">{completionPct}%</span>
+                                </div>
+                            </div>
+                            <div className="text-xs space-y-1">
+                                <p className="font-semibold text-slate-700">Resolved progress</p>
+                                <p className="text-slate-500">{analytics.resolved} of {analytics.total} tickets resolved</p>
+                                <p className="text-rose-600 font-semibold">{analytics.highPriority} high/urgent active alerts</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 xl:col-span-2">
                     {quickLinks.map((link) => (
                         <Link
                             key={link.label}
                             to={link.to}
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-blue-200 hover:text-blue-700 hover:bg-blue-50/40"
+                            className="rounded-xl border border-slate-200 bg-white px-4 py-3 hover:border-blue-200 hover:bg-blue-50/40 transition-colors"
                         >
-                            {link.icon}
-                            {link.label}
+                            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                                {link.icon}
+                                {link.label}
+                            </div>
+                            <p className="mt-1 text-[11px] text-slate-500 font-medium">{link.helper}</p>
                         </Link>
                     ))}
+                    </div>
                 </div>
             </AnalyticsSection>
 

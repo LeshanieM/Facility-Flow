@@ -448,8 +448,15 @@ public class IncidentService {
     }
 
     private PriorityLevel mapPriority(String priority) {
+        if (priority == null || priority.isBlank()) {
+            return PriorityLevel.MEDIUM;
+        }
+        String normalizedPriority = priority.trim().toUpperCase(Locale.ROOT);
+        if ("URGENT".equals(normalizedPriority)) {
+            normalizedPriority = PriorityLevel.EMERGENCY.name();
+        }
         try {
-            return PriorityLevel.valueOf(priority.toUpperCase());
+            return PriorityLevel.valueOf(normalizedPriority);
         } catch (IllegalArgumentException ex) {
             return PriorityLevel.MEDIUM;
         }

@@ -3,6 +3,7 @@ import { AlertCircle, FileText, Loader2, Paperclip, Send, Sparkles, Type, MapPin
 import FieldControl, { fieldInputClass } from './FieldControl';
 import SectionHeader from './SectionHeader';
 import SurfaceCard from './SurfaceCard';
+import { INCIDENT_PRIORITY_OPTIONS } from './StatusBadge';
 
 const categoryOptions = [
   'Electrical',
@@ -14,8 +15,6 @@ const categoryOptions = [
   'Network',
   'Other',
 ];
-
-const priorityOptions = ['Low', 'Medium', 'High', 'Urgent'];
 
 const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSubmitting, submitMessage, submitError }) => {
   const normalizeText = (value) => String(value || '').trim().toLowerCase();
@@ -159,9 +158,9 @@ const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSub
               onChange={(event) => onChange('priority', event.target.value)}
               className={fieldInputClass(Boolean(errors.priority))}
             >
-              {priorityOptions.map((option) => (
-                <option key={option} value={option}>
-                  {option}
+              {INCIDENT_PRIORITY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
