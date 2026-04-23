@@ -30,6 +30,10 @@ frontend/.env.development.local
 frontend/.env.test.local
 frontend/.env.production.local
 
+# Playwright (E2E)
+frontend/test-results/
+frontend/playwright-report/
+
 # Logs and OS
 logs/
 *.log
