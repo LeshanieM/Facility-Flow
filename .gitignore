@@ -8,6 +8,7 @@
 # Backend (Spring Boot / Maven)
 backend/target/
 backend/*.log
+backend/*.err
 backend/.mvn/wrapper/maven-wrapper.jar
 backend/src/main/resources/application.yml
 backend/build/
@@ -45,3 +46,7 @@ logs/
 Thumbs.db
 config.bat
 node_modules
+
+# Debug / scratch scripts
+check_tickets.mjs
+*.mjs
