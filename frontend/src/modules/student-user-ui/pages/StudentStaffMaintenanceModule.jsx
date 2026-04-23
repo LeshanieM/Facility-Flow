@@ -469,7 +469,7 @@ const StudentStaffMaintenanceModule = () => {
             )}
 
             {activeTab === 'updates' && (
-              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)] relative z-10">
+              <div className={`grid grid-cols-1 gap-8 ${notifications.length > 0 ? '2xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]' : ''} relative z-10`}>
                 <NotificationList notifications={notifications} isLoading={false} />
 
                 <SurfaceCard className="p-6 sm:p-7" tone="muted">
