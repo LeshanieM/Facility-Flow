@@ -103,6 +103,7 @@ public class IncidentService {
                 .priority(mappedPriority)
                 .status(IncidentStatus.OPEN)
                 .submittedBy(user)
+                .requesterEmail(user.getEmail())
                 .preferredContact(request.getPreferredContact())
                 .attachments(new ArrayList<>())
                 .createdAt(now)
@@ -302,6 +303,8 @@ public class IncidentService {
         ActivityAction assignmentAction =
                 incident.getAssignedTechnician() == null ? ActivityAction.ASSIGNED : ActivityAction.REASSIGNED;
         incident.setAssignedTechnician(technician);
+        incident.setAssignedBy(admin);
+        incident.setAssignedByAdminName(admin.getName());
 
         Instant now = Instant.now();
 
@@ -676,6 +679,37 @@ public class IncidentService {
         Long responseDurationMinutes = resolveResponseDurationMinutes(incident, actualCreatedAt);
         Long resolutionDurationMinutes = resolveResolutionDurationMinutes(incident, actualCreatedAt);
 
+        String requesterName = incident.getSubmittedBy() != null ? incident.getSubmittedBy().getName() : "Student";
+        String requesterEmail = incident.getRequesterEmail();
+        if (requesterEmail == null && incident.getSubmittedBy() != null) {
+            requesterEmail = incident.getSubmittedBy().getEmail();
+        }
+        String requesterPhone = incident.getPreferredContact();
+        String assignedByName = incident.getAssignedByAdminName();
+        if (assignedByName == null && incident.getAssignedBy() != null) {
+            assignedByName = incident.getAssignedBy().getName();
+        }
+        
+        // Final fallback: check activity logs if we still don't know who assigned it
+        if (assignedByName == null && incident.getId() != null) {
+            assignedByName = activityLogRepository.findByIncidentIdOrderByTimestampDesc(incident.getId()).stream()
+                    .filter(log -> log.getActionType() == ActivityAction.ASSIGNED || log.getActionType() == ActivityAction.REASSIGNED)
+                    .findFirst() // Already ordered by timestamp desc
+                    .map(log -> log.getPerformedBy() != null ? log.getPerformedBy().getName() : null)
+                    .orElse(null);
+        }
+
+        boolean isRequester = isRequester(incident, user);
+        boolean isAdmin = user.getRole() != null && user.getRole().name().equals("ADMIN");
+        boolean isTechnician = user.getRole() != null && user.getRole().name().equals("TECHNICIAN");
+
+        // If we are a Technician (and not an admin or the requester), we hide requester details
+        if (isTechnician && !isAdmin && !isRequester) {
+            requesterName = null;
+            requesterEmail = null;
+            requesterPhone = null;
+        }
+
         return new TicketResponse(
                 incident.getId(),
                 incident.getTicketId(),
@@ -687,16 +721,18 @@ public class IncidentService {
                 incident.getPriority(),
                 incident.getStatus(),
                 incident.getSubmittedBy() != null ? incident.getSubmittedBy().getId() : null,
-                incident.getSubmittedBy() != null ? incident.getSubmittedBy().getName() : null,
+                requesterName,
+                requesterEmail,
                 incident.getAssignedTechnician() != null ? incident.getAssignedTechnician().getId() : null,
                 incident.getAssignedTechnician() != null ? incident.getAssignedTechnician().getName() : null,
+                assignedByName,
                 buildAttachmentResponses(incident),
                 incident.getRejectionReason(),
                 incident.getAdminNotes(),
                 incident.getTechnicianNotes(),
                 incident.getResolutionSummary(),
                 incident.getResolutionSummary(),
-                incident.getPreferredContact(),
+                requesterPhone,
                 incident.getSlaResponseDeadline() != null ? incident.getSlaResponseDeadline().toString() : null,
                 incident.getSlaResolutionDeadline() != null ? incident.getSlaResolutionDeadline().toString() : null,
                 incident.getFirstResponseAt() != null ? incident.getFirstResponseAt().toString() : null,

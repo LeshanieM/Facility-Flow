@@ -35,8 +35,10 @@ public class IncidentResponses {
         private IncidentStatus status;
         private String submittedById;
         private String submittedByName;
+        private String submittedByEmail;
         private String assignedTechnicianId;
         private String assignedTechnicianName;
+        private String assignedByName;
         private List<AttachmentResponse> attachments;
         private String rejectionReason;
         private String adminNotes;

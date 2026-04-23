@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Paperclip, Eye, Download, PlayCircle, MapPin, CheckCircle2, X } from 'lucide-react';
+import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Paperclip, Eye, Download, PlayCircle, MapPin, CheckCircle2, X, ShieldCheck } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
@@ -352,6 +352,10 @@ const TechnicianMaintenancePage = () => {
                                     <MapPin size={12} />
                                     <span className="truncate">{req.location}</span>
                                 </div>
+                                <div className="flex items-center gap-2 text-[10px] text-blue-600 font-bold uppercase tracking-tight">
+                                    <ShieldCheck size={10} />
+                                    <span>Assigned By: {req.assignedByName || 'Admin'}</span>
+                                </div>
                                 
                                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                                     <PriorityBadge priority={req.priority} />
@@ -545,9 +549,8 @@ const TechnicianMaintenancePage = () => {
                                             <p className="text-sm font-bold text-slate-800 uppercase tracking-tight">{selectedRequest.category}</p>
                                         </div>
                                         <div>
-                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Requested By</h5>
-                                            <p className="text-sm font-bold text-slate-800">{selectedRequest.submittedByName || 'Student'}</p>
-                                            <p className="text-[10px] text-slate-500 mt-1">{selectedRequest.preferredContact || 'No contact provided'}</p>
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Assigned By</h5>
+                                            <p className="text-sm font-bold text-slate-800">{selectedRequest.assignedByName || 'Not recorded'}</p>
                                         </div>
                                     </div>
 

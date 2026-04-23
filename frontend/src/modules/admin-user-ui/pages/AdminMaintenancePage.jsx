@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Layout from '../../../components/Layout';
 import { useAdminMaintenanceDashboard } from '../hooks/useAdminMaintenanceDashboard';
-import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download, Send, Loader2 } from 'lucide-react';
+import { BellRing, CheckCircle, Clock, AlertCircle, RefreshCw, Filter, MonitorPlay, X, User as UserIcon, Calendar, MapPin, Paperclip, Eye, Download, Send, Loader2, ShieldCheck } from 'lucide-react';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 import StatusBadge, { INCIDENT_STATUS_OPTIONS, INCIDENT_STATUS_UPDATE_OPTIONS, PriorityBadge, normalizeIncidentStatus } from '../../student-user-ui/components/StatusBadge';
@@ -372,7 +372,15 @@ export const AdminMaintenancePage = () => {
                                 </div>
                                 <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><UserIcon size={10} /> Requester</div>
-                                    <div className="font-bold text-slate-800 text-sm truncate">{selectedTicket.submittedByName}</div>
+                                    <div className="font-bold text-slate-800 text-sm truncate">{selectedTicket.submittedByName || 'Unknown'}</div>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><MonitorPlay size={10} className="rotate-90" /> Contact Number</div>
+                                    <div className="font-bold text-slate-800 text-sm truncate">{selectedTicket.preferredContact || 'Not available'}</div>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm col-span-2 md:col-span-1">
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1">@ Email Address</div>
+                                    <div className="font-bold text-slate-800 text-sm truncate" title={selectedTicket.submittedByEmail}>{selectedTicket.submittedByEmail || 'Not available'}</div>
                                 </div>
                                 <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                                     <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-1"><Calendar size={10} /> Created</div>

@@ -46,6 +46,12 @@ public class Incident {
     @DocumentReference(lazy = true)
     private User assignedTechnician;
 
+    @DocumentReference(lazy = true)
+    private User assignedBy;
+
+    private String assignedByAdminName;
+    private String requesterEmail;
+
     private List<String> attachments; // e.g. Array of S3 URLs
 
     @Builder.Default
