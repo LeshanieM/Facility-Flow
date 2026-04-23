@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import AdminOverviewDashboard from '../modules/admin-user-ui/components/AdminOverviewDashboard';
 import api from '../services/api';
-import { AlertCircle, CheckCircle2, Clock3, FolderKanban, RefreshCw, Wrench } from 'lucide-react';
+import { AlertCircle, CalendarClock, CheckCircle2, Clock3, FolderKanban, RefreshCw, Wrench } from 'lucide-react';
 import StatusBadge, { PriorityBadge, normalizeIncidentPriority, normalizeIncidentStatus } from '../modules/student-user-ui/components/StatusBadge';
 import SurfaceCard from '../modules/student-user-ui/components/SurfaceCard';
 import {
@@ -14,12 +14,320 @@ import {
     buildPrioritySegments,
     buildStatusSegments,
 } from '../modules/maintenance/components/DashboardAnalytics';
+import { bookingService } from '../services/bookingService';
+import { getMyRequests, getResources } from '../modules/student-user-ui/api/studentMaintenanceApi';
 
 const formatTime = (value) => {
     if (!value) return 'N/A';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return 'N/A';
     return date.toLocaleString();
+};
+
+const formatBookingDate = (value) => {
+    if (!value) return 'N/A';
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return 'N/A';
+    return date.toLocaleDateString();
+};
+
+const RequesterDashboard = () => {
+    const [requests, setRequests] = React.useState([]);
+    const [bookings, setBookings] = React.useState([]);
+    const [resources, setResources] = React.useState([]);
+    const [isLoading, setIsLoading] = React.useState(true);
+
+    const loadDashboard = React.useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const [requestsResponse, bookingsResponse, resourcesResponse] = await Promise.all([
+                getMyRequests(),
+                bookingService.getMyBookings(),
+                getResources(),
+            ]);
+            setRequests(Array.isArray(requestsResponse) ? requestsResponse : []);
+            setBookings(Array.isArray(bookingsResponse) ? bookingsResponse : []);
+            setResources(Array.isArray(resourcesResponse) ? resourcesResponse : []);
+        } catch (error) {
+            setRequests([]);
+            setBookings([]);
+            setResources([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    React.useEffect(() => {
+        loadDashboard();
+    }, [loadDashboard]);
+
+    const analytics = React.useMemo(() => {
+        const normalizedRequests = requests.map((request) => ({
+            ...request,
+            normalizedStatus: normalizeIncidentStatus(request.status),
+            normalizedPriority: normalizeIncidentPriority(request.priority),
+        }));
+
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const endOfWeek = new Date(startOfToday);
+        endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+        const bookingStatusCounts = bookings.reduce((acc, booking) => {
+            const key = String(booking.status || 'PENDING').toUpperCase();
+            acc[key] = (acc[key] || 0) + 1;
+            return acc;
+        }, {});
+
+        const bookingSegments = [
+            { key: 'PENDING', label: 'Pending', value: bookingStatusCounts.PENDING || 0, color: 'bg-amber-500' },
+            { key: 'APPROVED', label: 'Approved', value: bookingStatusCounts.APPROVED || 0, color: 'bg-emerald-500' },
+            { key: 'REJECTED', label: 'Rejected', value: bookingStatusCounts.REJECTED || 0, color: 'bg-rose-500' },
+            { key: 'CANCELLED', label: 'Cancelled', value: bookingStatusCounts.CANCELLED || 0, color: 'bg-slate-400' },
+        ];
+
+        const upcomingBookings = bookings
+            .filter((booking) => String(booking.status || '').toUpperCase() === 'APPROVED')
+            .filter((booking) => {
+                const bookingDate = new Date(`${booking.date}T00:00:00`);
+                return Number.isFinite(bookingDate.getTime()) && bookingDate >= startOfToday;
+            })
+            .sort((a, b) => new Date(`${a.date}T00:00:00`) - new Date(`${b.date}T00:00:00`));
+
+        const activeBookings = upcomingBookings.filter((booking) => {
+            const bookingDate = new Date(`${booking.date}T00:00:00`);
+            return bookingDate <= endOfWeek;
+        });
+
+        const requestStatusCounts = {
+            open: normalizedRequests.filter((request) => request.normalizedStatus === 'OPEN').length,
+            inProgress: normalizedRequests.filter((request) => ['ASSIGNED', 'IN_PROGRESS'].includes(request.normalizedStatus)).length,
+            resolved: normalizedRequests.filter((request) => request.normalizedStatus === 'RESOLVED').length,
+            rejected: normalizedRequests.filter((request) => request.normalizedStatus === 'REJECTED').length,
+        };
+
+        const recentRequestUpdates = [...normalizedRequests]
+            .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+            .slice(0, 4);
+
+        const recentBookings = [...bookings]
+            .sort((a, b) => new Date(b.createdAt || `${b.date}T00:00:00`) - new Date(a.createdAt || `${a.date}T00:00:00`))
+            .slice(0, 4);
+
+        const attentionItems = [
+            ...normalizedRequests
+                .filter((request) => request.normalizedStatus === 'REJECTED')
+                .map((request) => ({
+                    key: `request-rejected-${request.id}`,
+                    type: 'Request',
+                    title: request.title,
+                    status: request.normalizedStatus,
+                    when: request.updatedAt || request.createdAt,
+                    to: '/maintenance',
+                })),
+            ...normalizedRequests
+                .filter((request) => ['ASSIGNED', 'IN_PROGRESS'].includes(request.normalizedStatus))
+                .slice(0, 3)
+                .map((request) => ({
+                    key: `request-active-${request.id}`,
+                    type: 'Request',
+                    title: request.title,
+                    status: request.normalizedStatus,
+                    when: request.updatedAt || request.createdAt,
+                    to: '/maintenance',
+                })),
+            ...upcomingBookings
+                .slice(0, 3)
+                .map((booking) => ({
+                    key: `booking-upcoming-${booking.id}`,
+                    type: 'Booking',
+                    title: booking.resourceName || 'Upcoming booking',
+                    status: booking.status,
+                    when: `${booking.date}T00:00:00`,
+                    to: '/bookings/my',
+                })),
+        ]
+            .sort((a, b) => new Date(b.when) - new Date(a.when))
+            .slice(0, 6);
+
+        const resourceTypeCounts = resources.reduce((acc, resource) => {
+            const type = String(resource.type || 'OTHER').toUpperCase();
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+        }, {});
+        const topResourceTypes = Object.entries(resourceTypeCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 4)
+            .map(([type, count]) => ({
+                key: type,
+                label: type.replace(/_/g, ' '),
+                value: count,
+                color: 'bg-slate-400',
+            }));
+
+        return {
+            requestTotal: normalizedRequests.length,
+            requestStatusCounts,
+            bookingTotal: bookings.length,
+            activeBookings: activeBookings.length,
+            upcomingBookings: upcomingBookings.length,
+            pendingBookings: bookingStatusCounts.PENDING || 0,
+            completedBookings: bookingStatusCounts.CANCELLED || 0,
+            requestStatusSegments: buildStatusSegments(normalizedRequests.map((request) => ({ ...request, status: request.normalizedStatus }))),
+            requestPrioritySegments: buildPrioritySegments(normalizedRequests.map((request) => ({ ...request, priority: request.normalizedPriority }))),
+            bookingSegments,
+            recentRequestUpdates,
+            recentBookings,
+            attentionItems,
+            topResourceTypes,
+        };
+    }, [requests, bookings, resources]);
+
+    const quickLinks = [
+        { label: 'Submit New Incident Ticket', to: '/maintenance' },
+        { label: 'View My Requests', to: '/maintenance' },
+        { label: 'Book a Facility', to: '/bookings/new' },
+        { label: 'View My Bookings', to: '/bookings/my' },
+        { label: 'Explore Facilities', to: '/facilities' },
+        { label: 'Recent Updates', to: '/maintenance' },
+    ];
+
+    return (
+        <div className="space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500">Requester Dashboard</p>
+                    <h3 className="text-2xl font-black tracking-tight text-slate-900">Your service activity at a glance</h3>
+                    <p className="text-sm text-slate-500">Requests, bookings, and recent updates tied to your account.</p>
+                </div>
+                <button
+                    onClick={loadDashboard}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                    <RefreshCw size={16} /> Refresh
+                </button>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+                <KpiCard icon={<FolderKanban size={18} />} label="Total Requests" value={analytics.requestTotal} accent="blue" />
+                <KpiCard icon={<Clock3 size={18} />} label="Open Requests" value={analytics.requestStatusCounts.open} accent="amber" />
+                <KpiCard icon={<Wrench size={18} />} label="In Progress Requests" value={analytics.requestStatusCounts.inProgress} accent="orange" />
+                <KpiCard icon={<CheckCircle2 size={18} />} label="Resolved Requests" value={analytics.requestStatusCounts.resolved} accent="emerald" />
+                <KpiCard icon={<AlertCircle size={18} />} label="Rejected Requests" value={analytics.requestStatusCounts.rejected} accent="rose" />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <KpiCard icon={<CalendarClock size={18} />} label="Active Bookings" value={analytics.activeBookings} accent="indigo" />
+                <KpiCard icon={<CalendarClock size={18} />} label="Upcoming Bookings" value={analytics.upcomingBookings} accent="blue" />
+                <KpiCard icon={<Clock3 size={18} />} label="Pending Booking Requests" value={analytics.pendingBookings} accent="amber" />
+                <KpiCard icon={<CheckCircle2 size={18} />} label="Completed Bookings" value={analytics.completedBookings} accent="slate" />
+            </div>
+
+            <AnalyticsSection>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Quick Actions</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {quickLinks.map((link) => (
+                        <Link
+                            key={link.label}
+                            to={link.to}
+                            className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+                        >
+                            {link.label}
+                        </Link>
+                    ))}
+                </div>
+            </AnalyticsSection>
+
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <SurfaceCard className="p-6 sm:p-7">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">Important Attention</h4>
+                    {isLoading ? (
+                        <p className="text-sm text-slate-400">Loading important items...</p>
+                    ) : analytics.attentionItems.length === 0 ? (
+                        <p className="text-sm text-slate-400">No urgent items right now.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {analytics.attentionItems.map((item) => (
+                                <div key={item.key} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-slate-800 truncate">{item.title}</p>
+                                            <p className="text-[11px] font-medium text-slate-500">{item.type}</p>
+                                        </div>
+                                        <Link to={item.to} className="text-xs font-bold text-slate-700 hover:text-slate-900">Open</Link>
+                                    </div>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        {item.type === 'Request' ? (
+                                            <StatusBadge status={item.status} />
+                                        ) : (
+                                            <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                                                {String(item.status || '').toUpperCase()}
+                                            </span>
+                                        )}
+                                        <span className="text-[10px] text-slate-400 font-semibold">{formatTime(item.when)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </SurfaceCard>
+
+                <SurfaceCard className="p-6 sm:p-7">
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] mb-4">Recent Activity</h4>
+                    {isLoading ? (
+                        <p className="text-sm text-slate-400">Loading recent activity...</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {analytics.recentRequestUpdates.slice(0, 3).map((request) => (
+                                <div key={`recent-request-${request.id}`} className="rounded-xl border border-slate-100 bg-white px-4 py-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="text-sm font-bold text-slate-800 truncate">{request.title}</p>
+                                        <Link to="/maintenance" className="text-xs font-bold text-blue-600">View</Link>
+                                    </div>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <StatusBadge status={request.normalizedStatus} />
+                                        <PriorityBadge priority={request.priority} />
+                                        <span className="text-[10px] font-semibold text-slate-400">{formatTime(request.updatedAt || request.createdAt)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {analytics.recentBookings.slice(0, 3).map((booking) => (
+                                <div key={`recent-booking-${booking.id}`} className="rounded-xl border border-slate-100 bg-white px-4 py-3">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <p className="text-sm font-bold text-slate-800 truncate">{booking.resourceName || 'Booking'}</p>
+                                        <Link to="/bookings/my" className="text-xs font-bold text-blue-600">View</Link>
+                                    </div>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <span className="inline-flex items-center rounded-full border border-slate-300 bg-slate-50 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+                                            {String(booking.status || 'PENDING').toUpperCase()}
+                                        </span>
+                                        <span className="text-[10px] font-semibold text-slate-400">{formatBookingDate(booking.date)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            {analytics.recentRequestUpdates.length === 0 && analytics.recentBookings.length === 0 && (
+                                <p className="text-sm text-slate-400">No recent activity.</p>
+                            )}
+                        </div>
+                    )}
+                </SurfaceCard>
+            </div>
+
+            <AnalyticsSection>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <DistributionBar title="Requests by Status" segments={analytics.requestStatusSegments} />
+                    <DistributionBar title="Requests by Priority" segments={analytics.requestPrioritySegments} />
+                </div>
+            </AnalyticsSection>
+
+            <AnalyticsSection>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+                    <DistributionBar title="Bookings by Status" segments={analytics.bookingSegments} />
+                    <DistributionBar title="Resource Types Available" segments={analytics.topResourceTypes} />
+                </div>
+            </AnalyticsSection>
+        </div>
+    );
 };
 
 const TechnicianDashboard = () => {
@@ -238,6 +546,7 @@ const Dashboard = () => {
     const { user } = useAuth();
     const isAdmin = user?.role === 'ADMIN';
     const isTechnician = user?.role === 'TECHNICIAN';
+    const isRequester = user?.role === 'USER';
     const firstName = String(user?.name || user?.email || user?.sub || 'there')
         .trim()
         .split(' ')[0]
@@ -264,6 +573,7 @@ const Dashboard = () => {
 
                 {isAdmin && <AdminOverviewDashboard />}
                 {isTechnician && <TechnicianDashboard />}
+                {isRequester && <RequesterDashboard />}
             </div>
         </Layout>
     );
