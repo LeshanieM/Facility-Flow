@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Paperclip, Eye, Download, PlayCircle, MapPin, CheckCircle2, X, ShieldCheck } from 'lucide-react';
+import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Paperclip, Eye, Download, PlayCircle, MapPin, CheckCircle2, X, ShieldCheck, Filter } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
@@ -9,6 +9,7 @@ import SectionHeader from '../../student-user-ui/components/SectionHeader';
 import SurfaceCard from '../../student-user-ui/components/SurfaceCard';
 import StatusBadge, { INCIDENT_STATUS_OPTIONS, PriorityBadge, normalizeIncidentPriority, normalizeIncidentStatus } from '../../student-user-ui/components/StatusBadge';
 import ToastStack from '../../student-user-ui/components/ToastStack';
+import EmptyState from '../../student-user-ui/components/EmptyState';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
 
@@ -32,6 +33,7 @@ const TechnicianMaintenancePage = () => {
   const [toasts, setToasts] = useState([]);
   const [attachmentActionKey, setAttachmentActionKey] = useState('');
   const [ticketFilter, setTicketFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const detailsRef = useRef(null);
 
   const displayName = useMemo(() => {
@@ -230,29 +232,31 @@ const TechnicianMaintenancePage = () => {
   }, [searchParams, quickFocus]);
 
   const filteredRequests = useMemo(() => {
-    const now = Date.now();
+    let result = [...requests];
+
+    // Status filter - primary technician view filter
+    if (statusFilter !== 'ALL') {
+      result = result.filter(req => normalizeIncidentStatus(req.status) === statusFilter);
+    }
+
+    // Quick Focus filters (existing dashboard shortcuts)
     const highPrioritySet = new Set(['HIGH', 'EMERGENCY']);
-
+    
     if (ticketFilter === 'NOT_STARTED') {
-      return requests.filter((req) => ['OPEN', 'ASSIGNED'].includes(normalizeIncidentStatus(req.status)));
-    }
-    if (ticketFilter === 'IN_PROGRESS') {
-      return requests.filter((req) => normalizeIncidentStatus(req.status) === 'IN_PROGRESS');
-    }
-    if (ticketFilter === 'HIGH_PRIORITY') {
-      return requests.filter((req) => highPrioritySet.has(normalizeIncidentPriority(req.priority)));
-    }
-    if (ticketFilter === 'RECENT') {
-      return [...requests]
-        .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
-        .slice(0, 10);
-    }
-    if (ticketFilter === 'RESUME') {
-      return requests.filter((req) => normalizeIncidentStatus(req.status) === 'IN_PROGRESS');
+      result = result.filter((req) => ['OPEN', 'ASSIGNED'].includes(normalizeIncidentStatus(req.status)));
+    } else if (ticketFilter === 'IN_PROGRESS') {
+      result = result.filter((req) => normalizeIncidentStatus(req.status) === 'IN_PROGRESS');
+    } else if (ticketFilter === 'HIGH_PRIORITY') {
+      result = result.filter((req) => highPrioritySet.has(normalizeIncidentPriority(req.priority)));
+    } else if (ticketFilter === 'RECENT') {
+      // Sorting is already handled in requests state, so we just slice
+      result = result.slice(0, 10);
+    } else if (ticketFilter === 'RESUME') {
+      result = result.filter((req) => normalizeIncidentStatus(req.status) === 'IN_PROGRESS');
     }
 
-    return requests;
-  }, [requests, ticketFilter]);
+    return result;
+  }, [requests, ticketFilter, statusFilter]);
 
   const clearQuickFocus = () => {
     const nextParams = new URLSearchParams(searchParams);
@@ -286,12 +290,27 @@ const TechnicianMaintenancePage = () => {
             icon={<Wrench size={14} />}
             title={`Assigned Tickets for ${displayName}`}
             actions={
-              <button
-                onClick={loadRequests}
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm"
-              >
-                <RefreshCw size={16} /> Refresh
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-100">
+                  <Filter size={14} className="text-slate-400" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-600 outline-none cursor-pointer pr-1"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    {INCIDENT_STATUS_OPTIONS.filter(opt => opt.value !== 'OPEN').map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={loadRequests}
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm hover:bg-slate-50 transition-colors border border-slate-100"
+                >
+                  <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} /> Refresh
+                </button>
+              </div>
             }
           />
         </SurfaceCard>
@@ -327,6 +346,34 @@ const TechnicianMaintenancePage = () => {
                         title="No assigned tasks"
                         description="You currently have no maintenance tickets assigned to you. Enjoy the quiet!"
                     />
+                </SurfaceCard>
+            ) : filteredRequests.length === 0 ? (
+                <SurfaceCard className="p-12 text-center">
+                    <div className="max-w-md mx-auto">
+                        <Filter size={40} className="text-slate-200 mx-auto mb-4" />
+                        <h3 className="text-lg font-black text-slate-800 mb-2">No tickets match this filter</h3>
+                        <p className="text-sm font-medium text-slate-500 mb-6">
+                            We couldn't find any {statusFilter !== 'ALL' ? statusFilter.replace('_', ' ').toLowerCase() : ''} tickets {ticketFilter !== 'ALL' ? 'for this focus area' : ''}.
+                        </p>
+                        <div className="flex justify-center gap-3">
+                            {statusFilter !== 'ALL' && (
+                                <button 
+                                    onClick={() => setStatusFilter('ALL')}
+                                    className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black transition-all"
+                                >
+                                    Reset Status Filter
+                                </button>
+                            )}
+                            {ticketFilter !== 'ALL' && (
+                                <button 
+                                    onClick={clearQuickFocus}
+                                    className="px-6 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl text-xs font-black transition-all"
+                                >
+                                    Clear Focus Area
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </SurfaceCard>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
