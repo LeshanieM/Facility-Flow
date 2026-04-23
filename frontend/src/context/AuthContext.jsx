@@ -48,9 +48,21 @@ export const AuthProvider = ({ children }) => {
     setUser(decoded);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${CONFIG.API_BASE_URL}/user/logout`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      }
+    } catch (e) {
+      console.error("Backend logout failed:", e);
+    } finally {
+      localStorage.removeItem('token');
+      setUser(null);
+    }
   };
 
   const updateUser = (userData) => {

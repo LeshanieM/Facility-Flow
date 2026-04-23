@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import com.smartcampus.notification.service.NotificationService;
+import com.smartcampus.notification.dto.NotificationDTO;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -37,29 +39,41 @@ public class UserController {
     private final UserService userService;
     private final CloudinaryService cloudinaryService;
     private final com.smartcampus.repository.UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @GetMapping("/me")
     public ResponseEntity<EntityModel<User>> getCurrentUser(Principal principal) {
-        // Java 11 compatible instanceof
-        if (principal instanceof UsernamePasswordAuthenticationToken) {
-            UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) principal;
-            if (auth.getPrincipal() instanceof User) {
-                User u = (User) auth.getPrincipal();
-                // Fetch fresh from DB to ensure latest data (picture, name etc.)
-                User freshUser = userRepository.findById(u.getId())
-                        .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = resolveUser(principal);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
 
-                EntityModel<User> model = EntityModel.of(freshUser)
-                        .add(linkTo(methodOn(UserController.class).getCurrentUser(principal)).withSelfRel())
-                        .add(linkTo(methodOn(UserController.class).updateProfile(null, null, principal)).withRel("updateProfile"))
-                        .add(linkTo(methodOn(UserController.class).getDashboardSummary(principal)).withRel("dashboardSummary"))
-                        .add(linkTo(methodOn(UserController.class).getNotifications()).withRel("notifications"))
-                        .add(linkTo(methodOn(UserController.class).createBooking(null)).withRel("createBooking"));
+        EntityModel<User> model = EntityModel.of(user)
+                .add(linkTo(methodOn(UserController.class).getCurrentUser(principal)).withSelfRel())
+                .add(linkTo(methodOn(UserController.class).updateProfile(null, null, principal)).withRel("updateProfile"))
+                .add(linkTo(methodOn(UserController.class).getDashboardSummary(principal)).withRel("dashboardSummary"))
+                .add(linkTo(methodOn(UserController.class).getNotifications(principal)).withRel("notifications"))
+                .add(linkTo(methodOn(UserController.class).logout()).withRel("logout"));
 
-                return ResponseEntity.ok(model);
-            }
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        return ResponseEntity.ok(model);
+    }
+
+    /**
+     * Login endpoint to verify token and return user details.
+     * In this OAuth2/JWT setup, the actual auth happens via OAuth2, 
+     * but this endpoint serves as the "Post-Login" verification for the frontend.
+     */
+    @PostMapping("/login")
+    public ResponseEntity<EntityModel<User>> login(Principal principal) {
+        return getCurrentUser(principal);
+    }
+
+    /**
+     * Logout endpoint.
+     * In a stateless JWT setup, the server just confirms the logout.
+     * The frontend is responsible for clearing the token.
+     */
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout() {
+        return ResponseEntity.ok(Map.of("message", "Logged out successfully"));
     }
 
     @PutMapping("/profile")
@@ -67,20 +81,10 @@ public class UserController {
             @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "picture", required = false) MultipartFile picture,
             Principal principal) {
-        
-        String userId = "";
-        // Java 11 compatible instanceof
-        if (principal instanceof UsernamePasswordAuthenticationToken) {
-            UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) principal;
-            if (auth.getPrincipal() instanceof User) {
-                User u = (User) auth.getPrincipal();
-                userId = u.getId();
-            }
-        }
 
-        if (userId.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        User resolved = resolveUser(principal);
+        if (resolved == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String userId = resolved.getId();
 
         String pictureUrl = null;
         if (picture != null && !picture.isEmpty()) {
@@ -125,19 +129,9 @@ public class UserController {
 
     @GetMapping("/dashboard-summary")
     public ResponseEntity<EntityModel<DashboardSummaryResponse>> getDashboardSummary(Principal principal) {
-        String userId = "";
-        // Java 11 compatible instanceof
-        if (principal instanceof UsernamePasswordAuthenticationToken) {
-            UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) principal;
-            if (auth.getPrincipal() instanceof User) {
-                User u = (User) auth.getPrincipal();
-                userId = u.getId();
-            }
-        }
-
-        if (userId.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        User resolved = resolveUser(principal);
+        if (resolved == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        String userId = resolved.getId();
 
         DashboardSummaryResponse summary = incidentService.getStudentDashboardSummary(userId);
         EntityModel<DashboardSummaryResponse> model = EntityModel.of(summary)
@@ -148,12 +142,27 @@ public class UserController {
     }
 
     @GetMapping("/notifications")
-    public ResponseEntity<CollectionModel<Object>> getNotifications() {
-        List<Object> notifications = List.of();
-        CollectionModel<Object> model = CollectionModel.of(notifications)
-                .add(linkTo(methodOn(UserController.class).getNotifications()).withSelfRel())
-                .add(linkTo(methodOn(UserController.class).getCurrentUser(null)).withRel("me"));
+    public ResponseEntity<CollectionModel<NotificationDTO>> getNotifications(Principal principal) {
+        User user = resolveUser(principal);
+        if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
+        List<NotificationDTO> notifications = notificationService.getUserNotifications(user.getId());
+        CollectionModel<NotificationDTO> model = CollectionModel.of(notifications)
+                .add(linkTo(methodOn(UserController.class).getNotifications(principal)).withSelfRel())
+                .add(linkTo(methodOn(UserController.class).getCurrentUser(principal)).withRel("me"));
         
         return ResponseEntity.ok(model);
+    }
+
+    /**
+     * Helper to extract user from security context
+     */
+    private User resolveUser(Principal principal) {
+        if (principal instanceof UsernamePasswordAuthenticationToken auth) {
+            if (auth.getPrincipal() instanceof User u) {
+                return userRepository.findById(u.getId()).orElse(null);
+            }
+        }
+        return null;
     }
 }
