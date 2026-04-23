@@ -29,7 +29,7 @@ import RequestList from '../components/RequestList';
 import RequestDetailsPanel from '../components/RequestDetailsPanel';
 import SkeletonBlock from '../components/SkeletonBlock';
 import SurfaceCard from '../components/SurfaceCard';
-import { formatIncidentStatusLabel } from '../components/StatusBadge';
+import { formatIncidentStatusLabel, normalizeIncidentStatus } from '../components/StatusBadge';
 import TabNavigation from '../components/TabNavigation';
 import ToastStack from '../components/ToastStack';
 import { useStudentMaintenanceDashboard } from '../hooks/useStudentMaintenanceDashboard';
@@ -127,7 +127,8 @@ const StudentStaffMaintenanceModule = () => {
         request.location?.toLowerCase().includes(query) ||
         request.category?.toLowerCase().includes(query);
 
-      const matchesStatus = filters.status === 'ALL' || request.status === filters.status;
+      const normalizedStatus = normalizeIncidentStatus(request.status);
+      const matchesStatus = filters.status === 'ALL' || normalizedStatus === filters.status;
       return matchesQuery && matchesStatus;
     }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [filters, requests]);
@@ -141,7 +142,12 @@ const StudentStaffMaintenanceModule = () => {
   /* ─── Analytics Computations for Overview tab ─── */
   const overviewAnalytics = useMemo(() => {
     const statusSegments = buildStatusSegments(requests);
-    const prioritySegments = buildPrioritySegments(requests);
+    const requesterPriorityTickets = requests.map((request) => ({
+      ...request,
+      // Requester view requirement: treat HIGH as Emergency in priority distribution.
+      priority: String(request.priority || '').toUpperCase() === 'HIGH' ? 'EMERGENCY' : request.priority,
+    }));
+    const prioritySegments = buildPrioritySegments(requesterPriorityTickets);
     const dayBars = getDayOfWeekBars(requests);
 
     const recentRequests = [...requests]
@@ -151,7 +157,7 @@ const StudentStaffMaintenanceModule = () => {
         key: r.id,
         label: r.title,
         sublabel: r.location || '',
-        value: (r.status || '').replace(/_/g, ' '),
+        value: formatIncidentStatusLabel(r.status),
       }));
 
     const latestUpdates = [...requests]
@@ -161,7 +167,7 @@ const StudentStaffMaintenanceModule = () => {
         key: r.id,
         label: r.title,
         sublabel: r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : '',
-        value: (r.status || '').replace(/_/g, ' '),
+        value: formatIncidentStatusLabel(r.status),
       }));
 
     return { statusSegments, prioritySegments, dayBars, recentRequests, latestUpdates };
@@ -170,12 +176,12 @@ const StudentStaffMaintenanceModule = () => {
 
   const displaySummary = useMemo(() => {
     const totalSubmitted = requests.length;
-    const pending = requests.filter((request) => request.status === 'OPEN').length;
-    const inProgress = requests.filter((request) => request.status === 'IN_PROGRESS' || request.status === 'ASSIGNED').length;
+    const pending = requests.filter((request) => normalizeIncidentStatus(request.status) === 'OPEN').length;
+    const inProgress = requests.filter((request) => ['IN_PROGRESS', 'ASSIGNED'].includes(normalizeIncidentStatus(request.status))).length;
     const completed = requests.filter((request) =>
-      ['RESOLVED', 'CLOSED'].includes(request.status)
+      ['RESOLVED', 'CLOSED'].includes(normalizeIncidentStatus(request.status))
     ).length;
-    const rejected = requests.filter((request) => request.status === 'REJECTED').length;
+    const rejected = requests.filter((request) => normalizeIncidentStatus(request.status) === 'REJECTED').length;
 
     return {
       ...summary,
@@ -463,7 +469,7 @@ const StudentStaffMaintenanceModule = () => {
             )}
 
             {activeTab === 'updates' && (
-              <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)] relative z-10">
+              <div className={`grid grid-cols-1 gap-8 ${notifications.length > 0 ? '2xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]' : ''} relative z-10`}>
                 <NotificationList notifications={notifications} isLoading={false} />
 
                 <SurfaceCard className="p-6 sm:p-7" tone="muted">

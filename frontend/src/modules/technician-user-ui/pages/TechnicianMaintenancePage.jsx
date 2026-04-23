@@ -1,19 +1,17 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Clock, Paperclip, Eye, Download, PlayCircle, MapPin, Tag, UserCircle2, Calendar, Phone, CheckCircle2, X, BarChart3, Zap, AlertCircle, Layers } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Edit2, Loader2, MessageSquare, RefreshCw, Trash2, Wrench, Paperclip, Eye, Download, PlayCircle, MapPin, CheckCircle2, X, ShieldCheck, Filter } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import Layout from '../../../components/Layout';
 import { useAuth } from '../../../context/AuthContext';
 import api from '../../../services/api';
 import SectionHeader from '../../student-user-ui/components/SectionHeader';
 import SurfaceCard from '../../student-user-ui/components/SurfaceCard';
-import StatusBadge, { INCIDENT_STATUS_OPTIONS, PriorityBadge } from '../../student-user-ui/components/StatusBadge';
+import StatusBadge, { INCIDENT_STATUS_OPTIONS, PriorityBadge, normalizeIncidentPriority, normalizeIncidentStatus } from '../../student-user-ui/components/StatusBadge';
 import ToastStack from '../../student-user-ui/components/ToastStack';
+import EmptyState from '../../student-user-ui/components/EmptyState';
 import { formatDateTime, formatDateTimeOrFallback, formatDurationMinutes } from '../../maintenance/utils/dateTime';
 import { downloadAttachment, getAttachmentName, viewAttachment, getViewerUrl } from '../../maintenance/utils/attachmentActions';
-import {
-  KpiCard, DistributionBar, InsightList, AnalyticsSection, AnalyticsTabToggle,
-  buildStatusSegments, buildPrioritySegments,
-} from '../../maintenance/components/DashboardAnalytics';
 
 const sortTickets = (items) => [...items].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
 const getCommentContent = (comment) => comment?.content || comment?.message || '';
@@ -23,6 +21,7 @@ const normalizeIdentity = (value) => String(value || '').trim().toLowerCase();
 
 const TechnicianMaintenancePage = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [requests, setRequests] = useState([]);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -33,7 +32,8 @@ const TechnicianMaintenancePage = () => {
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [toasts, setToasts] = useState([]);
   const [attachmentActionKey, setAttachmentActionKey] = useState('');
-  const [dashTab, setDashTab] = useState('analytics');
+  const [ticketFilter, setTicketFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const detailsRef = useRef(null);
 
   const displayName = useMemo(() => {
@@ -214,40 +214,56 @@ const TechnicianMaintenancePage = () => {
   };
 
   const comments = selectedRequest?.comments || [];
+  const quickFocus = searchParams.get('focus');
 
-  /* ─── Analytics Computations (frontend-only, from existing requests) ─── */
-  const analytics = useMemo(() => {
-    const total = requests.length;
-    const pending = requests.filter(r => r.status === 'OPEN' || r.status === 'ASSIGNED').length;
-    const inProgress = requests.filter(r => r.status === 'IN_PROGRESS').length;
-    const completed = requests.filter(r => r.status === 'RESOLVED' || r.status === 'CLOSED').length;
+  useEffect(() => {
+    const mappedFilter = quickFocus === 'not-started'
+      ? 'NOT_STARTED'
+      : quickFocus === 'in-progress'
+        ? 'IN_PROGRESS'
+        : quickFocus === 'high-priority'
+          ? 'HIGH_PRIORITY'
+          : quickFocus === 'recent'
+            ? 'RECENT'
+            : quickFocus === 'resume'
+              ? 'RESUME'
+              : 'ALL';
+    setTicketFilter(mappedFilter);
+  }, [searchParams, quickFocus]);
 
-    const statusSegments = buildStatusSegments(requests);
-    const prioritySegments = buildPrioritySegments(requests);
+  const filteredRequests = useMemo(() => {
+    let result = [...requests];
 
-    const recentlyUpdated = [...requests]
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
-      .slice(0, 5)
-      .map(r => ({
-        key: r.id,
-        label: r.title,
-        sublabel: `${r.ticketId || ''} • ${r.location || ''}`.replace(/^ • /, ''),
-        value: (r.status || '').replace(/_/g, ' '),
-      }));
+    // Status filter - primary technician view filter
+    if (statusFilter !== 'ALL') {
+      result = result.filter(req => normalizeIncidentStatus(req.status) === statusFilter);
+    }
 
-    const needingAction = requests
-      .filter(r => r.status === 'ASSIGNED' || r.status === 'OPEN')
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-      .slice(0, 5)
-      .map(r => ({
-        key: r.id,
-        label: r.title,
-        sublabel: r.location || '',
-        value: (r.priority || 'Medium'),
-      }));
+    // Quick Focus filters (existing dashboard shortcuts)
+    const highPrioritySet = new Set(['HIGH', 'EMERGENCY']);
+    
+    if (ticketFilter === 'NOT_STARTED') {
+      result = result.filter((req) => ['OPEN', 'ASSIGNED'].includes(normalizeIncidentStatus(req.status)));
+    } else if (ticketFilter === 'IN_PROGRESS') {
+      result = result.filter((req) => normalizeIncidentStatus(req.status) === 'IN_PROGRESS');
+    } else if (ticketFilter === 'HIGH_PRIORITY') {
+      result = result.filter((req) => highPrioritySet.has(normalizeIncidentPriority(req.priority)));
+    } else if (ticketFilter === 'RECENT') {
+      // Sorting is already handled in requests state, so we just slice
+      result = result.slice(0, 10);
+    } else if (ticketFilter === 'RESUME') {
+      result = result.filter((req) => normalizeIncidentStatus(req.status) === 'IN_PROGRESS');
+    }
 
-    return { total, pending, inProgress, completed, statusSegments, prioritySegments, recentlyUpdated, needingAction };
-  }, [requests]);
+    return result;
+  }, [requests, ticketFilter, statusFilter]);
+
+  const clearQuickFocus = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('focus');
+    nextParams.set('tab', 'tickets');
+    setSearchParams(nextParams);
+  };
 
   // Scroll lock for modal
   useEffect(() => {
@@ -274,12 +290,27 @@ const TechnicianMaintenancePage = () => {
             icon={<Wrench size={14} />}
             title={`Assigned Tickets for ${displayName}`}
             actions={
-              <button
-                onClick={loadRequests}
-                className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm"
-              >
-                <RefreshCw size={16} /> Refresh
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-100">
+                  <Filter size={14} className="text-slate-400" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-transparent text-xs font-bold text-slate-600 outline-none cursor-pointer pr-1"
+                  >
+                    <option value="ALL">All Statuses</option>
+                    {INCIDENT_STATUS_OPTIONS.filter(opt => opt.value !== 'OPEN').map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={loadRequests}
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold shadow-sm hover:bg-slate-50 transition-colors border border-slate-100"
+                >
+                  <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} /> Refresh
+                </button>
+              </div>
             }
           />
         </SurfaceCard>
@@ -288,70 +319,26 @@ const TechnicianMaintenancePage = () => {
           <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-blue-600" size={40} /></div>
         ) : (
           <>
-            {/* Analytics / Tickets Tab Toggle */}
-            <div className="flex items-center gap-4">
-              <AnalyticsTabToggle
-                activeTab={dashTab}
-                onTabChange={setDashTab}
-                analyticsLabel="📊 Analytics"
-                ticketsLabel="🔧 My Tasks"
-              />
-            </div>
-
-            {/* Analytics Dashboard */}
-            {dashTab === 'analytics' && (
-              <div className="space-y-6 animate-fade-in">
-                {/* KPI Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <KpiCard icon={<Wrench size={18} />} label="My Assigned" value={analytics.total} accent="blue" />
-                  <KpiCard icon={<Clock size={18} />} label="Pending / Open" value={analytics.pending} accent="amber" />
-                  <KpiCard icon={<Zap size={18} />} label="In Progress" value={analytics.inProgress} accent="orange" />
-                  <KpiCard icon={<CheckCircle2 size={18} />} label="Completed" value={analytics.completed} accent="emerald" />
-                </div>
-
-                {/* Work Insights */}
-                <AnalyticsSection>
-                  <div className="flex items-center gap-2 mb-2">
-                    <BarChart3 size={16} className="text-slate-400" />
-                    <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Work Insights</h3>
+            <>
+            {quickFocus && (
+              <SurfaceCard className="p-4 sm:p-5 border border-blue-100 bg-blue-50/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-blue-500">Quick Focus</p>
+                    <p className="text-sm font-semibold text-slate-700">
+                      Showing {filteredRequests.length} ticket{filteredRequests.length === 1 ? '' : 's'} for this dashboard shortcut.
+                    </p>
                   </div>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <DistributionBar title="Tickets by Status" segments={analytics.statusSegments} />
-                    <DistributionBar title="Tickets by Priority" segments={analytics.prioritySegments} />
-                  </div>
-                </AnalyticsSection>
-
-                {/* Activity */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <AnalyticsSection>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Layers size={16} className="text-slate-400" />
-                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Recently Updated</h3>
-                    </div>
-                    <InsightList
-                      title="Last 5 Updated Tickets"
-                      items={analytics.recentlyUpdated}
-                      emptyMessage="No recent updates"
-                    />
-                  </AnalyticsSection>
-
-                  <AnalyticsSection>
-                    <div className="flex items-center gap-2 mb-2">
-                      <AlertCircle size={16} className="text-amber-500" />
-                      <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Needs Action</h3>
-                    </div>
-                    <InsightList
-                      title="Not Yet Started"
-                      items={analytics.needingAction}
-                      emptyMessage="All tasks have been started 🎉"
-                    />
-                  </AnalyticsSection>
+                  <button
+                    type="button"
+                    onClick={clearQuickFocus}
+                    className="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-wider text-blue-700 hover:bg-blue-50"
+                  >
+                    Show All Tickets
+                  </button>
                 </div>
-              </div>
+              </SurfaceCard>
             )}
-
-            {/* Existing Ticket Cards */}
-            {dashTab === 'tickets' && (<>
             {requests.length === 0 ? (
                 <SurfaceCard className="p-12 text-center">
                     <EmptyState 
@@ -360,9 +347,37 @@ const TechnicianMaintenancePage = () => {
                         description="You currently have no maintenance tickets assigned to you. Enjoy the quiet!"
                     />
                 </SurfaceCard>
+            ) : filteredRequests.length === 0 ? (
+                <SurfaceCard className="p-12 text-center">
+                    <div className="max-w-md mx-auto">
+                        <Filter size={40} className="text-slate-200 mx-auto mb-4" />
+                        <h3 className="text-lg font-black text-slate-800 mb-2">No tickets match this filter</h3>
+                        <p className="text-sm font-medium text-slate-500 mb-6">
+                            We couldn't find any {statusFilter !== 'ALL' ? statusFilter.replace('_', ' ').toLowerCase() : ''} tickets {ticketFilter !== 'ALL' ? 'for this focus area' : ''}.
+                        </p>
+                        <div className="flex justify-center gap-3">
+                            {statusFilter !== 'ALL' && (
+                                <button 
+                                    onClick={() => setStatusFilter('ALL')}
+                                    className="px-6 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black transition-all"
+                                >
+                                    Reset Status Filter
+                                </button>
+                            )}
+                            {ticketFilter !== 'ALL' && (
+                                <button 
+                                    onClick={clearQuickFocus}
+                                    className="px-6 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl text-xs font-black transition-all"
+                                >
+                                    Clear Focus Area
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </SurfaceCard>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {requests.map((req) => (
+                    {filteredRequests.map((req) => (
                         <div
                             key={req.id}
                             onClick={() => setSelectedRequestId(req.id)}
@@ -383,6 +398,10 @@ const TechnicianMaintenancePage = () => {
                                 <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
                                     <MapPin size={12} />
                                     <span className="truncate">{req.location}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-[10px] text-blue-600 font-bold uppercase tracking-tight">
+                                    <ShieldCheck size={10} />
+                                    <span>Assigned By: {req.assignedByName || 'Admin'}</span>
                                 </div>
                                 
                                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
@@ -531,7 +550,7 @@ const TechnicianMaintenancePage = () => {
                                     <div className="bg-slate-900 rounded-[28px] p-6 text-white shadow-xl">
                                         <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Task Management</h4>
                                         <div className="space-y-4">
-                                            {(selectedRequest.status === 'ASSIGNED' || selectedRequest.status === 'OPEN') ? (
+                                            {['ASSIGNED', 'OPEN'].includes(normalizeIncidentStatus(selectedRequest.status)) ? (
                                                 <button
                                                     onClick={() => handleUpdateStatus('IN_PROGRESS')}
                                                     className="w-full py-4 bg-indigo-500 hover:bg-indigo-600 rounded-2xl flex items-center justify-center gap-3 font-black text-sm shadow-lg shadow-indigo-500/30 transition-all"
@@ -577,9 +596,8 @@ const TechnicianMaintenancePage = () => {
                                             <p className="text-sm font-bold text-slate-800 uppercase tracking-tight">{selectedRequest.category}</p>
                                         </div>
                                         <div>
-                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Requested By</h5>
-                                            <p className="text-sm font-bold text-slate-800">{selectedRequest.submittedByName || 'Student'}</p>
-                                            <p className="text-[10px] text-slate-500 mt-1">{selectedRequest.preferredContact || 'No contact provided'}</p>
+                                            <h5 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Assigned By</h5>
+                                            <p className="text-sm font-bold text-slate-800">{selectedRequest.assignedByName || 'Not recorded'}</p>
                                         </div>
                                     </div>
 
@@ -608,7 +626,7 @@ const TechnicianMaintenancePage = () => {
                 </div>,
                 document.body
             )}
-            </>)}
+            </>
           </>
         )}
       </div>

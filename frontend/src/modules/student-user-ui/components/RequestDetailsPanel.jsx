@@ -58,6 +58,7 @@ const RequestDetailsPanel = ({
   }
 
   const activeIndex = statusStepIndex(request.status);
+  const normalizedStatus = normalizeIncidentStatus(request.status);
   const updates = getUpdates(request);
 
   const handlePostComment = async (e) => {
@@ -81,7 +82,7 @@ const RequestDetailsPanel = ({
     if (success) setEditingId(null);
   };
 
-  const timelineSteps = request.status === 'REJECTED' 
+  const timelineSteps = normalizedStatus === 'REJECTED' 
     ? ['OPEN', 'REJECTED'] 
     : INCIDENT_STATUS_ORDER.filter(s => s !== 'REJECTED');
 
@@ -99,10 +100,10 @@ const RequestDetailsPanel = ({
               onClick={() => {
                 if (window.confirm("Are you sure you want to cancel this ticket?")) onCancel();
               }}
-              disabled={request.status !== 'OPEN' || isCancelling}
-              title={request.status !== 'OPEN' ? "Cancellation only allowed when status is OPEN" : "Cancel ticket"}
+              disabled={normalizedStatus !== 'OPEN' || isCancelling}
+              title={normalizedStatus !== 'OPEN' ? "Cancellation only allowed when status is OPEN" : "Cancel ticket"}
               className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-                request.status !== 'OPEN' 
+                normalizedStatus !== 'OPEN' 
                   ? 'cursor-not-allowed bg-slate-100 text-slate-400' 
                   : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
               }`}
@@ -173,7 +174,7 @@ const RequestDetailsPanel = ({
       )}
 
       {/* Rejection Reason */}
-      {request.status === 'REJECTED' && request.rejectionReason && (
+      {normalizedStatus === 'REJECTED' && request.rejectionReason && (
         <div className="mt-4 rounded-[24px] border border-rose-200 bg-rose-50/70 p-5">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-rose-500">
             <span>Rejection Reason</span>
@@ -183,7 +184,7 @@ const RequestDetailsPanel = ({
       )}
 
       {/* Resolution Notes */}
-      {request.status === 'RESOLVED' && (request.resolutionNotes || request.resolutionSummary) && (
+      {normalizedStatus === 'RESOLVED' && (request.resolutionNotes || request.resolutionSummary) && (
         <div className="mt-4 rounded-[24px] border border-emerald-200 bg-emerald-50/70 p-5">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-500">
             <span>Resolution Notes</span>
@@ -227,7 +228,7 @@ const RequestDetailsPanel = ({
         <div className={`grid gap-3 ${timelineSteps.length === 2 ? 'grid-cols-2 max-w-sm' : 'grid-cols-2 md:grid-cols-5'}`}>
           {timelineSteps.map((step) => {
             const stepIdx = INCIDENT_STATUS_ORDER.indexOf(step);
-            const isComplete = stepIdx <= activeIndex || (request.status === 'REJECTED' && step === 'REJECTED');
+            const isComplete = stepIdx <= activeIndex || (normalizedStatus === 'REJECTED' && step === 'REJECTED');
             const label = formatIncidentStatusLabel(step);
             return (
               <div

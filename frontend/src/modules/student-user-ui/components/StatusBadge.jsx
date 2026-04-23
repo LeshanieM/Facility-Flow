@@ -2,6 +2,8 @@ import React from 'react';
 import { Clock, Wrench, CheckCircle, ShieldCheck, AlertCircle, UserPlus } from 'lucide-react';
 
 export const INCIDENT_STATUS_ORDER = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
+export const INCIDENT_STATUS_UPDATE_ORDER = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
+export const INCIDENT_PRIORITY_ORDER = ['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'];
 
 export const normalizeIncidentStatus = (status) => {
   switch (status) {
@@ -53,15 +55,26 @@ export const INCIDENT_STATUS_OPTIONS = INCIDENT_STATUS_ORDER.map((status) => ({
   label: statusConfigs[status]?.label || status,
 }));
 
+export const INCIDENT_STATUS_UPDATE_OPTIONS = INCIDENT_STATUS_UPDATE_ORDER.map((status) => ({
+  value: status,
+  label: statusConfigs[status]?.label || status,
+}));
+
 export const formatIncidentStatusLabel = (status) => {
   const normalizedStatus = normalizeIncidentStatus(status);
   return statusConfigs[normalizedStatus]?.label || normalizedStatus.replace(/_/g, ' ');
 };
 
+export const normalizeIncidentPriority = (priority) => {
+  const normalized = String(priority || '').toUpperCase();
+  if (normalized === 'URGENT') return 'EMERGENCY';
+  if (INCIDENT_PRIORITY_ORDER.includes(normalized)) return normalized;
+  return 'MEDIUM';
+};
+
 export const getPriorityConfig = (priority) => {
-  switch (String(priority).toUpperCase()) {
+  switch (normalizeIncidentPriority(priority)) {
     case 'EMERGENCY':
-    case 'URGENT':
       return {
         color: 'bg-rose-100 text-rose-700 border-rose-200',
         dot: 'bg-rose-500',
@@ -89,6 +102,13 @@ export const getPriorityConfig = (priority) => {
   }
 };
 
+export const INCIDENT_PRIORITY_OPTIONS = INCIDENT_PRIORITY_ORDER.map((priority) => ({
+  value: priority,
+  label: getPriorityConfig(priority).label,
+}));
+
+export const formatIncidentPriorityLabel = (priority) => getPriorityConfig(priority).label;
+
 export const PriorityBadge = ({ priority, className = '' }) => {
   const config = getPriorityConfig(priority);
   return (
@@ -96,7 +116,7 @@ export const PriorityBadge = ({ priority, className = '' }) => {
       className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-widest transition-colors ${config.color} ${className}`.trim()}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${config.dot}`} />
-      {priority}
+      {config.label}
     </span>
   );
 };

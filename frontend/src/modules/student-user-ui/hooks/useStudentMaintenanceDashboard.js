@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../../context/AuthContext';
 import {
   createMaintenanceRequest,
   getDashboardSummary,
@@ -18,8 +19,9 @@ const initialForm = {
   location: '',
   room: '',
   category: '',
-  priority: 'Medium',
+  priority: 'MEDIUM',
   preferredContact: '',
+  email: '',
   attachments: [],
 };
 
@@ -45,13 +47,17 @@ const extractErrorMessage = (error, fallbackMessage) => {
 };
 
 export const useStudentMaintenanceDashboard = () => {
+  const { user } = useAuth();
   const [summary, setSummary] = useState(() => normalizeSummary());
   const [requests, setRequests] = useState([]);
   const [resources, setResources] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [formValues, setFormValues] = useState(initialForm);
+  const [formValues, setFormValues] = useState({
+    ...initialForm,
+    email: user?.email || user?.sub || '',
+  });
   const [formErrors, setFormErrors] = useState({});
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -108,6 +114,15 @@ export const useStudentMaintenanceDashboard = () => {
   useEffect(() => {
     loadDashboard();
   }, []);
+
+  useEffect(() => {
+    if (user?.email || user?.sub) {
+      setFormValues((prev) => ({
+        ...prev,
+        email: user.email || user.sub,
+      }));
+    }
+  }, [user]);
   useEffect(() => {
     if (!selectedRequestId) {
       setSelectedRequest(null);
@@ -142,6 +157,20 @@ export const useStudentMaintenanceDashboard = () => {
     if (!formValues.location.trim()) nextErrors.location = 'Location is required.';
     if (!formValues.category) nextErrors.category = 'Category is required.';
     if (!formValues.priority) nextErrors.priority = 'Priority is required.';
+
+    const contact = (formValues.preferredContact || '').trim();
+    if (!contact) {
+      nextErrors.preferredContact = 'Contact number is required.';
+    } else {
+      const digitsOnly = contact.replace(/[^0-9]/g, '');
+      const isValidFormat = /^\+?[0-9\s-]+$/.test(contact);
+
+      if (!isValidFormat) {
+        nextErrors.preferredContact = 'Enter a valid contact number.';
+      } else if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+        nextErrors.preferredContact = 'Contact number must be between 7 and 15 digits.';
+      }
+    }
 
     if (formValues.attachments && formValues.attachments.length > 3) {
       nextErrors.attachments = 'You can upload a maximum of 3 files.';
@@ -183,6 +212,26 @@ export const useStudentMaintenanceDashboard = () => {
       setFormErrors((current) => ({
         ...current,
         attachments: errorMsg,
+      }));
+    } else if (field === 'preferredContact') {
+      const contact = (value || '').trim();
+      let errorMsg = '';
+      if (contact) {
+        const digitsOnly = contact.replace(/[^0-9]/g, '');
+        const isValidFormat = /^\+?[0-9\s-]+$/.test(contact);
+
+        if (!isValidFormat) {
+          errorMsg = 'Enter a valid contact number.';
+        } else if (digitsOnly.length > 15) {
+          errorMsg = 'Contact number must be between 7 and 15 digits.';
+        } else if (digitsOnly.length > 0 && digitsOnly.length < 7) {
+          // Trigger length error immediately if characters are present but count is too low
+          errorMsg = 'Contact number must be between 7 and 15 digits.';
+        }
+      }
+      setFormErrors((current) => ({
+        ...current,
+        preferredContact: errorMsg,
       }));
     } else {
       setFormErrors((current) => ({

@@ -1,4 +1,12 @@
 import React from 'react';
+import {
+  INCIDENT_PRIORITY_ORDER,
+  INCIDENT_STATUS_ORDER,
+  formatIncidentPriorityLabel,
+  formatIncidentStatusLabel,
+  normalizeIncidentPriority,
+  normalizeIncidentStatus,
+} from '../../student-user-ui/components/StatusBadge';
 
 /* ─── Colour Maps (aligned with StatusBadge.jsx) ─── */
 
@@ -11,17 +19,11 @@ const STATUS_COLORS = {
   REJECTED:    { bg: 'bg-rose-500',    text: 'text-rose-700',    light: 'bg-rose-50',    border: 'border-rose-200',   hex: '#f43f5e' },
 };
 
-const STATUS_LABELS = {
-  OPEN: 'Open', ASSIGNED: 'Assigned', IN_PROGRESS: 'In Progress',
-  RESOLVED: 'Resolved', CLOSED: 'Closed', REJECTED: 'Rejected',
-};
-
 const PRIORITY_COLORS = {
   LOW:       { bg: 'bg-emerald-500', text: 'text-emerald-700', light: 'bg-emerald-50', hex: '#10b981' },
   MEDIUM:    { bg: 'bg-amber-500',   text: 'text-amber-700',   light: 'bg-amber-50',   hex: '#f59e0b' },
   HIGH:      { bg: 'bg-orange-500',  text: 'text-orange-700',  light: 'bg-orange-50',  hex: '#f97316' },
   EMERGENCY: { bg: 'bg-rose-500',    text: 'text-rose-700',    light: 'bg-rose-50',    hex: '#f43f5e' },
-  URGENT:    { bg: 'bg-rose-500',    text: 'text-rose-700',    light: 'bg-rose-50',    hex: '#f43f5e' },
 };
 
 /* ─── KPI Card ─── */
@@ -262,11 +264,10 @@ export const AnalyticsTabToggle = ({ activeTab, onTabChange, analyticsLabel = 'A
 /* ─── Helper: Build status distribution segments from tickets ─── */
 
 export const buildStatusSegments = (tickets) => {
-  const order = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
-  return order.map(status => ({
+  return INCIDENT_STATUS_ORDER.map(status => ({
     key: status,
-    label: STATUS_LABELS[status] || status,
-    value: tickets.filter(t => t.status === status).length,
+    label: formatIncidentStatusLabel(status),
+    value: tickets.filter(t => normalizeIncidentStatus(t.status) === status).length,
     color: STATUS_COLORS[status]?.bg || 'bg-slate-400',
   }));
 };
@@ -274,11 +275,10 @@ export const buildStatusSegments = (tickets) => {
 /* ─── Helper: Build priority distribution segments from tickets ─── */
 
 export const buildPrioritySegments = (tickets) => {
-  const order = ['LOW', 'MEDIUM', 'HIGH', 'EMERGENCY'];
-  return order.map(priority => ({
+  return INCIDENT_PRIORITY_ORDER.map(priority => ({
     key: priority,
-    label: priority.charAt(0) + priority.slice(1).toLowerCase(),
-    value: tickets.filter(t => (t.priority || '').toUpperCase() === priority || (priority === 'EMERGENCY' && (t.priority || '').toUpperCase() === 'URGENT')).length,
+    label: formatIncidentPriorityLabel(priority),
+    value: tickets.filter(t => normalizeIncidentPriority(t.priority) === priority).length,
     color: PRIORITY_COLORS[priority]?.bg || 'bg-slate-400',
   }));
 };

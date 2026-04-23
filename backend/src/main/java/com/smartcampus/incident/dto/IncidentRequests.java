@@ -4,6 +4,7 @@ import com.smartcampus.incident.enums.IncidentEnums.IncidentStatus;
 import com.smartcampus.incident.enums.IncidentEnums.PriorityLevel;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,7 +24,10 @@ public class IncidentRequests {
         @NotBlank private String location;
         private String room;
         @NotBlank private String priority;
+        @NotBlank(message = "Contact number is required.")
+        @Pattern(regexp = "^\\+?[0-9\\s-]{7,20}$", message = "Enter a valid contact number.")
         private String preferredContact;
+        private String email;
         private List<MultipartFile> attachments;
     }
 
