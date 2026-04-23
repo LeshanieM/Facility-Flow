@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, ExternalLink } from 'lucide-react';
+import { Bell, Check, ExternalLink, Calendar, Ticket, MessageSquare, Info, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -11,19 +11,20 @@ const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const fetchNotifications = async () => {
     try {
       const data = await notificationService.getNotifications();
-      setNotifications(data.slice(0, 5)); // Only show last 5 in dropdown
+      setNotifications(data.slice(0, 5));
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     }
   };
 
   useEffect(() => {
-    fetchNotifications();
-  }, [unreadCount]);
+    if (isOpen) fetchNotifications();
+  }, [unreadCount, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -54,31 +55,29 @@ const NotificationDropdown = () => {
     }
   };
 
-  const { user } = useAuth();
-
   const handleNotificationClick = (notification) => {
     if (!notification.read) {
       notificationService.markAsRead(notification.id);
+      refreshNotifications();
     }
     setIsOpen(false);
     
     const role = user?.role;
-
-    // Navigate based on type and role
     if (notification.type === 'BOOKING') {
-      if (role === 'ADMIN') {
-        navigate('/admin/bookings');
-      } else {
-        navigate('/bookings/my');
-      }
+      navigate(role === 'ADMIN' ? '/admin/bookings' : '/bookings/my');
     } else if (notification.type === 'TICKET' || notification.type === 'COMMENT') {
-      if (role === 'ADMIN') {
-        navigate('/admin/incidents');
-      } else if (role === 'TECHNICIAN') {
-        navigate('/tech/tasks');
-      } else {
-        navigate('/maintenance');
-      }
+      if (role === 'ADMIN') navigate('/admin/incidents');
+      else if (role === 'TECHNICIAN') navigate('/tech/tasks');
+      else navigate('/maintenance');
+    }
+  };
+
+  const getIcon = (type) => {
+    switch (type) {
+      case 'BOOKING': return <Calendar className="text-blue-400" size={16} />;
+      case 'TICKET': return <Ticket className="text-amber-400" size={16} />;
+      case 'COMMENT': return <MessageSquare className="text-emerald-400" size={16} />;
+      default: return <Info className="text-slate-400" size={16} />;
     }
   };
 
@@ -86,102 +85,106 @@ const NotificationDropdown = () => {
     const now = new Date();
     const date = new Date(dateString);
     const seconds = Math.floor((now - date) / 1000);
-
     if (seconds < 60) return 'Just now';
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes}m ago`;
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    return `${Math.floor(hours / 24)}d ago`;
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button 
-        onClick={() => {
-          if (!isOpen) fetchNotifications();
-          setIsOpen(!isOpen);
-        }}
-        className="p-2.5 text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl transition-all relative"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`p-2.5 rounded-xl transition-all relative ${
+          isOpen ? 'bg-primary/10 text-primary' : 'text-slate-500 hover:text-primary hover:bg-primary/5'
+        }`}
       >
         <Bell size={20} />
         {unreadCount > 0 && (
-          <span className="absolute top-2 right-2.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold border-2 border-white rounded-full flex items-center justify-center">
+          <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-primary text-white text-[9px] font-black border-2 border-white rounded-full flex items-center justify-center animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in duration-200">
-          <div className="p-4 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="font-bold text-slate-800">Notifications</h3>
+        <div className="absolute right-0 mt-3 w-80 md:w-96 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+          <div className="p-5 bg-slate-50/50 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h3 className="font-black text-slate-900 text-sm uppercase tracking-tight">Notifications</h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Campus Updates</p>
+            </div>
             {unreadCount > 0 && (
               <button 
                 onClick={handleMarkAllRead}
-                className="text-xs font-semibold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+                className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-primary/80 flex items-center gap-1.5 transition-colors"
               >
-                <Check size={14} /> Mark all read
+                <Check size={12} /> Mark all
               </button>
             )}
           </div>
 
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
             {notifications.length > 0 ? (
               <div className="divide-y divide-slate-50">
                 {notifications.map((notification) => (
                   <div 
                     key={notification.id}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer relative group border-l-4 ${
-                      notification.type === 'BOOKING' ? 'border-l-blue-500' :
-                      notification.type === 'TICKET' ? 'border-l-amber-500' :
-                      notification.type === 'COMMENT' ? 'border-l-emerald-500' :
-                      'border-l-slate-300'
-                    } ${!notification.read ? 'bg-primary/5' : 'opacity-60'}`}
+                    className={`p-5 hover:bg-slate-50/80 transition-all cursor-pointer relative group ${
+                      !notification.read ? 'bg-primary/[0.02]' : 'opacity-60'
+                    }`}
                   >
-                    <div className="flex justify-between items-start mb-1">
-                      <h4 className={`text-sm font-bold ${!notification.read ? 'text-slate-900' : 'text-slate-600'}`}>
-                        {notification.title}
-                      </h4>
-                      <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap ml-2">
-                        {formatTimeAgo(notification.createdAt)}
-                      </span>
+                    <div className="flex gap-4">
+                      <div className={`w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center border transition-all ${
+                        !notification.read ? 'bg-white border-primary/20 shadow-sm' : 'bg-slate-50 border-transparent'
+                      }`}>
+                        {getIcon(notification.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className={`text-sm font-bold truncate pr-4 ${!notification.read ? 'text-slate-900' : 'text-slate-600'}`}>
+                            {notification.title}
+                          </h4>
+                          <span className="text-[9px] font-bold text-slate-400 whitespace-nowrap flex items-center gap-1 mt-0.5">
+                            <Clock size={10} /> {formatTimeAgo(notification.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 line-clamp-1 group-hover:line-clamp-none transition-all">
+                          {notification.message}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-slate-500 line-clamp-2 mb-2">
-                      {notification.message}
-                    </p>
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {!notification.read && (
-                        <button 
-                          onClick={(e) => handleMarkAsRead(notification.id, e)}
-                          className="p-1.5 text-primary hover:bg-white rounded-lg transition-all border border-primary/10 shadow-sm"
-                          title="Mark as read"
-                        >
-                          <Check size={14} />
-                        </button>
-                      )}
-                    </div>
+                    {!notification.read && (
+                      <button 
+                        onClick={(e) => handleMarkAsRead(notification.id, e)}
+                        className="absolute right-4 bottom-4 p-1.5 bg-white text-primary rounded-lg opacity-0 group-hover:opacity-100 transition-all border border-primary/10 shadow-sm hover:scale-110"
+                        title="Mark as read"
+                      >
+                        <Check size={14} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-12 flex flex-col items-center justify-center text-slate-400">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                  <Bell size={24} className="opacity-20" />
+              <div className="py-16 flex flex-col items-center justify-center text-slate-400">
+                <div className="w-16 h-16 rounded-[2rem] bg-slate-50 flex items-center justify-center mb-4 rotate-12">
+                  <Bell size={28} className="opacity-10" />
                 </div>
-                <p className="text-sm font-medium">No new notifications</p>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-300">Clean Slate</p>
               </div>
             )}
           </div>
 
-          <div className="p-3 bg-slate-50/50 border-t border-slate-100 text-center">
+          <div className="p-4 bg-slate-50/50 border-t border-slate-100">
             <button 
               onClick={() => { setIsOpen(false); navigate('/notifications'); }}
-              className="text-xs font-bold text-slate-500 hover:text-primary transition-colors flex items-center justify-center gap-1 mx-auto"
+              className="w-full py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 hover:text-primary hover:bg-white rounded-xl transition-all border border-transparent hover:border-primary/10 flex items-center justify-center gap-2"
             >
-              View All Notifications <ExternalLink size={12} />
+              Access Portal <ExternalLink size={12} />
             </button>
           </div>
         </div>
@@ -191,3 +194,4 @@ const NotificationDropdown = () => {
 };
 
 export default NotificationDropdown;
+

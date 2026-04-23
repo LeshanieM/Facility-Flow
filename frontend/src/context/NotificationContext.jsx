@@ -1,72 +1,32 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import notificationService from '../services/notificationService';
 import { useAuth } from './AuthContext';
+import NotificationToast from '../components/NotificationToast';
 
 const NotificationContext = createContext();
-const POLL_INTERVAL_MS = 5000;
-const RETRY_INTERVAL_MS = 30000;
 
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const [toasts, setToasts] = useState([]);
-  const prevCountRef = useRef(0);
-  const pollTimeoutRef = useRef(null);
-  const hasLoggedConnectionIssueRef = useRef(false);
-
-  const clearPollTimeout = () => {
-    if (pollTimeoutRef.current) {
-      clearTimeout(pollTimeoutRef.current);
-      pollTimeoutRef.current = null;
-    }
-  };
-
-  const scheduleNextFetch = (delay) => {
-    clearPollTimeout();
-    pollTimeoutRef.current = setTimeout(() => {
-      fetchStatus();
-    }, delay);
-  };
+  const stompClientRef = useRef(null);
 
   const fetchStatus = async () => {
     if (!user) return;
-
     try {
       const count = await notificationService.getUnreadCount();
-
-      // If count increased, show a toast for the newest notification
-      if (count > prevCountRef.current) {
-        const notifications = await notificationService.getNotifications();
-        const newest = notifications[0];
-        if (newest && !newest.read) {
-          addToast(newest);
-        }
-      }
-
       setUnreadCount(count);
-      prevCountRef.current = count;
-      hasLoggedConnectionIssueRef.current = false;
-      scheduleNextFetch(POLL_INTERVAL_MS);
     } catch (error) {
-      setUnreadCount(0);
-
-      if (!hasLoggedConnectionIssueRef.current) {
-        console.error(`Failed to fetch notification status. Retrying in ${RETRY_INTERVAL_MS / 1000} seconds.`, error);
-        hasLoggedConnectionIssueRef.current = true;
-      }
-
-      scheduleNextFetch(RETRY_INTERVAL_MS);
+      console.error('Failed to fetch notification status:', error);
     }
   };
 
   const addToast = (notification) => {
     const id = Date.now();
     setToasts(prev => [...prev, { ...notification, toastId: id }]);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-      removeToast(id);
-    }, 5000);
+    setTimeout(() => removeToast(id), 5000);
   };
 
   const removeToast = (id) => {
@@ -74,24 +34,59 @@ export const NotificationProvider = ({ children }) => {
   };
 
   useEffect(() => {
-    clearPollTimeout();
-    prevCountRef.current = 0;
-    hasLoggedConnectionIssueRef.current = false;
-
-    if (user) {
-      fetchStatus();
-    } else {
+    if (!user) {
       setUnreadCount(0);
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+      }
+      return;
     }
 
-    return () => clearPollTimeout();
+    fetchStatus();
+
+    const socket = new SockJS('/ws');
+    const client = new Client({
+      webSocketFactory: () => socket,
+      reconnectDelay: 5000,
+      debug: (str) => {
+        // console.log(str);
+      },
+      onConnect: () => {
+        client.subscribe(`/user/${user.id}/topic/notifications`, (message) => {
+          const notification = JSON.parse(message.body);
+          setUnreadCount(prev => prev + 1);
+          addToast(notification);
+        });
+      },
+      onStompError: (frame) => {
+        console.error('STOMP error', frame);
+      }
+    });
+
+    client.activate();
+    stompClientRef.current = client;
+
+    return () => {
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+      }
+    };
   }, [user]);
 
   return (
     <NotificationContext.Provider value={{ unreadCount, toasts, removeToast, refreshNotifications: fetchStatus }}>
       {children}
+      {toasts.map(toast => (
+        <NotificationToast 
+          key={toast.toastId} 
+          notification={toast} 
+          onClose={() => removeToast(toast.toastId)} 
+        />
+      ))}
     </NotificationContext.Provider>
   );
 };
 
+
 export const useNotifications = () => useContext(NotificationContext);
+
