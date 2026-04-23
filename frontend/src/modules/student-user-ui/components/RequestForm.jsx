@@ -166,12 +166,24 @@ const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSub
             </select>
           </FieldControl>
 
-          <FieldControl label="Preferred Contact Details" error={errors.preferredContact}>
+          <FieldControl label="Preferred Contact Details" required error={errors.preferredContact}>
             <input
               value={values.preferredContact}
-              onChange={(event) => onChange('preferredContact', event.target.value)}
+              onChange={(event) => {
+                const val = event.target.value.replace(/[^0-9+\s-]/g, '');
+                onChange('preferredContact', val);
+              }}
               className={fieldInputClass(Boolean(errors.preferredContact))}
-              placeholder="e.g. Phone or Slack"
+              placeholder="e.g. 0771234567"
+            />
+          </FieldControl>
+
+          <FieldControl label="Email Address" className="md:col-span-2" hint="Automatically populated from your account.">
+            <input
+              value={values.email}
+              readOnly
+              className={`${fieldInputClass(false)} bg-slate-50/50 cursor-not-allowed`}
+              placeholder="your.email@university.edu"
             />
           </FieldControl>
         </div>
@@ -189,8 +201,8 @@ const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSub
           />
         </FieldControl>
 
-        <FieldControl 
-          label="Optional attachments" 
+        <FieldControl
+          label="Optional attachments"
           error={errors.attachments}
           hint="Attach up to 3 photos or documents (Max 10MB each)."
         >

@@ -52,6 +52,9 @@ export const createMaintenanceRequest = async (payload) => {
   if (payload.preferredContact) {
     formData.append('preferredContact', payload.preferredContact.trim());
   }
+  if (payload.email) {
+    formData.append('email', payload.email.trim());
+  }
 
   if (payload.attachments && payload.attachments.length > 0) {
     payload.attachments.forEach(file => {
