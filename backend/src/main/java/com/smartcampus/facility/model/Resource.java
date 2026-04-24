@@ -39,7 +39,7 @@ public class Resource {
     private String description;
 
     @Builder.Default
-    private List<String> availabilityWindows = new ArrayList<>();
+    private List<AvailabilityWindow> availabilityWindows = new ArrayList<>();
 
     @Builder.Default
     private List<String> amenities = new ArrayList<>();

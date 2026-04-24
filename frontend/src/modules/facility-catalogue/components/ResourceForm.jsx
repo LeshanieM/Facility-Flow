@@ -12,7 +12,9 @@ const ResourceForm = ({ initialData, onSave, onClose, error }) => {
         amenities: [],
         imageUrl: ''
     });
-    const [windowInput, setWindowInput] = useState('');
+    const [windowDay, setWindowDay] = useState('MONDAY');
+    const [windowStart, setWindowStart] = useState('');
+    const [windowEnd, setWindowEnd] = useState('');
     const [amenityInput, setAmenityInput] = useState('');
     const [localError, setLocalError] = useState(null);
 
@@ -40,7 +42,9 @@ const ResourceForm = ({ initialData, onSave, onClose, error }) => {
                 imageUrl: ''
             });
         }
-        setWindowInput('');
+        setWindowDay('MONDAY');
+        setWindowStart('');
+        setWindowEnd('');
         setAmenityInput('');
         setLocalError(null);
     }, [initialData]);
@@ -54,12 +58,16 @@ const ResourceForm = ({ initialData, onSave, onClose, error }) => {
     };
 
     const handleAddWindow = () => {
-        if (windowInput.trim()) {
+        if (windowDay && windowStart && windowEnd) {
             setFormData(prev => ({
                 ...prev,
-                availabilityWindows: [...(prev.availabilityWindows || []), windowInput.trim()]
+                availabilityWindows: [...(prev.availabilityWindows || []), { dayOfWeek: windowDay, startTime: windowStart, endTime: windowEnd }]
             }));
-            setWindowInput('');
+            setWindowStart('');
+            setWindowEnd('');
+            setLocalError(null);
+        } else {
+            setLocalError('Please select a day and specify both start and end times.');
         }
     };
 
@@ -193,18 +201,36 @@ const ResourceForm = ({ initialData, onSave, onClose, error }) => {
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Availability Windows</label>
                         <div className="flex gap-2 mb-3">
+                            <select 
+                                value={windowDay} 
+                                onChange={(e) => setWindowDay(e.target.value)}
+                                className="w-[30%] px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4169E1]/50 focus:border-[#4169E1] transition-all font-medium text-slate-700" 
+                            >
+                                <option value="MONDAY">Monday</option>
+                                <option value="TUESDAY">Tuesday</option>
+                                <option value="WEDNESDAY">Wednesday</option>
+                                <option value="THURSDAY">Thursday</option>
+                                <option value="FRIDAY">Friday</option>
+                                <option value="SATURDAY">Saturday</option>
+                                <option value="SUNDAY">Sunday</option>
+                            </select>
                             <input 
-                                type="text" 
-                                value={windowInput} 
-                                onChange={(e) => setWindowInput(e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddWindow(); } }}
-                                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4169E1]/50 focus:border-[#4169E1] transition-all font-medium text-slate-700" 
-                                placeholder="e.g. Mon-Fri 08:00-18:00" 
+                                type="time" 
+                                value={windowStart} 
+                                onChange={(e) => setWindowStart(e.target.value)}
+                                className="w-[25%] px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4169E1]/50 focus:border-[#4169E1] transition-all font-medium text-slate-700" 
+                            />
+                            <span className="flex items-center text-slate-400 font-bold">-</span>
+                            <input 
+                                type="time" 
+                                value={windowEnd} 
+                                onChange={(e) => setWindowEnd(e.target.value)}
+                                className="w-[25%] px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#4169E1]/50 focus:border-[#4169E1] transition-all font-medium text-slate-700" 
                             />
                             <button 
                                 type="button" 
                                 onClick={handleAddWindow}
-                                className="px-4 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center gap-1.5"
+                                className="px-3 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all flex items-center gap-1.5 ml-auto"
                             >
                                 <Plus size={16} strokeWidth={2.5} /> Add
                             </button>
@@ -213,7 +239,9 @@ const ResourceForm = ({ initialData, onSave, onClose, error }) => {
                             <div className="flex flex-col gap-2 max-h-[100px] overflow-y-auto pr-2 custom-scrollbar">
                                 {formData.availabilityWindows.map((window, idx) => (
                                     <div key={idx} className="flex justify-between items-center px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg">
-                                        <span className="text-sm font-bold text-slate-600 truncate mr-2">{window}</span>
+                                        <span className="text-sm font-bold text-slate-600 truncate mr-2">
+                                            {window.dayOfWeek}: {window.startTime} - {window.endTime}
+                                        </span>
                                         <button 
                                             type="button" 
                                             onClick={() => handleRemoveWindow(idx)}

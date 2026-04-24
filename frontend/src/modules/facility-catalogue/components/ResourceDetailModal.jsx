@@ -88,7 +88,7 @@ const ResourceDetailModal = ({ resource, onClose }) => {
                                 <div className="flex flex-col gap-2">
                                     {resource.availabilityWindows.map((window, idx) => (
                                         <div key={idx} className="px-3 py-2 bg-slate-50 text-slate-700 text-xs font-bold rounded-lg border border-slate-200 flex items-center justify-between">
-                                            <span>{window}</span>
+                                            <span>{window.dayOfWeek}: {window.startTime} - {window.endTime}</span>
                                         </div>
                                     ))}
                                 </div>
