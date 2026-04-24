@@ -99,7 +99,7 @@ const AdminFacilityPage = () => {
 
     return (
         <Layout>
-            <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6">
+            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
                     <div>
                         <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">

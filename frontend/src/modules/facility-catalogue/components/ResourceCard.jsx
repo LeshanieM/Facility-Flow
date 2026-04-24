@@ -7,7 +7,7 @@ const ResourceCard = ({ resource, isAdmin, onEdit, onDelete, onStatusToggle, onV
     const isMaintenance = resource.status === 'MAINTENANCE';
 
     return (
-        <div className={`rounded-2xl border overflow-hidden flex flex-col transition-all duration-300 ${isOutOfService || isMaintenance ? 'bg-slate-50 border-slate-200 opacity-80' : 'bg-white border-slate-100 shadow-sm hover:shadow-md hover:border-[#4169E1]/30 hover:-translate-y-1'}`}>
+        <div className={`rounded-2xl border overflow-hidden flex flex-col transition-all duration-300 ${isOutOfService || isMaintenance ? 'bg-slate-50 border-slate-200 opacity-80' : 'bg-white border-slate-100 shadow-md hover:shadow-lg hover:border-[#4169E1]/30 hover:-translate-y-1'}`}>
             {resource.imageUrl && resource.imageUrl !== '' ? (
                 <img src={resource.imageUrl} alt={resource.name} className="w-full h-40 object-cover rounded-t-2xl" />
             ) : (
@@ -26,7 +26,8 @@ const ResourceCard = ({ resource, isAdmin, onEdit, onDelete, onStatusToggle, onV
                         {resource.type?.replaceAll('_', ' ')}
                     </p>
                 </div>
-                <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest ${isOutOfService ? 'bg-rose-100 text-rose-700' : isMaintenance ? 'bg-amber-100 text-amber-700' : 'bg-[#4169E1]/10 text-[#4169E1]'}`}>
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-widest ${isOutOfService ? 'bg-rose-100 text-rose-700' : isMaintenance ? 'bg-amber-100 text-amber-700' : 'bg-[#4169E1]/10 text-[#4169E1]'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${isOutOfService ? 'bg-rose-500' : isMaintenance ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
                     {resource.status}
                 </div>
             </div>
@@ -45,36 +46,39 @@ const ResourceCard = ({ resource, isAdmin, onEdit, onDelete, onStatusToggle, onV
                 
                 <button 
                     onClick={() => onViewDetails && onViewDetails(resource)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:bg-white hover:text-[#4169E1] hover:shadow-sm transition-all"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-slate-500 hover:bg-white hover:text-[#4169E1] hover:shadow-sm transition-all text-xs font-bold"
                     title="View Details"
                 >
-                    <Eye size={18} strokeWidth={2.5} />
+                    <Eye size={16} strokeWidth={2.5} />
+                    View
                 </button>
             </div>
 
             <div className="mt-auto">
                 {isAdmin && (
-                    <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
                         <button 
                             onClick={() => onStatusToggle(resource)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${isOutOfService ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100' : 'bg-rose-50 text-rose-600 hover:bg-rose-100'}`}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border-none ${isOutOfService ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-rose-100 text-rose-700 hover:bg-rose-200'}`}
                         >
                             {isOutOfService ? 'SET ACTIVE' : 'SET OFFLINE'}
                         </button>
-                        <button 
-                            onClick={() => onEdit(resource)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:bg-[#4169E1]/10 hover:text-[#4169E1] transition-all"
-                            title="Edit"
-                        >
-                            <Settings size={18} strokeWidth={2.5} />
-                        </button>
-                        <button 
-                            onClick={() => onDelete(resource.id)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition-all"
-                            title="Delete"
-                        >
-                            <Trash2 size={18} strokeWidth={2.5} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button 
+                                onClick={() => onEdit(resource)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:bg-[#4169E1]/10 hover:text-[#4169E1] transition-all"
+                                title="Edit"
+                            >
+                                <Settings size={18} strokeWidth={2.5} />
+                            </button>
+                            <button 
+                                onClick={() => onDelete(resource.id)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:bg-rose-100 hover:text-rose-600 transition-all"
+                                title="Delete"
+                            >
+                                <Trash2 size={18} strokeWidth={2.5} />
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
