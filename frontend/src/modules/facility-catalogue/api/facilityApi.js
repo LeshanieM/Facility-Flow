@@ -1,9 +1,9 @@
-import api from '../../../services/api';
+import api from "../../../services/api";
 
 export const facilityApi = {
   // USER endpoints
   getAllResources: (params) => {
-    return api.get('/resources', { params });
+    return api.get("/resources", { params });
   },
   getResourceById: (id) => {
     return api.get(`/resources/${id}`);
@@ -11,18 +11,23 @@ export const facilityApi = {
 
   // ADMIN endpoints
   getAdminResources: () => {
-    return api.get('/admin/resources');
+    return api.get("/admin/resources");
   },
   createResource: (data) => {
-    return api.post('/admin/resources', data);
+    return api.post("/admin/resources", data);
   },
   updateResource: (id, data) => {
     return api.put(`/admin/resources/${id}`, data);
   },
   updateResourceStatus: (id, status) => {
-    return api.patch(`/admin/resources/${id}/status`, null, { params: { status } });
+    return api.patch(`/admin/resources/${id}/status`, null, {
+      params: { status },
+    });
   },
   deleteResource: (id) => {
     return api.delete(`/admin/resources/${id}`);
-  }
+  },
+  addReview: (resourceId, data) => {
+    return api.post(`/resources/${resourceId}/reviews`, data);
+  },
 };
