@@ -2,6 +2,7 @@ package com.smartcampus.facility.dto;
 
 import com.smartcampus.facility.enums.FacilityEnums.ResourceStatus;
 import com.smartcampus.facility.enums.FacilityEnums.ResourceType;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -47,5 +48,15 @@ public class FacilityRequests {
     @AllArgsConstructor
     public static class UpdateResourceStatusRequest {
         @NotNull private ResourceStatus status;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AddReviewRequest {
+        @NotNull
+        @Min(1)
+        @Max(5)
+        private Integer rating;
     }
 }

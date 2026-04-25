@@ -1,15 +1,45 @@
-import React, { useState } from "react";
-import { X, MapPin, Users, Clock, Building2, Calendar } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import {
+  X,
+  MapPin,
+  Users,
+  Clock,
+  Building2,
+  Calendar,
+  Star,
+  Check,
+  Wifi,
+  Coffee,
+  Monitor,
+  Car,
+  Shield,
+  Zap,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { facilityApi } from "../api/facilityApi";
 
-const ResourceDetailModal = ({ resource, onClose }) => {
+const ResourceDetailModal = ({ resource, onClose, onReviewAdded }) => {
   const navigate = useNavigate();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [localResource, setLocalResource] = useState(resource);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [reviewMessage, setReviewMessage] = useState(null);
+  const [reviewError, setReviewError] = useState(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  if (!resource) return null;
+  useEffect(() => {
+    setLocalResource(resource);
+    setSelectedRating(0);
+    setReviewMessage(null);
+    setReviewError(null);
+    setShowSuccess(false);
+  }, [resource]);
 
-  const isOutOfService = resource.status === "OUT_OF_SERVICE";
-  const isMaintenance = resource.status === "MAINTENANCE";
+  if (!localResource) return null;
+
+  const isOutOfService = localResource.status === "OUT_OF_SERVICE";
+  const isMaintenance = localResource.status === "MAINTENANCE";
 
   const format12Hour = (timeStr) => {
     if (!timeStr) return "";
@@ -20,171 +50,321 @@ const ResourceDetailModal = ({ resource, onClose }) => {
     return `${String(formattedHour).padStart(2, "0")}:${minute} ${ampm}`;
   };
 
+  const getAmenityIcon = (amenity) => {
+    const lowerAmenity = amenity.toLowerCase();
+    if (lowerAmenity.includes("wifi") || lowerAmenity.includes("internet"))
+      return <Wifi size={14} />;
+    if (lowerAmenity.includes("coffee") || lowerAmenity.includes("tea"))
+      return <Coffee size={14} />;
+    if (lowerAmenity.includes("projector") || lowerAmenity.includes("screen"))
+      return <Monitor size={14} />;
+    if (lowerAmenity.includes("parking")) return <Car size={14} />;
+    if (lowerAmenity.includes("security")) return <Shield size={14} />;
+    if (lowerAmenity.includes("power") || lowerAmenity.includes("electric"))
+      return <Zap size={14} />;
+    return <Building2 size={14} />;
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden">
-        {/* Fixed Header with Close Button */}
-        <div className="flex justify-end p-4 border-b border-slate-100 bg-white flex-shrink-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-[520px] shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden">
+        {/* Hero Image Section */}
+        <div className="relative w-full h-[200px] flex-shrink-0">
+          {localResource.imageUrl && localResource.imageUrl !== "" ? (
+            <img
+              src={localResource.imageUrl}
+              alt={localResource.name}
+              className="w-full h-full object-cover rounded-t-2xl"
+            />
+          ) : (
+            <div className="w-full h-full bg-slate-100 dark:bg-slate-800 rounded-t-2xl flex items-center justify-center">
+              <Building2
+                size={48}
+                className="text-slate-400 dark:text-slate-500"
+                strokeWidth={1.5}
+              />
+            </div>
+          )}
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-full transition-all"
+            className="absolute top-4 right-4 w-10 h-10 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200"
           >
-            <X size={18} strokeWidth={2.5} />
+            <X size={20} className="text-white" strokeWidth={2.5} />
           </button>
         </div>
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto custom-scrollbar flex-1">
-          {/* Header Image */}
-          {resource.imageUrl && resource.imageUrl !== "" ? (
-            <img
-              src={resource.imageUrl}
-              alt={resource.name}
-              className="w-full h-48 object-cover"
-            />
-          ) : (
-            <div className="w-full h-48 bg-slate-50 border-b border-slate-100 flex items-center justify-center">
-              <Building2
-                size={48}
-                className="text-[#4169E1]"
-                strokeWidth={1.5}
-              />
-            </div>
-          )}
-
-          <div className="px-6 py-6">
-            {/* Title & Status */}
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2 className="text-2xl font-black text-slate-800">
-                  {resource.name}
-                </h2>
-                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mt-1">
-                  {resource.type?.replace("_", " ")}
-                </p>
+          <div className="px-6 py-6 space-y-6">
+            {/* Header Section */}
+            <div className="flex justify-between items-start">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-2xl font-semibold text-slate-900 dark:text-white leading-tight">
+                  {localResource.name}
+                </h1>
+                {/* Rating Row */}
+                <div className="flex items-center gap-2 mt-3">
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: 5 }, (_, index) => (
+                      <Star
+                        key={index}
+                        size={16}
+                        className={
+                          (localResource.rating ?? 0) > index
+                            ? "text-amber-400 fill-amber-400"
+                            : "text-slate-300 dark:text-slate-600"
+                        }
+                        strokeWidth={1.5}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    {(localResource.numReviews ?? 0) > 0
+                      ? (localResource.rating ?? 0).toFixed(1)
+                      : "No reviews"}
+                  </span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {(localResource.numReviews ?? 0) > 0
+                      ? `(${localResource.numReviews} reviews)`
+                      : ""}
+                  </span>
+                </div>
               </div>
-              <div
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold tracking-widest ${isOutOfService ? "bg-rose-100 text-rose-700" : isMaintenance ? "bg-amber-100 text-amber-700" : "bg-[#4169E1]/10 text-[#4169E1]"}`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${isOutOfService ? "bg-rose-500" : isMaintenance ? "bg-amber-500" : "bg-emerald-500"}`}
-                ></span>
-                {resource.status}
-              </div>
-            </div>
-
-            {/* Quick Info */}
-            <div className="flex items-center gap-4 mb-8 text-slate-600 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <MapPin
-                  size={18}
-                  className="text-[#4169E1] flex-shrink-0"
-                  strokeWidth={2.5}
-                />
-                <span className="font-medium truncate">
-                  {resource.location}
-                </span>
-              </div>
-              <div className="w-px h-6 bg-slate-200 flex-shrink-0"></div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Users size={18} className="text-[#4169E1]" strokeWidth={2.5} />
-                <span className="font-medium">{resource.capacity} seats</span>
+              {/* Badge */}
+              <div className="ml-4 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-full border border-slate-200 dark:border-slate-700">
+                {localResource.type?.replace("_", " ")}
               </div>
             </div>
 
-            {/* Description */}
-            <div className="mb-8">
-              <h3 className="text-sm font-bold text-slate-800 mb-2 uppercase tracking-wider">
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 gap-0 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                  <MapPin
+                    size={18}
+                    className="text-blue-600 dark:text-blue-400"
+                    strokeWidth={2}
+                  />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Location
+                  </p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                    {localResource.location}
+                  </p>
+                </div>
+              </div>
+              <div className="p-4 flex items-center gap-3 border-l border-slate-200 dark:border-slate-700">
+                <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+                  <Users
+                    size={18}
+                    className="text-green-600 dark:text-green-400"
+                    strokeWidth={2}
+                  />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    Capacity
+                  </p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {localResource.capacity} seats
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Description Section */}
+            <div>
+              <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
                 Description
               </h3>
               <p
-                className={`text-slate-600 leading-relaxed text-sm ${!isDescriptionExpanded && resource.description?.length > 150 ? "line-clamp-3" : ""}`}
+                className={`text-sm text-slate-600 dark:text-slate-300 leading-relaxed ${
+                  !isDescriptionExpanded &&
+                  localResource.description?.length > 150
+                    ? "line-clamp-3"
+                    : ""
+                }`}
               >
-                {resource.description || "No description provided."}
+                {localResource.description || "No description provided."}
               </p>
-              {resource.description?.length > 150 && (
+              {localResource.description?.length > 150 && (
                 <button
                   onClick={() =>
                     setIsDescriptionExpanded(!isDescriptionExpanded)
                   }
-                  className="text-[#4169E1] text-sm font-bold mt-1 hover:underline"
+                  className="text-blue-600 dark:text-blue-400 text-sm font-medium mt-2 hover:underline transition-colors"
                 >
                   {isDescriptionExpanded ? "Show less" : "Read more"}
                 </button>
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-4">
-              {/* Amenities */}
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider">
-                  Amenities
-                </h3>
-                {resource.amenities && resource.amenities.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {resource.amenities.map((amenity, idx) => (
-                      <span
-                        key={idx}
-                        className="px-3 py-1.5 bg-[#4169E1]/10 text-[#4169E1] text-xs font-bold rounded-lg tracking-wide"
-                      >
-                        {amenity}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-sm">None listed.</p>
-                )}
-              </div>
+            {/* Amenities Section */}
+            <div>
+              <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                Amenities
+              </h3>
+              {localResource.amenities && localResource.amenities.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {localResource.amenities.map((amenity, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-medium rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                    >
+                      {getAmenityIcon(amenity)}
+                      <span>{amenity}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  None listed.
+                </p>
+              )}
+            </div>
 
-              {/* Availability */}
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-2">
-                  <Clock
-                    size={16}
-                    className="text-[#4169E1]"
-                    strokeWidth={2.5}
-                  />
-                  Availability Windows
-                </h3>
-                {resource.availabilityWindows &&
-                resource.availabilityWindows.length > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    {resource.availabilityWindows.map((window, idx) => (
-                      <div
-                        key={idx}
-                        className="px-3 py-2.5 bg-slate-50 text-slate-700 text-xs font-bold rounded-lg border border-slate-100 border-l-4 border-l-emerald-500 flex items-center justify-between shadow-sm"
-                      >
-                        <span>
-                          {window.dayOfWeek}: {format12Hour(window.startTime)} -{" "}
+            {/* Availability Windows Section */}
+            <div>
+              <h3 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">
+                Availability Windows
+              </h3>
+              {localResource.availabilityWindows &&
+              localResource.availabilityWindows.length > 0 ? (
+                <div className="space-y-2">
+                  {localResource.availabilityWindows.map((window, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                          {window.dayOfWeek}
+                        </span>
+                        <span className="text-sm font-mono text-slate-900 dark:text-white">
+                          {format12Hour(window.startTime)} -{" "}
                           {format12Hour(window.endTime)}
                         </span>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-sm">
-                    No regular windows specified.
-                  </p>
-                )}
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  No regular windows specified.
+                </p>
+              )}
+            </div>
+
+            {/* Share a Rating Section */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4">
+                Share a Rating
+              </h3>
+              <div className="flex items-center gap-1 mb-4">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setSelectedRating(index + 1)}
+                    className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                  >
+                    <Star
+                      size={24}
+                      className={
+                        index < selectedRating
+                          ? "text-amber-400 fill-amber-400"
+                          : "text-slate-300 dark:text-slate-600"
+                      }
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                ))}
               </div>
+              <button
+                type="button"
+                disabled={isSubmittingReview}
+                onClick={async () => {
+                  setReviewError(null);
+                  setReviewMessage(null);
+                  if (selectedRating < 1) {
+                    setReviewError("Please select a rating between 1 and 5.");
+                    return;
+                  }
+
+                  setIsSubmittingReview(true);
+                  try {
+                    const response = await facilityApi.addReview(
+                      localResource.id,
+                      {
+                        rating: selectedRating,
+                      },
+                    );
+                    setLocalResource(response.data);
+                    setShowSuccess(true);
+                    setSelectedRating(0);
+                    if (onReviewAdded) {
+                      onReviewAdded(response.data);
+                    }
+                    setTimeout(() => setShowSuccess(false), 2500);
+                  } catch (error) {
+                    console.error("Error submitting review", error);
+                    setReviewError(
+                      "Unable to submit your rating right now. Please try again later.",
+                    );
+                  } finally {
+                    setIsSubmittingReview(false);
+                  }
+                }}
+                className={`w-full py-3 rounded-xl font-medium transition-all duration-300 ${
+                  showSuccess
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white"
+                } disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+              >
+                {showSuccess ? (
+                  <>
+                    <Check size={18} />
+                    Rating Submitted!
+                  </>
+                ) : isSubmittingReview ? (
+                  "Submitting..."
+                ) : (
+                  "Submit Rating"
+                )}
+              </button>
+              {reviewError && (
+                <p className="text-red-600 dark:text-red-400 text-sm mt-3">
+                  {reviewError}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Sticky Footer */}
-        <div className="p-4 border-t border-slate-100 bg-white flex-shrink-0">
+        {/* Book Button */}
+        <div className="p-6 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
           <button
             onClick={() => {
               onClose();
               navigate(
-                `/bookings/new?facilityId=${resource.id}&facilityName=${encodeURIComponent(resource.name)}`,
+                `/bookings/new?facilityId=${localResource.id}&facilityName=${encodeURIComponent(localResource.name)}`,
               );
             }}
             disabled={isOutOfService || isMaintenance}
-            className={`w-full py-3.5 text-white font-bold rounded-xl shadow-md flex justify-center items-center gap-2 transition-all ${isOutOfService || isMaintenance ? "bg-slate-400 cursor-not-allowed shadow-none" : "bg-[#4169E1] shadow-[#4169E1]/30 hover:shadow-lg hover:shadow-[#4169E1]/40"}`}
+            className={`w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white font-medium rounded-xl flex items-center justify-center gap-3 transition-all duration-200 ${
+              isOutOfService || isMaintenance
+                ? ""
+                : "shadow-lg shadow-blue-600/25 hover:shadow-xl hover:shadow-blue-600/30"
+            }`}
           >
-            <Calendar size={18} strokeWidth={2.5} />
-            {isOutOfService || isMaintenance ? "Facility Unavailable" : "Book"}
+            <Calendar size={20} strokeWidth={2} />
+            {isOutOfService || isMaintenance
+              ? "Facility Unavailable"
+              : "Book This Venue"}
           </button>
         </div>
       </div>

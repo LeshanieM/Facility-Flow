@@ -8,7 +8,9 @@ import com.smartcampus.facility.enums.FacilityEnums.ResourceStatus;
 import com.smartcampus.facility.enums.FacilityEnums.ResourceType;
 import com.smartcampus.facility.exception.FacilityExceptions.ResourceNotFoundException;
 import com.smartcampus.facility.model.Resource;
+import com.smartcampus.facility.model.ResourceReview;
 import com.smartcampus.facility.repository.ResourceRepository;
+import com.smartcampus.facility.repository.ResourceReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 public class ResourceService {
 
     private final ResourceRepository resourceRepository;
+    private final ResourceReviewRepository resourceReviewRepository;
 
     public ResourceResponse createResource(CreateResourceRequest request, User admin) {
         Resource resource = Resource.builder()
@@ -104,6 +107,44 @@ public class ResourceService {
         return toResponse(resourceRepository.save(resource));
     }
 
+    public ResourceResponse addReview(String resourceId, Integer rating, User user) {
+        if (rating == null || rating < 1 || rating > 5) {
+            throw new IllegalArgumentException("Rating must be between 1 and 5");
+        }
+
+        Resource resource = findById(resourceId);
+        double currentRating = resource.getRating() != null ? resource.getRating() : 0.0;
+        int currentCount = resource.getNumReviews() != null ? resource.getNumReviews() : 0;
+
+        ResourceReview existingReview = resourceReviewRepository
+                .findByResourceIdAndUserId(resourceId, user.getId())
+                .orElse(null);
+
+        if (existingReview != null) {
+            int previousRating = existingReview.getRating();
+            existingReview.setRating(rating);
+            resourceReviewRepository.save(existingReview);
+
+            double totalRating = currentRating * currentCount - previousRating + rating;
+            resource.setRating(currentCount > 0 ? totalRating / currentCount : rating);
+        } else {
+            ResourceReview review = ResourceReview.builder()
+                    .resourceId(resourceId)
+                    .userId(user.getId())
+                    .userName(user.getName())
+                    .rating(rating)
+                    .build();
+            resourceReviewRepository.save(review);
+
+            int newCount = currentCount + 1;
+            double totalRating = currentRating * currentCount + rating;
+            resource.setNumReviews(newCount);
+            resource.setRating(totalRating / newCount);
+        }
+
+        return toResponse(resourceRepository.save(resource));
+    }
+
     public void deleteResource(String id) {
         Resource resource = findById(id);
         resourceRepository.delete(resource);
@@ -125,6 +166,8 @@ public class ResourceService {
                 resource.getAvailabilityWindows(),
                 resource.getAmenities(),
                 resource.getImageUrl(),
+                resource.getRating() != null ? resource.getRating() : 0.0,
+                resource.getNumReviews() != null ? resource.getNumReviews() : 0,
                 resource.getStatus(),
                 resource.getCreatedBy() != null ? resource.getCreatedBy().getName() : null,
                 resource.getCreatedAt() != null ? resource.getCreatedAt().toString() : null,

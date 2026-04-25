@@ -49,6 +49,12 @@ public class Resource {
     @Builder.Default
     private ResourceStatus status = ResourceStatus.ACTIVE;
 
+    @Builder.Default
+    private Double rating = 0.0;
+
+    @Builder.Default
+    private Integer numReviews = 0;
+
     @DocumentReference(lazy = true)
     private User createdBy;
 

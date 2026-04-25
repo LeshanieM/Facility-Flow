@@ -24,6 +24,8 @@ public class FacilityResponses {
         private List<AvailabilityWindow> availabilityWindows;
         private List<String> amenities;
         private String imageUrl;
+        private Double rating;
+        private Integer numReviews;
         private ResourceStatus status;
         private String createdByName;
         private String createdAt;
