@@ -90,6 +90,9 @@ public class IncidentService {
 
     @Transactional
     public TicketResponse createIncident(CreateTicketRequest request, User user) {
+        if (request.getAttachments() != null && request.getAttachments().size() > 3) {
+            throw new InvalidRequestException("Maximum of 3 attachments allowed.");
+        }
         PriorityLevel mappedPriority = mapPriority(request.getPriority());
 
         Instant now = Instant.now();

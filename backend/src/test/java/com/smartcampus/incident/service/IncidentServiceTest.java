@@ -3,11 +3,13 @@ package com.smartcampus.incident.service;
 import com.smartcampus.entity.Role;
 import com.smartcampus.entity.User;
 import com.smartcampus.incident.dto.IncidentRequests.AddCommentRequest;
+import com.smartcampus.incident.dto.IncidentRequests.CreateTicketRequest;
 import com.smartcampus.incident.dto.IncidentRequests.EditCommentRequest;
 import com.smartcampus.incident.dto.IncidentResponses.AttachmentResponse;
 import com.smartcampus.incident.dto.IncidentResponses.CommentResponse;
 import com.smartcampus.incident.dto.IncidentResponses.TicketResponse;
 import com.smartcampus.incident.enums.IncidentEnums.IncidentStatus;
+import com.smartcampus.incident.exception.IncidentExceptions.InvalidRequestException;
 import com.smartcampus.incident.exception.IncidentExceptions.UnauthorizedIncidentAccessException;
 import com.smartcampus.incident.model.Incident;
 import com.smartcampus.incident.model.IncidentComment;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -302,6 +306,24 @@ class IncidentServiceTest {
         assertThat(response.getAttachments()).hasSize(1);
         assertThat(response.getAttachments().get(0).getViewUrl()).isEqualTo("/incidents/incident-1/attachments/attachment-1");
         assertThat(response.getAttachments().get(0).getDownloadUrl()).isEqualTo("/incidents/incident-1/attachments/attachment-1?download=true");
+    }
+
+    @Test
+    void createIncidentWithTooManyAttachmentsFails() {
+        List<MultipartFile> attachments = List.of(
+                mock(MultipartFile.class),
+                mock(MultipartFile.class),
+                mock(MultipartFile.class),
+                mock(MultipartFile.class)
+        );
+
+        CreateTicketRequest request = new CreateTicketRequest();
+        request.setTitle("Too many files");
+        request.setAttachments(attachments);
+
+        assertThatThrownBy(() -> incidentService.createIncident(request, requester))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("Maximum of 3 attachments allowed.");
     }
 
     private IncidentComment comment(String id, User author, boolean visibleToRequester, String content) {

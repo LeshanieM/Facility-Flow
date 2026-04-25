@@ -28,6 +28,8 @@ import java.util.UUID;
 public class IncidentAttachmentService {
 
     private static final String METADATA_SEPARATOR = "::";
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of(".jpg", ".jpeg", ".png", ".webp");
+    private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
     private final Path storageRoot;
     private final List<Path> readableRoots;
@@ -53,6 +55,7 @@ public class IncidentAttachmentService {
             }
 
             String originalFileName = sanitizeOriginalFileName(file.getOriginalFilename());
+            validateFile(file, originalFileName);
             String attachmentId = UUID.randomUUID().toString();
             String storedFileName = buildStoredFileName(incidentId, attachmentId, originalFileName);
             Path targetPath = storageRoot.resolve(storedFileName).normalize();
@@ -276,6 +279,23 @@ public class IncidentAttachmentService {
     private void ensureWithinStorageRoot(Path targetPath, Path root) {
         if (!targetPath.startsWith(root)) {
             throw new InvalidRequestException("Invalid attachment path");
+        }
+    }
+
+    private void validateFile(MultipartFile file, String sanitizedFileName) {
+        String fileName = sanitizedFileName.toLowerCase(Locale.ROOT);
+        boolean hasValidExtension = ALLOWED_EXTENSIONS.stream().anyMatch(fileName::endsWith);
+
+        if (!hasValidExtension) {
+            throw new InvalidRequestException("Only image files (.jpg, .jpeg, .png, .webp) are allowed.");
+        }
+
+        String contentType = file.getContentType();
+        if (contentType != null && !contentType.isBlank()) {
+            String normalizedType = contentType.toLowerCase(Locale.ROOT);
+            if (!ALLOWED_MIME_TYPES.contains(normalizedType)) {
+                throw new InvalidRequestException("Invalid file type for " + sanitizedFileName + ". Only images are allowed.");
+            }
         }
     }
 

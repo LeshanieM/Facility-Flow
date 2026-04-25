@@ -17,6 +17,9 @@ const TechDashboard = () => {
     const [commentText, setCommentText] = useState('');
     const [visibleToRequester, setVisibleToRequester] = useState(true);
     const [editingCommentId, setEditingCommentId] = useState(null);
+    const [showResolutionModal, setShowResolutionModal] = useState(false);
+    const [resolutionNotes, setResolutionNotes] = useState('');
+    const [resError, setResError] = useState('');
     const styleRef = useRef(null);
 
     useEffect(() => {
@@ -61,15 +64,25 @@ const TechDashboard = () => {
         fetchTasks();
     }, []);
 
-    const updateStatus = async (id, status) => {
+    const updateStatus = async (id, status, resNotes = null) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.patch(`/api/technician/tickets/${id}/status`, { status }, {
+            const payload = { status };
+            if (resNotes) payload.resolutionNotes = resNotes;
+
+            await axios.patch(`/api/technician/tickets/${id}/status`, payload, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             fetchTasks(); // refresh
+            setShowResolutionModal(false);
+            setResolutionNotes('');
+            setResError('');
         } catch (error) {
             console.error('Failed to update status:', error);
+            if (status === 'RESOLVED') {
+                const message = error.response?.data?.message || error.response?.data || 'Failed to update status';
+                setResError(message);
+            }
         }
     };
 
@@ -330,6 +343,17 @@ const TechDashboard = () => {
                                     </p>
                                 </div>
 
+                                {selectedTask.resolutionNotes && (
+                                    <div className="bg-emerald-50 p-5 rounded-2xl border border-emerald-100 shadow-inner mt-6">
+                                        <h3 className="text-sm font-black text-emerald-900 mb-2 uppercase tracking-widest flex items-center gap-2">
+                                            <CheckCircle size={16} /> Resolution Details
+                                        </h3>
+                                        <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+                                            {selectedTask.resolutionNotes}
+                                        </p>
+                                    </div>
+                                )}
+
                                 {/* Comments Section */}
                                 <div className="border-t border-slate-100 pt-6 mt-6">
                                     <h3 className="text-sm font-black text-slate-900 mb-4 uppercase tracking-widest text-center">{editingCommentId ? 'Edit Comment' : 'Add Progress Comment'}</h3>
@@ -411,7 +435,7 @@ const TechDashboard = () => {
                                                     Mark On Hold
                                                 </button>
                                                 <button
-                                                    onClick={() => updateStatus(selectedTask.id, 'RESOLVED')}
+                                                    onClick={() => setShowResolutionModal(true)}
                                                     className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold transition-transform active:scale-95 shadow-md flex items-center justify-center gap-2"
                                                 >
                                                     <CheckCircle size={18} />
@@ -426,6 +450,65 @@ const TechDashboard = () => {
                                         )}
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Resolution Notes Modal */}
+                {showResolutionModal && (
+                    <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-white rounded-3xl w-full max-w-md overflow-hidden shadow-2xl border border-slate-200 flex flex-col">
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                                <h3 className="text-xl font-black text-slate-800">Complete Resolution</h3>
+                                <button 
+                                    onClick={() => { setShowResolutionModal(false); setResolutionNotes(''); setResError(''); }} 
+                                    className="text-slate-400 hover:text-rose-500 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-4">
+                                <p className="text-sm text-slate-500 font-medium">
+                                    Please provide details on how the issue was resolved. This will be visible to the requester and logged in the history.
+                                </p>
+                                <div>
+                                    <textarea
+                                        value={resolutionNotes}
+                                        onChange={(e) => {
+                                            setResolutionNotes(e.target.value);
+                                            if (e.target.value.trim()) setResError('');
+                                        }}
+                                        placeholder="Describe the resolution... (e.g., Replaced faulty bulb, verified wiring)"
+                                        className={`w-full bg-slate-50 border ${resError ? 'border-rose-300 ring-2 ring-rose-500/10' : 'border-slate-200'} rounded-2xl px-4 py-3 text-sm focus:ring-4 focus:ring-emerald-500/20 outline-none resize-none transition-all`}
+                                        rows="4"
+                                    />
+                                    {resError && (
+                                        <p className="mt-2 text-xs font-bold text-rose-500 flex items-center gap-1">
+                                            <AlertCircle size={12} /> {resError}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="px-6 py-4 bg-slate-50 flex gap-3">
+                                <button
+                                    onClick={() => { setShowResolutionModal(false); setResolutionNotes(''); setResError(''); }}
+                                    className="flex-1 px-4 py-2.5 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        if (!resolutionNotes.trim()) {
+                                            setResError('Resolution notes are required to resolve the ticket.');
+                                            return;
+                                        }
+                                        updateStatus(selectedTask.id, 'RESOLVED', resolutionNotes.trim());
+                                    }}
+                                    className="flex-1 px-4 py-2.5 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-500/20"
+                                >
+                                    Confirm & Resolve
+                                </button>
                             </div>
                         </div>
                     </div>
