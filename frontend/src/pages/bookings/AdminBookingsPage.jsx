@@ -128,13 +128,27 @@ const AdminBookingsPage = () => {
 
   const [toast, setToast] = useState(null);
 
+  const getStatusCode = (err) => err?.response?.status;
+
+  const getErrorMessageForStatus = (status, fallback) => {
+    switch (status) {
+      case 403:
+        return 'Access denied. Admin permission is required.';
+      case 500:
+        return 'Server error. Please try again in a moment.';
+      default:
+        return fallback;
+    }
+  };
+
   const fetchBookings = useCallback(async () => {
     setLoading(true);
     try {
       const data = await bookingService.getAllBookings();
       setBookings(Array.isArray(data) ? data : []);
-    } catch {
-      setToast({ message: 'Failed to load bookings.', type: 'error' });
+    } catch (error) {
+      const status = getStatusCode(error);
+      setToast({ message: getErrorMessageForStatus(status, 'Failed to load bookings.'), type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -180,8 +194,9 @@ const AdminBookingsPage = () => {
       setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: 'APPROVED' } : b));
       setToast({ message: 'Booking approved successfully.', type: 'success' });
       setApproveTarget(null);
-    } catch {
-      setToast({ message: 'Failed to approve booking.', type: 'error' });
+    } catch (error) {
+      const status = getStatusCode(error);
+      setToast({ message: getErrorMessageForStatus(status, 'Failed to approve booking.'), type: 'error' });
     } finally {
       setLoadingActionId(null);
     }
@@ -194,8 +209,9 @@ const AdminBookingsPage = () => {
       setBookings((prev) => prev.map((b) => b.id === id ? { ...b, status: 'REJECTED', rejectionReason: reason } : b));
       setToast({ message: 'Booking rejected.', type: 'success' });
       setRejectTarget(null);
-    } catch {
-      setToast({ message: 'Failed to reject booking.', type: 'error' });
+    } catch (error) {
+      const status = getStatusCode(error);
+      setToast({ message: getErrorMessageForStatus(status, 'Failed to reject booking.'), type: 'error' });
     } finally {
       setLoadingActionId(null);
     }
