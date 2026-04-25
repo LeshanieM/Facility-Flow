@@ -38,7 +38,7 @@ const FacilityCataloguePage = () => {
 
     return (
         <Layout>
-            <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6">
+            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
                 <div className="mb-8">
                     <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
                         <div className="w-12 h-12 rounded-2xl bg-[#4169E1]/10 flex items-center justify-center text-[#4169E1]">

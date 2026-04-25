@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import com.smartcampus.facility.model.AvailabilityWindow;
 
 public class FacilityResponses {
 
@@ -20,7 +21,7 @@ public class FacilityResponses {
         private Integer capacity;
         private String location;
         private String description;
-        private List<String> availabilityWindows;
+        private List<AvailabilityWindow> availabilityWindows;
         private List<String> amenities;
         private String imageUrl;
         private ResourceStatus status;
