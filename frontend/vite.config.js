@@ -17,20 +17,40 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: backendTarget,
           changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (err, _req, _res) => {
+              // Silent error handling for when the backend is down
+            });
+          },
         },
         // Only proxy the OAuth2 login initiation — NOT /oauth2/redirect (that's a frontend React route)
         '/oauth2/authorization': {
           target: backendTarget,
           changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (err, _req, _res) => {
+              // Silent error handling
+            });
+          },
         },
         // Spring Security's internal OAuth2 callback endpoint
         '/login/oauth2': {
           target: backendTarget,
           changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('error', (err, _req, _res) => {
+              // Silent error handling
+            });
+          },
         },
         '/ws': {
           target: backendTarget,
           ws: true,
+          configure: (proxy) => {
+            proxy.on('error', (err, _req, _res) => {
+              // Silent error handling for when the backend is down
+            });
+          },
         },
       },
     },

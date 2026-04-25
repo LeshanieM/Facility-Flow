@@ -72,6 +72,11 @@ test.describe('Notifications page (E2E with Backend)', () => {
     // We do this via the page context so it uses the token in localStorage
     const createdNotification = await page.evaluate(async () => {
       const token = localStorage.getItem('token');
+      // Ensure preferences allow the TICKET notification to be created
+      await fetch('/api/notifications/preferences?category=TICKET&emailEnabled=true&inAppEnabled=true', {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
       const res = await fetch('/api/notifications/test', {
         headers: { Authorization: `Bearer ${token}` },
       });
