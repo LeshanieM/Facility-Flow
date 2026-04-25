@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { facilityApi } from "../api/facilityApi";
-import ResourceCard from "../components/ResourceCard";
-import ResourceForm from "../components/ResourceForm";
-import ResourceDetailModal from "../components/ResourceDetailModal";
-import { Settings, Plus } from "lucide-react";
-import Layout from "../../../components/Layout";
+import React, { useState, useEffect } from 'react';
+import { facilityApi } from '../api/facilityApi';
+import ResourceCard from '../components/ResourceCard';
+import ResourceForm from '../components/ResourceForm';
+import ResourceDetailModal from '../components/ResourceDetailModal';
+import { Settings, Plus } from 'lucide-react';
+import Layout from '../../../components/Layout';
 
 const AdminFacilityPage = () => {
   const [resources, setResources] = useState([]);
@@ -16,6 +16,29 @@ const AdminFacilityPage = () => {
   const [formError, setFormError] = useState(null);
   const [selectedResource, setSelectedResource] = useState(null);
 
+  const getStatusCode = (err) => err?.response?.status;
+
+  const getErrorMessageForStatus = (status, fallback) => {
+    switch (status) {
+      case 400:
+        return 'Invalid data. Please check the form fields and try again.';
+      case 401:
+        return 'You are not signed in. Please sign in again and retry.';
+      case 403:
+        return 'Access denied. Your account does not have permission to perform this action.';
+      case 404:
+        return 'Not found. The selected facility may have been removed.';
+      case 409:
+        return 'Conflict detected. This facility may already exist or was changed by someone else.';
+      case 422:
+        return 'Validation failed. Please review the provided information.';
+      case 500:
+        return 'Server error. Please try again in a moment.';
+      default:
+        return fallback;
+    }
+  };
+
   const loadResources = async () => {
     setLoading(true);
     setError(null);
@@ -23,9 +46,13 @@ const AdminFacilityPage = () => {
       const res = await facilityApi.getAdminResources();
       setResources(res.data);
     } catch (error) {
-      console.error("Failed to load resources", error);
+      console.error('Failed to load resources', error);
+      const status = getStatusCode(error);
       setError(
-        "Failed to fetch administrative data. Please check your connection.",
+        getErrorMessageForStatus(
+          status,
+          'Failed to fetch administrative data. Please check your connection.',
+        ),
       );
     } finally {
       setLoading(false);
@@ -42,35 +69,45 @@ const AdminFacilityPage = () => {
     try {
       if (editingResource) {
         await facilityApi.updateResource(editingResource.id, data);
-        setSuccessMessage("Facility successfully updated.");
+        setSuccessMessage('Facility successfully updated.');
       } else {
         await facilityApi.createResource(data);
-        setSuccessMessage("Facility successfully created.");
+        setSuccessMessage('Facility successfully created.');
       }
       setIsFormOpen(false);
       setEditingResource(null);
       setTimeout(() => setSuccessMessage(null), 3000);
       loadResources();
     } catch (error) {
-      console.error("Failed to save resource", error);
+      console.error('Failed to save resource', error);
+      const status = getStatusCode(error);
       setFormError(
-        "Failed to save the facility. Please verify the information and try again.",
+        getErrorMessageForStatus(
+          status,
+          'Failed to save the facility. Please verify the information and try again.',
+        ),
       );
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this resource?")) {
+    if (window.confirm('Are you sure you want to delete this resource?')) {
       setLoading(true);
       try {
         await facilityApi.deleteResource(id);
-        setSuccessMessage("Facility successfully deleted.");
+        setSuccessMessage('Facility successfully deleted.');
         setTimeout(() => setSuccessMessage(null), 3000);
         loadResources();
       } catch (error) {
-        console.error("Failed to delete", error);
-        setError("Failed to delete the selected facility.");
+        console.error('Failed to delete', error);
+        const status = getStatusCode(error);
+        setError(
+          getErrorMessageForStatus(
+            status,
+            'Failed to delete the selected facility.',
+          ),
+        );
         setLoading(false);
       }
     }
@@ -80,16 +117,19 @@ const AdminFacilityPage = () => {
     setLoading(true);
     try {
       const newStatus =
-        resource.status === "ACTIVE" ? "OUT_OF_SERVICE" : "ACTIVE";
+        resource.status === 'ACTIVE' ? 'OUT_OF_SERVICE' : 'ACTIVE';
       await facilityApi.updateResourceStatus(resource.id, newStatus);
       setSuccessMessage(
-        `Facility status updated to ${newStatus.replace("_", " ")}.`,
+        `Facility status updated to ${newStatus.replace('_', ' ')}.`,
       );
       setTimeout(() => setSuccessMessage(null), 3000);
       loadResources();
     } catch (error) {
-      console.error("Failed to update status", error);
-      setError("Failed to update facility status.");
+      console.error('Failed to update status', error);
+      const status = getStatusCode(error);
+      setError(
+        getErrorMessageForStatus(status, 'Failed to update facility status.'),
+      );
       setLoading(false);
     }
   };
@@ -190,14 +230,6 @@ const AdminFacilityPage = () => {
         <ResourceDetailModal
           resource={selectedResource}
           onClose={() => setSelectedResource(null)}
-          onReviewAdded={(updatedResource) => {
-            setSelectedResource(updatedResource);
-            setResources((prev) =>
-              prev.map((item) =>
-                item.id === updatedResource.id ? updatedResource : item,
-              ),
-            );
-          }}
         />
       </div>
     </Layout>
