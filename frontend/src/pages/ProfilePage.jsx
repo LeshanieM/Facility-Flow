@@ -9,6 +9,7 @@ import {
   Save,
   Loader2,
   CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import axios from 'axios';
 import CONFIG from '../config';
@@ -23,6 +24,31 @@ const ProfilePage = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  
+  // Name validation error state
+  const [nameError, setNameError] = useState('');
+
+  //  Validate name function
+  const validateName = (value) => {
+    if (!value || value.trim().length === 0) {
+      return 'Name cannot be empty';
+    }
+    if (value.length > 100) {
+      return 'Name must be less than 100 characters';
+    }
+    if (/[<>{}[\]\\|]/.test(value)) {
+      return 'Name contains invalid characters';
+    }
+    return '';
+  };
+
+  // Handle name change with validation
+  const handleNameChange = (e) => {
+    const newName = e.target.value;
+    setName(newName);
+    const validationError = validateName(newName);
+    setNameError(validationError);
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -38,12 +64,21 @@ const ProfilePage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate before submission
+    const validationError = validateName(name);
+    if (validationError) {
+      setNameError(validationError);
+      setError('Please fix the errors before saving');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     setSuccess(false);
 
     const formData = new FormData();
-    formData.append('name', name);
+    formData.append('name', name.trim()); // NEW: Trim whitespace
     if (image) {
       formData.append('picture', image);
     }
@@ -147,18 +182,34 @@ const ProfilePage = () => {
               
               <form onSubmit={handleSubmit} className="p-8 flex-1 flex flex-col space-y-8">
                 <div className="space-y-6">
-                  {/* Personal Name Entry */}
+                  {/* Personal Name Entry  */}
                   <div className="space-y-2 group">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">My Identity Name</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">
+                      My Identity Name <span className="text-rose-500">*</span>
+                    </label>
                     <div className="relative">
                       <User className="absolute left-0 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-primary transition-colors" size={18} />
                       <input
                         type="text"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={handleNameChange}
                         placeholder="Enter your name"
-                        className="w-full pl-7 pr-4 py-2.5 bg-transparent border-b border-slate-200 text-slate-900 font-black text-lg focus:border-primary outline-none transition-all placeholder:text-slate-200"
+                        className={`w-full pl-7 pr-4 py-2.5 bg-transparent border-b text-slate-900 font-black text-lg focus:outline-none transition-all placeholder:text-slate-200 ${
+                          nameError 
+                            ? 'border-rose-500 focus:border-rose-500' 
+                            : 'border-slate-200 focus:border-primary'
+                        }`}
                       />
+                    </div>
+                    {/* Name error message display */}
+                    {nameError && (
+                      <div className="flex items-center gap-1.5 mt-1.5 text-rose-600 text-[10px] font-black uppercase tracking-wider">
+                        <AlertCircle size={12} />
+                        {nameError}
+                      </div>
+                    )}
+                    <div className="text-[8px] text-slate-400 mt-1 ml-1">
+                      {name.length}/100 characters
                     </div>
                   </div>
 
@@ -210,7 +261,8 @@ const ProfilePage = () => {
                 <div className="mt-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="flex-1">
                     {error && (
-                      <p className="text-rose-600 font-black text-[10px] bg-rose-50 px-4 py-2 rounded-xl border border-rose-100">
+                      <p className="text-rose-600 font-black text-[10px] bg-rose-50 px-4 py-2 rounded-xl border border-rose-100 flex items-center gap-1.5">
+                        <AlertCircle size={12} />
                         {error}
                       </p>
                     )}
@@ -222,8 +274,8 @@ const ProfilePage = () => {
                   </div>
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="w-full sm:w-auto px-8 py-3 bg-primary text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:bg-primary-dark hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 transition-all duration-300"
+                    disabled={loading || !!nameError}
+                    className="w-full sm:w-auto px-8 py-3 bg-primary text-white rounded-xl font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-primary/20 hover:bg-primary-dark hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300"
                   >
                     {loading ? (
                       <Loader2 size={18} className="animate-spin" />
