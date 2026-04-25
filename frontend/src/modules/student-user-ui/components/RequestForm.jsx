@@ -204,20 +204,20 @@ const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSub
         <FieldControl
           label="Optional attachments"
           error={errors.attachments}
-          hint="Attach up to 3 photos or documents (Max 10MB each)."
+          hint="Attach up to 3 photos (Max 10MB each)."
         >
           <div className="flex flex-col gap-3">
             <label className={`flex cursor-pointer items-center justify-between rounded-2xl border border-dashed px-4 py-3 text-sm transition ${errors.attachments ? 'border-rose-300 bg-rose-50 text-rose-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:border-blue-300 hover:bg-blue-50/40'}`}>
               <div className="flex items-center gap-3">
                 <Paperclip size={18} />
-                <span className="truncate">Add an image or supporting file</span>
+                <span className="truncate">Add an image (JPG, PNG, WEBP)</span>
               </div>
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-500 shadow-sm">Browse</span>
               <input
                 type="file"
                 className="hidden"
                 multiple
-                accept="image/*,.pdf,.doc,.docx"
+                accept=".jpg,.jpeg,.png,.webp"
                 onChange={(event) => {
                   const newFiles = Array.from(event.target.files || []);
                   onChange('attachments', [...(values.attachments || []), ...newFiles]);

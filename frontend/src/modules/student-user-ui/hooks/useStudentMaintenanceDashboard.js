@@ -178,8 +178,21 @@ export const useStudentMaintenanceDashboard = () => {
 
     if (formValues.attachments && formValues.attachments.length > 0) {
       const MAX_SIZE = 10 * 1024 * 1024;
+      const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+      const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
       for (let i = 0; i < formValues.attachments.length; i++) {
-        if (formValues.attachments[i].size > MAX_SIZE) {
+        const file = formValues.attachments[i];
+        const fileName = (file.name || '').toLowerCase();
+        const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => fileName.endsWith(ext));
+        const hasValidMime = !file.type || ALLOWED_MIME_TYPES.includes(file.type.toLowerCase());
+
+        if (!hasValidExt || !hasValidMime) {
+          nextErrors.attachments = 'Only image files (.jpg, .jpeg, .png, .webp) are allowed.';
+          break;
+        }
+
+        if (file.size > MAX_SIZE) {
           nextErrors.attachments = 'Each file must not exceed 10MB.';
           break;
         }
@@ -202,8 +215,21 @@ export const useStudentMaintenanceDashboard = () => {
         errorMsg = 'You can upload a maximum of 3 files.';
       } else {
         const MAX_SIZE = 10 * 1024 * 1024;
+        const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+        const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
         for (let i = 0; i < (value || []).length; i++) {
-          if (value[i].size > MAX_SIZE) {
+          const file = value[i];
+          const fileName = (file.name || '').toLowerCase();
+          const hasValidExt = ALLOWED_EXTENSIONS.some((ext) => fileName.endsWith(ext));
+          const hasValidMime = !file.type || ALLOWED_MIME_TYPES.includes(file.type.toLowerCase());
+
+          if (!hasValidExt || !hasValidMime) {
+            errorMsg = 'Only image files (.jpg, .jpeg, .png, .webp) are allowed.';
+            break;
+          }
+
+          if (file.size > MAX_SIZE) {
             errorMsg = 'Each file must not exceed 10MB.';
             break;
           }
