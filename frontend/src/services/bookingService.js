@@ -42,6 +42,12 @@ export const bookingService = {
     const response = await axiosInstance.patch(`/bookings/${id}/cancel`);
     return response.data;
   },
+
+  // Delete a booking entirely (USER - for PENDING/REJECTED/CANCELLED)
+  deleteBooking: async (id) => {
+    const response = await axiosInstance.delete(`/bookings/${id}`);
+    return response.data;
+  },
 };
 
 export default bookingService;

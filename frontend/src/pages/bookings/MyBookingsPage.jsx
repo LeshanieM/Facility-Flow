@@ -51,8 +51,10 @@ const MyBookingsPage = () => {
   const [statusFilter, setStatusFilter] = useState('ALL');
 
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [detailTarget, setDetailTarget] = useState(null);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const [toast, setToast] = useState(null);
 
@@ -86,6 +88,20 @@ const MyBookingsPage = () => {
     }
   };
 
+  const handleDeleteConfirm = async (id) => {
+    setDeleteLoading(true);
+    try {
+      await bookingService.deleteBooking(id);
+      setBookings((prev) => prev.filter((b) => b.id !== id));
+      setToast({ message: 'Booking request deleted.', type: 'success' });
+      setDeleteTarget(null);
+    } catch {
+      setToast({ message: 'Failed to delete booking request.', type: 'error' });
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
   // Stats
   const stats = {
     PENDING: bookings.filter((b) => b.status === 'PENDING').length,
@@ -111,6 +127,16 @@ const MyBookingsPage = () => {
           onClose={() => setCancelTarget(null)}
           onConfirm={handleCancelConfirm}
           isLoading={cancelLoading}
+          mode="cancel"
+        />
+      )}
+      {deleteTarget && (
+        <CancelConfirmModal
+          booking={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDeleteConfirm}
+          isLoading={deleteLoading}
+          mode="delete"
         />
       )}
 
@@ -270,6 +296,7 @@ const MyBookingsPage = () => {
                   key={booking.id}
                   booking={booking}
                   onCancel={setCancelTarget}
+                  onDelete={setDeleteTarget}
                   onViewDetail={setDetailTarget}
                 />
               ))}
@@ -280,6 +307,7 @@ const MyBookingsPage = () => {
                 bookings={filtered}
                 isAdmin={false}
                 onCancel={setCancelTarget}
+                onDelete={setDeleteTarget}
                 onViewDetail={setDetailTarget}
               />
             </div>

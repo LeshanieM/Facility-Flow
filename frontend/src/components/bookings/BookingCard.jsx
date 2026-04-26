@@ -2,7 +2,7 @@ import React from 'react';
 import { Calendar, Clock, MapPin, Users, AlertCircle, X } from 'lucide-react';
 import BookingStatusBadge from './BookingStatusBadge';
 
-const BookingCard = ({ booking, onCancel, onViewDetail }) => {
+const BookingCard = ({ booking, onCancel, onDelete, onViewDetail }) => {
   const { resourceName, resourceType, resourceLocation, date, startTime, endTime, purpose, status, rejectionReason, expectedAttendees } = booking;
 
   const formatDate = (dateStr) => {
@@ -113,7 +113,7 @@ const BookingCard = ({ booking, onCancel, onViewDetail }) => {
           </div>
         )}
 
-        {/* Cancel action */}
+        {/* Cancel/Delete action */}
         {status === 'APPROVED' && onCancel && (
           <button
             onClick={(e) => { e.stopPropagation(); onCancel(booking); }}
@@ -121,6 +121,16 @@ const BookingCard = ({ booking, onCancel, onViewDetail }) => {
           >
             <X size={14} strokeWidth={3} />
             Cancel Booking
+          </button>
+        )}
+
+        {status === 'PENDING' && onDelete && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(booking); }}
+            className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 px-4 text-[11px] font-black text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-100 rounded-xl transition-all duration-300 shadow-sm shadow-rose-100/50 uppercase tracking-wider"
+          >
+            <X size={14} strokeWidth={3} />
+            Delete Request
           </button>
         )}
       </div>
