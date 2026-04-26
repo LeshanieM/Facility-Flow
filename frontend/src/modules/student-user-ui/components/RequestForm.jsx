@@ -16,7 +16,17 @@ const categoryOptions = [
   'Other',
 ];
 
-const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSubmitting, submitMessage, submitError }) => {
+const RequestForm = ({
+  values,
+  errors,
+  resources = [],
+  isResourcesLoading = false,
+  onChange,
+  onSubmit,
+  isSubmitting,
+  submitMessage,
+  submitError,
+}) => {
   const normalizeText = (value) => String(value || '').trim().toLowerCase();
 
   const formatResourceType = (value) =>
@@ -187,6 +197,12 @@ const RequestForm = ({ values, errors, resources = [], onChange, onSubmit, isSub
             />
           </FieldControl>
         </div>
+
+        {isResourcesLoading && (
+          <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-medium text-blue-700">
+            Loading latest resource suggestions...
+          </div>
+        )}
 
         <FieldControl
           label="Description"

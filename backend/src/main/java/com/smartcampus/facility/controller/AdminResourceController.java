@@ -4,6 +4,7 @@ import com.smartcampus.entity.User;
 import com.smartcampus.facility.dto.FacilityRequests.CreateResourceRequest;
 import com.smartcampus.facility.dto.FacilityRequests.UpdateResourceRequest;
 import com.smartcampus.facility.enums.FacilityEnums.ResourceStatus;
+import com.smartcampus.facility.dto.FacilityResponses.ResourceListItemResponse;
 import com.smartcampus.facility.dto.FacilityResponses.ResourceResponse;
 import com.smartcampus.facility.service.ResourceService;
 import com.smartcampus.repository.UserRepository;
@@ -35,8 +36,10 @@ public class AdminResourceController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ResourceResponse>> getAllResources() {
-        return ResponseEntity.ok(resourceService.getAllResources());
+    public ResponseEntity<List<ResourceListItemResponse>> getAllResources(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(resourceService.getAllResources(page, size));
     }
 
     @GetMapping("/{id}")

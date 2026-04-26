@@ -61,6 +61,7 @@ const StudentStaffMaintenanceModule = () => {
     summary,
     requests,
     resources,
+    isResourcesLoading,
     notifications,
     selectedRequest,
     selectedRequestId,
@@ -84,6 +85,7 @@ const StudentStaffMaintenanceModule = () => {
     cancelRequest,
     isCancelling,
     refreshDashboard,
+    loadResources,
     clearSubmitStatus,
   } = useStudentMaintenanceDashboard();
   const styleRef = useRef(null);
@@ -110,6 +112,12 @@ const StudentStaffMaintenanceModule = () => {
       clearSubmitStatus();
     }
   }, [activeTab, clearSubmitStatus]);
+
+  useEffect(() => {
+    if (activeTab === 'new-request' && resources.length === 0) {
+      loadResources();
+    }
+  }, [activeTab, resources.length, loadResources]);
 
   useEffect(() => {
     if (selectedRequestId && detailsRef.current) {
@@ -428,6 +436,7 @@ const StudentStaffMaintenanceModule = () => {
                     values={formValues}
                     errors={formErrors}
                     resources={resources}
+                    isResourcesLoading={isResourcesLoading}
                     onChange={updateField}
                     onSubmit={submitRequest}
                     isSubmitting={isSubmitting}

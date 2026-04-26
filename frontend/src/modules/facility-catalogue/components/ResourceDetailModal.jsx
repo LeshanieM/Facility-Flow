@@ -22,6 +22,7 @@ const ResourceDetailModal = ({ resource, onClose, onReviewAdded }) => {
   const navigate = useNavigate();
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [localResource, setLocalResource] = useState(resource);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
   const [reviewMessage, setReviewMessage] = useState(null);
   const [reviewError, setReviewError] = useState(null);
@@ -35,6 +36,31 @@ const ResourceDetailModal = ({ resource, onClose, onReviewAdded }) => {
     setReviewError(null);
     setShowSuccess(false);
   }, [resource]);
+
+  useEffect(() => {
+    if (!resource?.id) return;
+
+    let isMounted = true;
+    setIsLoadingDetails(true);
+
+    facilityApi
+      .getResourceById(resource.id)
+      .then((response) => {
+        if (!isMounted) return;
+        setLocalResource(response.data);
+      })
+      .catch((error) => {
+        console.error("Failed to load resource details", error);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoadingDetails(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [resource?.id]);
 
   if (!localResource) return null;
 
@@ -96,6 +122,13 @@ const ResourceDetailModal = ({ resource, onClose, onReviewAdded }) => {
 
         {/* Scrollable Content */}
         <div className="overflow-y-auto custom-scrollbar flex-1">
+          {isLoadingDetails && (
+            <div className="px-6 pt-4">
+              <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">
+                Loading facility details...
+              </div>
+            </div>
+          )}
           <div className="px-6 py-6 space-y-6">
             {/* Header Section */}
             <div className="flex justify-between items-start">

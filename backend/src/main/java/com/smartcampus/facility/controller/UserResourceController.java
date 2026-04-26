@@ -2,6 +2,7 @@ package com.smartcampus.facility.controller;
 
 import com.smartcampus.entity.User;
 import com.smartcampus.facility.dto.FacilityRequests;
+import com.smartcampus.facility.dto.FacilityResponses.ResourceListItemResponse;
 import com.smartcampus.facility.dto.FacilityResponses.ResourceResponse;
 import com.smartcampus.facility.enums.FacilityEnums.ResourceStatus;
 import com.smartcampus.facility.enums.FacilityEnums.ResourceType;
@@ -25,23 +26,27 @@ public class UserResourceController {
     private final UserRepository userRepository;
 
     @GetMapping
-    public ResponseEntity<List<ResourceResponse>> getAllResources(
+    public ResponseEntity<List<ResourceListItemResponse>> getAllResources(
             @RequestParam(required = false) ResourceType type,
             @RequestParam(required = false) String location,
-            @RequestParam(required = false) Integer minCapacity) {
+            @RequestParam(required = false) Integer minCapacity,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
         
         if (type != null || location != null || minCapacity != null) {
-            return ResponseEntity.ok(resourceService.searchResources(type, location, minCapacity));
+            return ResponseEntity.ok(resourceService.searchResources(type, location, minCapacity, page, size));
         }
-        return ResponseEntity.ok(resourceService.getResourcesByStatus(ResourceStatus.ACTIVE));
+        return ResponseEntity.ok(resourceService.getResourcesByStatus(ResourceStatus.ACTIVE, page, size));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<ResourceResponse>> searchResources(
+    public ResponseEntity<List<ResourceListItemResponse>> searchResources(
             @RequestParam(required = false) ResourceType type,
             @RequestParam(required = false) String location,
-            @RequestParam(required = false) Integer minCapacity) {
-        return ResponseEntity.ok(resourceService.searchResources(type, location, minCapacity));
+            @RequestParam(required = false) Integer minCapacity,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        return ResponseEntity.ok(resourceService.searchResources(type, location, minCapacity, page, size));
     }
 
     @GetMapping("/{id}")

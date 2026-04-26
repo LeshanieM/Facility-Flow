@@ -5,6 +5,17 @@ import ResourceFilter from "../components/ResourceFilter";
 import ResourceDetailModal from "../components/ResourceDetailModal";
 import { Building2 } from "lucide-react";
 import Layout from "../../../components/Layout";
+import axios from "axios";
+
+const RESOURCE_CACHE_TTL_MS = 2 * 60 * 1000;
+const resourceQueryCache = new Map();
+
+const buildCacheKey = (filters) =>
+  JSON.stringify({
+    type: filters.type || "",
+    location: filters.location || "",
+    minCapacity: filters.minCapacity || "",
+  });
 
 const FacilityCataloguePage = () => {
   const [resources, setResources] = useState([]);
@@ -14,11 +25,30 @@ const FacilityCataloguePage = () => {
     minCapacity: "",
   });
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedResource, setSelectedResource] = useState(null);
 
   const loadResources = async () => {
-    setLoading(true);
+    const cacheKey = buildCacheKey(filters);
+    const cached = resourceQueryCache.get(cacheKey);
+    const now = Date.now();
+    const hasFreshCache = cached && now - cached.cachedAt < RESOURCE_CACHE_TTL_MS;
+
+    if (hasFreshCache) {
+      setResources(cached.data);
+      setError(null);
+      setLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
+    const hasExistingData = resources.length > 0;
+    if (hasExistingData) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const params = {};
@@ -27,14 +57,20 @@ const FacilityCataloguePage = () => {
       if (filters.minCapacity) params.minCapacity = filters.minCapacity;
 
       const res = await facilityApi.getAllResources(params);
-      setResources(res.data);
+      const data = Array.isArray(res.data) ? res.data : [];
+      setResources(data);
+      resourceQueryCache.set(cacheKey, { data, cachedAt: Date.now() });
     } catch (error) {
+      if (axios.isCancel(error) || error?.code === "ERR_CANCELED") {
+        return;
+      }
       console.error("Failed to load resources", error);
       setError(
         "We encountered an issue communicating with the server. Please check your connection and try again.",
       );
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -62,6 +98,11 @@ const FacilityCataloguePage = () => {
           setFilters={setFilters}
           onSearch={loadResources}
         />
+        {isRefreshing && resources.length > 0 && (
+          <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700">
+            Refreshing facilities...
+          </div>
+        )}
 
         {loading ? (
           <div className="flex justify-center items-center py-20">

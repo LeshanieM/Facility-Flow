@@ -3,15 +3,27 @@ import api from "../../../services/api";
 export const facilityApi = {
   // USER endpoints
   getAllResources: (params) => {
-    return api.get("/resources", { params });
+    return api.get("/resources", {
+      params: {
+        page: 0,
+        size: 50,
+        ...(params || {}),
+      },
+    });
   },
   getResourceById: (id) => {
     return api.get(`/resources/${id}`);
   },
 
   // ADMIN endpoints
-  getAdminResources: () => {
-    return api.get("/admin/resources");
+  getAdminResources: (params) => {
+    return api.get("/admin/resources", {
+      params: {
+        page: 0,
+        size: 50,
+        ...(params || {}),
+      },
+    });
   },
   createResource: (data) => {
     return api.post("/admin/resources", data);

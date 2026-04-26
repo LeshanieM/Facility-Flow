@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   MapPin,
   Users,
@@ -21,8 +21,9 @@ const ResourceCard = ({
   const isOutOfService = resource.status === "OUT_OF_SERVICE";
   const isMaintenance = resource.status === "MAINTENANCE";
 
-  // Function to render stars with partial filling support
-  const renderStars = (rating) => {
+  // Build stars once per rating to reduce repeated work per render.
+  const stars = useMemo(() => {
+    const rating = resource.rating ?? 0;
     const stars = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
@@ -62,7 +63,7 @@ const ResourceCard = ({
     }
 
     return stars;
-  };
+  }, [resource.rating]);
 
   return (
     <div
@@ -76,6 +77,8 @@ const ResourceCard = ({
           <img
             src={resource.imageUrl}
             alt={resource.name}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
           />
         ) : (
@@ -106,7 +109,7 @@ const ResourceCard = ({
         {/* Star Rating Row */}
         <div className="flex items-center gap-2 mb-4">
           <div className="flex items-center gap-0.5">
-            {renderStars(resource.rating ?? 0)}
+            {stars}
           </div>
           <span className="text-sm font-bold text-foreground">
             {(resource.rating ?? 0).toFixed(1)}
@@ -213,4 +216,4 @@ const ResourceCard = ({
   );
 };
 
-export default ResourceCard;
+export default React.memo(ResourceCard);

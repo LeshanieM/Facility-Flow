@@ -9,6 +9,7 @@ import Layout from '../../../components/Layout';
 const AdminFacilityPage = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [updatingStatusIds, setUpdatingStatusIds] = useState([]);
   const [savingForm, setSavingForm] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -42,11 +43,15 @@ const AdminFacilityPage = () => {
   };
 
   const loadResources = async () => {
-    setLoading(true);
+    if (resources.length > 0) {
+      setIsRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const res = await facilityApi.getAdminResources();
-      setResources(res.data);
+      setResources(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error('Failed to load resources', error);
       const status = getStatusCode(error);
@@ -58,6 +63,7 @@ const AdminFacilityPage = () => {
       );
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -106,14 +112,15 @@ const AdminFacilityPage = () => {
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this resource?')) {
-      setLoading(true);
+      const previous = resources;
+      setResources((prev) => prev.filter((item) => item.id !== id));
       try {
         await facilityApi.deleteResource(id);
         setSuccessMessage('Facility successfully deleted.');
         setTimeout(() => setSuccessMessage(null), 3000);
-        loadResources();
       } catch (error) {
         console.error('Failed to delete', error);
+        setResources(previous);
         const status = getStatusCode(error);
         setError(
           getErrorMessageForStatus(
@@ -121,7 +128,6 @@ const AdminFacilityPage = () => {
             'Failed to delete the selected facility.',
           ),
         );
-        setLoading(false);
       }
     }
   };
@@ -213,6 +219,11 @@ const AdminFacilityPage = () => {
             >
               Dismiss
             </button>
+          </div>
+        )}
+        {isRefreshing && resources.length > 0 && (
+          <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-700">
+            Refreshing facilities...
           </div>
         )}
 
