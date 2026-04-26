@@ -288,12 +288,16 @@ const RequestDetailsPanel = ({
               const isEditing = editingId === update.id;
               const isMyComment = update.canEdit; // Backend flag for ownership
               const isAdmin = update.authorRole === 'ADMIN';
+              const isTechnician = update.authorRole === 'TECHNICIAN';
+              const commentCreated = getCommentCreatedAt(update);
+              const commentUpdated = getCommentUpdatedAt(update);
+              const isEdited = commentUpdated && commentCreated && new Date(commentUpdated).getTime() > new Date(commentCreated).getTime() + 1000;
 
               return (
                 <div key={update.id || index} className="group relative rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-4 hover:border-slate-300 transition-colors">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className={`text-sm font-bold ${isMyComment ? 'text-blue-700' : 'text-slate-800'}`}>
                           {update.authorName || 'User'}
                         </p>
@@ -302,9 +306,17 @@ const RequestDetailsPanel = ({
                             Admin
                           </span>
                         )}
+                        {isTechnician && (
+                          <span className="rounded bg-teal-100 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-teal-700 border border-teal-200">
+                            Technician
+                          </span>
+                        )}
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          {update.authorRole} • {formatDateTime(getCommentUpdatedAt(update) || getCommentCreatedAt(update))}
+                          {update.authorRole} • {formatDateTime(commentUpdated || commentCreated)}
                         </span>
+                        {isEdited && (
+                          <span className="text-[9px] font-bold text-slate-400 italic">(edited)</span>
+                        )}
                       </div>
                       
                       {isEditing ? (
@@ -336,6 +348,7 @@ const RequestDetailsPanel = ({
                         >
                           <Edit2 size={14} />
                         </button>
+                        {update.canDelete && (
                         <button 
                           onClick={() => { if(window.confirm('Delete comment?')) onDeleteComment(update.id) }}
                           className="rounded-lg p-2 text-slate-400 hover:bg-white hover:text-rose-600 shadow-sm transition"
@@ -343,6 +356,7 @@ const RequestDetailsPanel = ({
                         >
                           <Trash2 size={14} />
                         </button>
+                        )}
                       </div>
                     )}
                   </div>

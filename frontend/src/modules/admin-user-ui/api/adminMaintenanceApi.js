@@ -36,4 +36,14 @@ export const assignTechnicianToTicket = async (id, technicianId) => {
   return response.data;
 };
 
+export const editAdminComment = async (ticketId, commentId, payload) => {
+  const response = await adminMaintenanceApi.put(`/${ticketId}/comments/${commentId}`, payload);
+  return response.data;
+};
+
+export const deleteAdminComment = async (ticketId, commentId) => {
+  const response = await adminMaintenanceApi.delete(`/${ticketId}/comments/${commentId}`);
+  return response.data;
+};
+
 export default adminMaintenanceApi;
