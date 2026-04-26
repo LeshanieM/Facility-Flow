@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAllTickets, updateTicketStatus, assignTechnicianToTicket } from '../api/adminMaintenanceApi';
+import { getAllTickets, updateTicketStatus, assignTechnicianToTicket, editAdminComment, deleteAdminComment } from '../api/adminMaintenanceApi';
 import api from '../../../services/api';
 
 export const useAdminMaintenanceDashboard = () => {
@@ -73,6 +73,30 @@ export const useAdminMaintenanceDashboard = () => {
         }
     };
 
+    const editComment = async (ticketId, commentId, commentPayload) => {
+        try {
+            const updated = await editAdminComment(ticketId, commentId, commentPayload);
+            setTickets(current => current.map(t => t.id === ticketId ? { ...t, ...updated } : t));
+            return updated;
+        } catch (err) {
+            console.error('Failed to edit admin comment', err);
+            alert(err?.response?.data?.message || 'Failed to edit comment.');
+            return null;
+        }
+    };
+
+    const deleteComment = async (ticketId, commentId) => {
+        try {
+            const updated = await deleteAdminComment(ticketId, commentId);
+            setTickets(current => current.map(t => t.id === ticketId ? { ...t, ...updated } : t));
+            return updated;
+        } catch (err) {
+            console.error('Failed to delete admin comment', err);
+            alert(err?.response?.data?.message || 'Failed to delete comment.');
+            return null;
+        }
+    };
+
     return {
         tickets,
         technicians,
@@ -81,6 +105,8 @@ export const useAdminMaintenanceDashboard = () => {
         changeStatus,
         assignTicket,
         addComment,
+        editComment,
+        deleteComment,
         refreshTickets: loadTickets
     };
 };

@@ -490,26 +490,76 @@ const TechnicianMaintenancePage = () => {
                                         <div className="space-y-4 mb-6">
                                             {comments.length === 0 ? (
                                                 <p className="text-xs text-slate-400 italic">No activity recorded yet.</p>
-                                            ) : [...comments].reverse().map(comment => (
-                                                <div key={comment.id} className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100">
+                                            ) : [...comments].reverse().map(comment => {
+                                                const commentCreated = getCommentCreatedAt(comment);
+                                                const commentUpdated = getCommentUpdatedAt(comment);
+                                                const isEdited = commentUpdated && commentCreated && new Date(commentUpdated).getTime() > new Date(commentCreated).getTime() + 1000;
+                                                const isEditingThis = editingCommentId === comment.id;
+
+                                                return (
+                                                <div key={comment.id} className={`rounded-2xl p-4 border ${!comment.visibleToRequester ? 'border-amber-200 bg-amber-50/30' : 'bg-slate-50/50 border-slate-100'}`}>
                                                     <div className="flex justify-between items-start mb-2">
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2 flex-wrap">
                                                             <span className="text-xs font-black text-slate-800">{comment.authorName}</span>
-                                                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${comment.authorRole === 'USER' ? 'bg-blue-100 text-blue-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                                                {comment.authorRole === 'USER' ? 'Requester' : 'Team'}
+                                                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${comment.authorRole === 'USER' ? 'bg-blue-100 text-blue-700' : comment.authorRole === 'ADMIN' ? 'bg-indigo-100 text-indigo-700' : 'bg-teal-100 text-teal-700'}`}>
+                                                                {comment.authorRole === 'USER' ? 'Requester' : comment.authorRole === 'ADMIN' ? 'Admin' : 'Technician'}
                                                             </span>
-                                                            <span className="text-[10px] text-slate-400">{formatDateTime(getCommentCreatedAt(comment))}</span>
+                                                            <span className="text-[10px] text-slate-400">{formatDateTime(commentCreated)}</span>
+                                                            {isEdited && (
+                                                                <span className="text-[9px] font-bold text-slate-400 italic">(edited)</span>
+                                                            )}
+                                                            {!comment.visibleToRequester && (
+                                                                <span className="rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-200">
+                                                                    Internal note
+                                                                </span>
+                                                            )}
                                                         </div>
-                                                        {canManageComment(comment) && (
+                                                        {!isEditingThis && (comment.canEdit || comment.canDelete || canManageComment(comment)) && (
                                                             <div className="flex items-center gap-1">
-                                                                <button onClick={() => beginEditing(comment)} className="p-1 hover:bg-white rounded text-slate-400 hover:text-blue-600 transition-colors"><Edit2 size={12} /></button>
-                                                                <button onClick={() => handleDeleteComment(comment.id)} className="p-1 hover:bg-white rounded text-slate-400 hover:text-rose-600 transition-colors"><Trash2 size={12} /></button>
+                                                                {(comment.canEdit || canManageComment(comment)) && (
+                                                                    <button onClick={() => beginEditing(comment)} className="p-1 hover:bg-white rounded text-slate-400 hover:text-blue-600 transition-colors" title="Edit"><Edit2 size={12} /></button>
+                                                                )}
+                                                                {(comment.canDelete || canManageComment(comment)) && (
+                                                                    <button onClick={() => handleDeleteComment(comment.id)} className="p-1 hover:bg-white rounded text-slate-400 hover:text-rose-600 transition-colors" title="Delete"><Trash2 size={12} /></button>
+                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <p className="text-sm text-slate-600 whitespace-pre-wrap">{getCommentContent(comment)}</p>
+                                                    {isEditingThis ? (
+                                                        <div className="mt-2 space-y-3">
+                                                            <textarea
+                                                                value={commentText}
+                                                                onChange={(e) => setCommentText(e.target.value)}
+                                                                className="w-full rounded-xl border border-blue-200 bg-white p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100 resize-none"
+                                                                rows={3}
+                                                            />
+                                                            <div className="flex items-center justify-between">
+                                                                <label className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-widest cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={visibleToRequester}
+                                                                        onChange={(e) => setVisibleToRequester(e.target.checked)}
+                                                                        className="rounded text-blue-600"
+                                                                    />
+                                                                    Share with Requester
+                                                                </label>
+                                                                <div className="flex gap-2">
+                                                                    <button onClick={resetComposer} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+                                                                    <button
+                                                                        onClick={handleSaveComment}
+                                                                        className="px-5 py-2 bg-blue-600 text-white rounded-xl text-xs font-black shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all"
+                                                                    >
+                                                                        Update
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm text-slate-600 whitespace-pre-wrap">{getCommentContent(comment)}</p>
+                                                    )}
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
 
                                         {/* Comment Composer */}

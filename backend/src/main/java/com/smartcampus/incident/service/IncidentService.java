@@ -373,17 +373,27 @@ public class IncidentService {
         logActivity(incidentId, user, ActivityAction.COMMENT_ADDED, "Added comment.");
 
         // Notify relevant parties
-        // If user is requester, notify technician
-        if (isRequester(incident, user) && incident.getAssignedTechnician() != null) {
-            notificationService.createNotification(
-                incident.getAssignedTechnician().getId(),
-                "New Comment on Ticket",
-                user.getName() + " commented on ticket " + incident.getTicketId(),
-                NotificationType.COMMENT
-            );
-        } 
-        // If user is technician/admin, notify requester
-        else if (incident.getSubmittedBy() != null && !isRequester(incident, user)) {
+        if (isRequester(incident, user)) {
+            // Requester commented — notify assigned technician
+            if (incident.getAssignedTechnician() != null) {
+                notificationService.createNotification(
+                    incident.getAssignedTechnician().getId(),
+                    "New Comment on Ticket",
+                    user.getName() + " commented on ticket " + incident.getTicketId(),
+                    NotificationType.COMMENT
+                );
+            }
+            // Requester commented — also notify all admins
+            userRepository.findByRole(Role.ADMIN).forEach(admin -> {
+                notificationService.createNotification(
+                    admin.getId(),
+                    "New Comment on Ticket",
+                    user.getName() + " commented on ticket " + incident.getTicketId(),
+                    NotificationType.COMMENT
+                );
+            });
+        } else if (incident.getSubmittedBy() != null && comment.isVisibleToRequester()) {
+            // Staff/admin commented with requester-visible flag — notify requester
             notificationService.createNotification(
                 incident.getSubmittedBy().getId(),
                 "New Comment on Ticket",
@@ -425,7 +435,10 @@ public class IncidentService {
         ensureCanComment(incident, user);
 
         IncidentComment comment = findComment(incident, commentId);
-        ensureCommentOwner(comment, user);
+        // Admin can delete any comment (moderation); others can only delete their own
+        if (user.getRole() != Role.ADMIN) {
+            ensureCommentOwner(comment, user);
+        }
 
         comment.setSoftDeleted(true);
         comment.setUpdatedAt(Instant.now());
@@ -597,8 +610,12 @@ public class IncidentService {
     private CommentResponse toCommentResponse(IncidentComment comment, User user) {
         Instant createdAt = resolveCommentCreatedAt(comment);
         Instant updatedAt = resolveCommentUpdatedAt(comment, createdAt);
-        boolean canEdit = user.getRole() != Role.ADMIN && isCommentOwner(comment, user);
-        boolean canDelete = canEdit;
+        boolean isOwner = isCommentOwner(comment, user);
+        boolean isAdmin = user.getRole() == Role.ADMIN;
+        // All roles can edit their own comments
+        boolean canEdit = isOwner;
+        // Owner can delete own; Admin can delete any comment (moderation)
+        boolean canDelete = isOwner || isAdmin;
 
         return new CommentResponse(
                 comment.getId(),
