@@ -15,9 +15,9 @@ const ResourceCard = ({
   onEdit,
   onDelete,
   onStatusToggle,
+  statusUpdating = false,
   onViewDetails,
 }) => {
-  console.log("Resource Data:", resource);
   const isOutOfService = resource.status === "OUT_OF_SERVICE";
   const isMaintenance = resource.status === "MAINTENANCE";
 
@@ -177,13 +177,18 @@ const ResourceCard = ({
           <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
             <button
               onClick={() => onStatusToggle(resource)}
+              disabled={statusUpdating}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-250 ease-out border-none ${
                 isOutOfService
                   ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400"
                   : "bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400"
-              }`}
+              } ${statusUpdating ? "opacity-60 cursor-not-allowed" : ""}`}
             >
-              {isOutOfService ? "SET ACTIVE" : "SET OFFLINE"}
+              {statusUpdating
+                ? "UPDATING..."
+                : isOutOfService
+                  ? "SET ACTIVE"
+                  : "SET OFFLINE"}
             </button>
             <div className="flex items-center gap-2">
               <button

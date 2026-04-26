@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Box, Plus, Trash2, Camera } from 'lucide-react';
 
-const ResourceForm = ({ initialData, onSave, onClose, error }) => {
+const ResourceForm = ({ initialData, onSave, onClose, error, saving = false }) => {
     const [formData, setFormData] = useState({
         name: '',
         type: 'LECTURE_HALL',
@@ -107,7 +107,7 @@ const ResourceForm = ({ initialData, onSave, onClose, error }) => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLocalError(null);
 
@@ -124,7 +124,7 @@ const ResourceForm = ({ initialData, onSave, onClose, error }) => {
             return;
         }
 
-        onSave(formData);
+        await onSave(formData);
     };
 
     return (
@@ -317,12 +317,16 @@ const ResourceForm = ({ initialData, onSave, onClose, error }) => {
                     </div>
 
                     <div className="p-6 border-t border-slate-100 bg-white flex-shrink-0 flex gap-3">
-                        <button type="button" onClick={onClose} className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 shadow-sm transition-all">
+                    <button type="button" onClick={onClose} disabled={saving} className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed">
                             Cancel
                         </button>
-                        <button type="submit" className="flex-1 py-3.5 bg-[#4169E1] text-white font-bold rounded-xl shadow-md shadow-[#4169E1]/30 hover:shadow-lg hover:shadow-[#4169E1]/40 flex justify-center items-center gap-2 transition-all">
+                    <button type="submit" disabled={saving} className="flex-1 py-3.5 bg-[#4169E1] text-white font-bold rounded-xl shadow-md shadow-[#4169E1]/30 hover:shadow-lg hover:shadow-[#4169E1]/40 flex justify-center items-center gap-2 transition-all disabled:bg-slate-400 disabled:shadow-none disabled:cursor-not-allowed">
                             <Save size={18} strokeWidth={2.5} />
-                            {initialData ? 'Save Changes' : 'Create Facility'}
+                        {saving
+                          ? 'Saving...'
+                          : initialData
+                            ? 'Save Changes'
+                            : 'Create Facility'}
                         </button>
                     </div>
                 </form>
