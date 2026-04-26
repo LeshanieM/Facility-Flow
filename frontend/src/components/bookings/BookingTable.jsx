@@ -9,6 +9,7 @@ const BookingTable = ({
   onApprove,
   onReject,
   onCancel,
+  onDelete,
   onViewDetail,
 }) => {
   const formatDate = (dateStr) => {
@@ -142,8 +143,19 @@ const BookingTable = ({
                       </button>
                     )}
 
+                    {!isAdmin && booking.status === 'PENDING' && (
+                      <button
+                        disabled={isLoading}
+                        onClick={() => onDelete && onDelete(booking)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-all disabled:opacity-50"
+                      >
+                        {isLoading ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                        Delete
+                      </button>
+                    )}
+
                     {/* No action for non-actionable states */}
-                    {((isAdmin && booking.status !== 'PENDING') || (!isAdmin && booking.status !== 'APPROVED')) && (
+                    {((isAdmin && booking.status !== 'PENDING') || (!isAdmin && (booking.status !== 'APPROVED' && booking.status !== 'PENDING'))) && (
                       <span className="text-xs text-slate-300 italic">—</span>
                     )}
                   </div>

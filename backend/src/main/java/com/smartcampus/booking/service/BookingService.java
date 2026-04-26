@@ -51,6 +51,11 @@ public interface BookingService {
     BookingResponseDTO cancelBooking(String id, String currentUserEmail);
 
     /**
+     * Deletes a booking entirely (must be the creator and status must be PENDING/REJECTED/CANCELLED).
+     */
+    void deleteBooking(String id, String currentUserEmail);
+
+    /**
      * Finds up to 3 alternative resources of the same type that are available for the requested slot.
      */
     BookingSuggestionResponseDTO findAlternativeSuggestions(String resourceId, LocalDate date, LocalTime startTime, LocalTime endTime, Integer expectedAttendees);

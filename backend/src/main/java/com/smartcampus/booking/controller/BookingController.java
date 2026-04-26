@@ -25,7 +25,11 @@ public class BookingController {
 
     private String getCurrentUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication.getPrincipal() instanceof com.smartcampus.entity.User user) {
+        Object principal = authentication.getPrincipal();
+        // Log principal for debugging
+        System.out.println("Principal type: " + principal.getClass().getName() + ", Name: " + authentication.getName());
+        
+        if (principal instanceof com.smartcampus.entity.User user) {
             return user.getEmail();
         }
         return authentication.getName();
@@ -82,6 +86,13 @@ public class BookingController {
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<BookingResponseDTO> cancelBooking(@PathVariable String id) {
         return ResponseEntity.ok(bookingService.cancelBooking(id, getCurrentUserEmail()));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('USER')")
+    public ResponseEntity<Void> deleteBooking(@PathVariable String id) {
+        bookingService.deleteBooking(id, getCurrentUserEmail());
+        return ResponseEntity.noContent().build();
     }
 
     /**
