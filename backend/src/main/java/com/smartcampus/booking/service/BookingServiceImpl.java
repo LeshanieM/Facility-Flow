@@ -16,6 +16,7 @@ import com.smartcampus.facility.exception.FacilityExceptions.ResourceNotFoundExc
 import com.smartcampus.facility.model.Resource;
 import com.smartcampus.facility.repository.ResourceRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -33,6 +34,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
 
@@ -224,6 +226,37 @@ public class BookingServiceImpl implements BookingService {
         });
 
         return bookingMapper.toDto(saved);
+    }
+
+    @Override
+    public void deleteBooking(String id, String currentUserEmail) {
+        log.info("Attempting to delete booking: {} by user: {}", id, currentUserEmail);
+        
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> {
+                    log.error("Booking not found: {}", id);
+                    return new BookingNotFoundException("Booking not found");
+                });
+
+        if (!java.util.Objects.equals(booking.getCreatedBy(), currentUserEmail)) {
+            log.error("Access denied for user: {} to delete booking: {} created by: {}", 
+                currentUserEmail, id, booking.getCreatedBy());
+            throw new AccessDeniedException("You do not have permission to delete this booking");
+        }
+
+        // Allow deletion of PENDING, REJECTED, or CANCELLED bookings
+        if (booking.getStatus() == BookingStatus.APPROVED) {
+            log.error("Cannot delete APPROVED booking: {}", id);
+            throw new IllegalArgumentException("Approved bookings cannot be deleted directly; they must be cancelled first");
+        }
+
+        try {
+            bookingRepository.deleteById(id);
+            log.info("Successfully deleted booking: {}", id);
+        } catch (Exception e) {
+            log.error("Database error during booking deletion: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
