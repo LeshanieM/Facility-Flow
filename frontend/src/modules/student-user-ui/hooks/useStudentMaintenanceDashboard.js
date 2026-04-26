@@ -13,6 +13,11 @@ import {
   deleteComment,
 } from '../api/studentMaintenanceApi';
 
+const RESOURCE_CACHE_TTL_MS = 2 * 60 * 1000;
+let cachedResources = [];
+let resourcesCachedAt = 0;
+let resourcesInFlightPromise = null;
+
 const initialForm = {
   title: '',
   description: '',
@@ -51,6 +56,7 @@ export const useStudentMaintenanceDashboard = () => {
   const [summary, setSummary] = useState(() => normalizeSummary());
   const [requests, setRequests] = useState([]);
   const [resources, setResources] = useState([]);
+  const [isResourcesLoading, setIsResourcesLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -80,6 +86,52 @@ export const useStudentMaintenanceDashboard = () => {
 
   const hasRequests = requests.length > 0;
 
+  const loadResources = async ({ force = false } = {}) => {
+    const now = Date.now();
+    const hasFreshCache =
+      !force &&
+      cachedResources.length > 0 &&
+      now - resourcesCachedAt < RESOURCE_CACHE_TTL_MS;
+
+    if (hasFreshCache) {
+      setResources(cachedResources);
+      return cachedResources;
+    }
+
+    if (resourcesInFlightPromise) {
+      setIsResourcesLoading(true);
+      try {
+        const data = await resourcesInFlightPromise;
+        setResources(data);
+        return data;
+      } finally {
+        setIsResourcesLoading(false);
+      }
+    }
+
+    setIsResourcesLoading(true);
+    resourcesInFlightPromise = (async () => {
+      const data = await getResources();
+      const normalized = Array.isArray(data) ? data : [];
+      cachedResources = normalized;
+      resourcesCachedAt = Date.now();
+      return normalized;
+    })();
+
+    try {
+      const data = await resourcesInFlightPromise;
+      setResources(data);
+      return data;
+    } catch (error) {
+      const message = extractErrorMessage(error, 'Unable to load resource suggestions.');
+      pushToast('error', 'Resources unavailable', message);
+      return [];
+    } finally {
+      resourcesInFlightPromise = null;
+      setIsResourcesLoading(false);
+    }
+  };
+
   const loadDashboard = async ({ background = false } = {}) => {
     if (background) {
       setIsRefreshing(true);
@@ -90,17 +142,15 @@ export const useStudentMaintenanceDashboard = () => {
 
     try {
 
-      const [summaryData, requestsData, notificationsData, resourcesData] = await Promise.all([
+      const [summaryData, requestsData, notificationsData] = await Promise.all([
         getDashboardSummary(),
         getMyRequests(),
         getNotifications(),
-        getResources(),
       ]);
 
       setSummary(normalizeSummary(summaryData));
       setRequests(Array.isArray(requestsData) ? requestsData : []);
       setNotifications(Array.isArray(notificationsData) ? notificationsData : []);
-      setResources(Array.isArray(resourcesData) ? resourcesData : []);
     } catch (error) {
       const message = extractErrorMessage(error, 'Unable to load your incident ticketing and maintenance dashboard right now.');
       setPageError(message);
@@ -365,6 +415,7 @@ export const useStudentMaintenanceDashboard = () => {
     summary,
     requests: requestCards,
     resources,
+    isResourcesLoading,
     notifications,
     selectedRequest,
     selectedRequestId,
@@ -388,6 +439,7 @@ export const useStudentMaintenanceDashboard = () => {
     toasts,
     cancelRequest,
     refreshDashboard: () => loadDashboard({ background: true }),
+    loadResources,
     clearSubmitStatus: () => {
       setSubmitMessage('');
       setSubmitError('');

@@ -12,6 +12,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.DocumentReference;
+import org.springframework.data.mongodb.core.index.Indexed;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -30,10 +31,13 @@ public class Resource {
     private String name;
 
     @Builder.Default
+    @Indexed
     private ResourceType type = ResourceType.LECTURE_HALL;
 
+    @Indexed
     private Integer capacity;
     
+    @Indexed
     private String location;
     
     private String description;
@@ -47,6 +51,7 @@ public class Resource {
     private String imageUrl;
 
     @Builder.Default
+    @Indexed
     private ResourceStatus status = ResourceStatus.ACTIVE;
 
     @Builder.Default
@@ -62,5 +67,6 @@ public class Resource {
     private Instant createdAt;
 
     @LastModifiedDate
+    @Indexed
     private Instant updatedAt;
 }

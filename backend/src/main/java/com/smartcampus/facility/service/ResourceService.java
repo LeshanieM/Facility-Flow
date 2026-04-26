@@ -3,15 +3,18 @@ package com.smartcampus.facility.service;
 import com.smartcampus.entity.User;
 import com.smartcampus.facility.dto.FacilityRequests.CreateResourceRequest;
 import com.smartcampus.facility.dto.FacilityRequests.UpdateResourceRequest;
+import com.smartcampus.facility.dto.FacilityResponses.ResourceListItemResponse;
 import com.smartcampus.facility.dto.FacilityResponses.ResourceResponse;
 import com.smartcampus.facility.enums.FacilityEnums.ResourceStatus;
 import com.smartcampus.facility.enums.FacilityEnums.ResourceType;
 import com.smartcampus.facility.exception.FacilityExceptions.ResourceNotFoundException;
 import com.smartcampus.facility.model.Resource;
 import com.smartcampus.facility.model.ResourceReview;
+import com.smartcampus.facility.repository.ResourceListProjection;
 import com.smartcampus.facility.repository.ResourceRepository;
 import com.smartcampus.facility.repository.ResourceReviewRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -21,6 +24,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ResourceService {
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final ResourceRepository resourceRepository;
     private final ResourceReviewRepository resourceReviewRepository;
@@ -39,35 +45,47 @@ public class ResourceService {
                 .createdBy(admin)
                 .build();
 
-        return toResponse(resourceRepository.save(resource));
+        return toResponse(resourceRepository.save(resource), false);
     }
 
-    public List<ResourceResponse> getAllResources() {
-        return resourceRepository.findAll().stream()
-                .map(this::toResponse)
+    public List<ResourceListItemResponse> getAllResources(Integer page, Integer size) {
+        PageRequest pageable = PageRequest.of(
+                sanitizePage(page),
+                sanitizeSize(size)
+        );
+        return resourceRepository.findAllListItems(pageable).stream()
+                .map(this::toListResponse)
                 .collect(Collectors.toList());
     }
 
-    public List<ResourceResponse> getResourcesByType(ResourceType type) {
+    public List<ResourceListItemResponse> getResourcesByType(ResourceType type) {
         return resourceRepository.findByType(type).stream()
-                .map(this::toResponse)
+                .map(this::toListResponse)
                 .collect(Collectors.toList());
     }
 
-    public List<ResourceResponse> searchResources(ResourceType type, String location, Integer capacity) {
-        return resourceRepository.searchResources(type, location, capacity).stream()
-                .map(this::toResponse)
+    public List<ResourceListItemResponse> searchResources(ResourceType type, String location, Integer capacity, Integer page, Integer size) {
+        PageRequest pageable = PageRequest.of(
+                sanitizePage(page),
+                sanitizeSize(size)
+        );
+        return resourceRepository.searchResourceListItems(type, location, capacity, pageable).stream()
+                .map(this::toListResponse)
                 .collect(Collectors.toList());
     }
 
-    public List<ResourceResponse> getResourcesByStatus(ResourceStatus status) {
-        return resourceRepository.findByStatus(status).stream()
-                .map(this::toResponse)
+    public List<ResourceListItemResponse> getResourcesByStatus(ResourceStatus status, Integer page, Integer size) {
+        PageRequest pageable = PageRequest.of(
+                sanitizePage(page),
+                sanitizeSize(size)
+        );
+        return resourceRepository.findListItemsByStatus(status, pageable).stream()
+                .map(this::toListResponse)
                 .collect(Collectors.toList());
     }
 
     public ResourceResponse getResourceById(String id) {
-        return toResponse(findById(id));
+        return toResponse(findById(id), true);
     }
 
     public ResourceResponse updateResource(String id, UpdateResourceRequest request) {
@@ -98,13 +116,13 @@ public class ResourceService {
             resource.setImageUrl(request.getImageUrl());
         }
 
-        return toResponse(resourceRepository.save(resource));
+        return toResponse(resourceRepository.save(resource), false);
     }
 
     public ResourceResponse updateStatus(String id, ResourceStatus newStatus) {
         Resource resource = findById(id);
         resource.setStatus(newStatus);
-        return toResponse(resourceRepository.save(resource));
+        return toResponse(resourceRepository.save(resource), false);
     }
 
     public ResourceResponse addReview(String resourceId, Integer rating, User user) {
@@ -142,7 +160,7 @@ public class ResourceService {
             resource.setRating(totalRating / newCount);
         }
 
-        return toResponse(resourceRepository.save(resource));
+        return toResponse(resourceRepository.save(resource), false);
     }
 
     public void deleteResource(String id) {
@@ -155,7 +173,7 @@ public class ResourceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found"));
     }
 
-    private ResourceResponse toResponse(Resource resource) {
+    private ResourceResponse toResponse(Resource resource, boolean includeCreatorName) {
         return new ResourceResponse(
                 resource.getId(),
                 resource.getName(),
@@ -169,9 +187,51 @@ public class ResourceService {
                 resource.getRating() != null ? resource.getRating() : 0.0,
                 resource.getNumReviews() != null ? resource.getNumReviews() : 0,
                 resource.getStatus(),
-                resource.getCreatedBy() != null ? resource.getCreatedBy().getName() : null,
+                includeCreatorName && resource.getCreatedBy() != null ? resource.getCreatedBy().getName() : null,
                 resource.getCreatedAt() != null ? resource.getCreatedAt().toString() : null,
                 resource.getUpdatedAt() != null ? resource.getUpdatedAt().toString() : null
         );
+    }
+
+    private ResourceListItemResponse toListResponse(ResourceListProjection resource) {
+        return new ResourceListItemResponse(
+                resource.getId(),
+                resource.getName(),
+                resource.getType(),
+                resource.getCapacity(),
+                resource.getLocation(),
+                resource.getImageUrl(),
+                resource.getRating() != null ? resource.getRating() : 0.0,
+                resource.getNumReviews() != null ? resource.getNumReviews() : 0,
+                resource.getStatus()
+        );
+    }
+
+    private ResourceListItemResponse toListResponse(Resource resource) {
+        return new ResourceListItemResponse(
+                resource.getId(),
+                resource.getName(),
+                resource.getType(),
+                resource.getCapacity(),
+                resource.getLocation(),
+                resource.getImageUrl(),
+                resource.getRating() != null ? resource.getRating() : 0.0,
+                resource.getNumReviews() != null ? resource.getNumReviews() : 0,
+                resource.getStatus()
+        );
+    }
+
+    private int sanitizePage(Integer page) {
+        if (page == null || page < 0) {
+            return DEFAULT_PAGE;
+        }
+        return page;
+    }
+
+    private int sanitizeSize(Integer size) {
+        if (size == null || size <= 0) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        return Math.min(size, MAX_PAGE_SIZE);
     }
 }

@@ -14,6 +14,21 @@ public class FacilityResponses {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    public static class ResourceListItemResponse {
+        private String id;
+        private String name;
+        private ResourceType type;
+        private Integer capacity;
+        private String location;
+        private String imageUrl;
+        private Double rating;
+        private Integer numReviews;
+        private ResourceStatus status;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ResourceResponse {
         private String id;
         private String name;
