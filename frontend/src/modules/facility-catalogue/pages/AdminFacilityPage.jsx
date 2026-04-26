@@ -9,6 +9,8 @@ import Layout from '../../../components/Layout';
 const AdminFacilityPage = () => {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [updatingStatusIds, setUpdatingStatusIds] = useState([]);
+  const [savingForm, setSavingForm] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingResource, setEditingResource] = useState(null);
   const [error, setError] = useState(null);
@@ -65,19 +67,29 @@ const AdminFacilityPage = () => {
 
   const handleSave = async (data) => {
     setFormError(null);
-    setLoading(true);
+    setError(null);
+    setSavingForm(true);
     try {
       if (editingResource) {
-        await facilityApi.updateResource(editingResource.id, data);
+        const res = await facilityApi.updateResource(editingResource.id, data);
+        const updatedResource = res.data;
+        // Update edited card immediately instead of reloading whole list.
+        setResources((prev) =>
+          prev.map((item) =>
+            item.id === editingResource.id ? { ...item, ...updatedResource } : item,
+          ),
+        );
         setSuccessMessage('Facility successfully updated.');
       } else {
-        await facilityApi.createResource(data);
+        const res = await facilityApi.createResource(data);
+        const createdResource = res.data;
+        // Insert new resource immediately for faster UI feedback.
+        setResources((prev) => [createdResource, ...prev]);
         setSuccessMessage('Facility successfully created.');
       }
       setIsFormOpen(false);
       setEditingResource(null);
       setTimeout(() => setSuccessMessage(null), 3000);
-      loadResources();
     } catch (error) {
       console.error('Failed to save resource', error);
       const status = getStatusCode(error);
@@ -87,7 +99,8 @@ const AdminFacilityPage = () => {
           'Failed to save the facility. Please verify the information and try again.',
         ),
       );
-      setLoading(false);
+    } finally {
+      setSavingForm(false);
     }
   };
 
@@ -114,23 +127,40 @@ const AdminFacilityPage = () => {
   };
 
   const handleStatusToggle = async (resource) => {
-    setLoading(true);
+    const newStatus =
+      resource.status === 'ACTIVE' ? 'OUT_OF_SERVICE' : 'ACTIVE';
+    const previousStatus = resource.status;
+    const id = resource.id;
+
+    setError(null);
+    setUpdatingStatusIds((prev) => [...prev, id]);
+    // Optimistic update: reflect status change immediately.
+    setResources((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: newStatus } : item,
+      ),
+    );
+
     try {
-      const newStatus =
-        resource.status === 'ACTIVE' ? 'OUT_OF_SERVICE' : 'ACTIVE';
-      await facilityApi.updateResourceStatus(resource.id, newStatus);
+      await facilityApi.updateResourceStatus(id, newStatus);
       setSuccessMessage(
         `Facility status updated to ${newStatus.replace('_', ' ')}.`,
       );
       setTimeout(() => setSuccessMessage(null), 3000);
-      loadResources();
     } catch (error) {
       console.error('Failed to update status', error);
+      // Rollback optimistic update if backend request failed.
+      setResources((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: previousStatus } : item,
+        ),
+      );
       const status = getStatusCode(error);
       setError(
         getErrorMessageForStatus(status, 'Failed to update facility status.'),
       );
-      setLoading(false);
+    } finally {
+      setUpdatingStatusIds((prev) => prev.filter((itemId) => itemId !== id));
     }
   };
 
@@ -212,6 +242,7 @@ const AdminFacilityPage = () => {
                 onEdit={openEditForm}
                 onDelete={handleDelete}
                 onStatusToggle={handleStatusToggle}
+                statusUpdating={updatingStatusIds.includes(resource.id)}
                 onViewDetails={(res) => setSelectedResource(res)}
               />
             ))}
@@ -224,6 +255,7 @@ const AdminFacilityPage = () => {
             onSave={handleSave}
             onClose={() => setIsFormOpen(false)}
             error={formError}
+            saving={savingForm}
           />
         )}
 
