@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance';
 import { ClipboardList, Clock, CheckCircle, MapPin, X, AlertCircle, Edit2, Trash2 } from 'lucide-react';
 
 const TechDashboard = () => {
@@ -41,10 +41,7 @@ const TechDashboard = () => {
 
     const fetchTasks = async () => {
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get('/api/technician/tickets', {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await axiosInstance.get('/technician/tickets');
             const sortedData = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             setTasks(sortedData);
 
@@ -66,13 +63,10 @@ const TechDashboard = () => {
 
     const updateStatus = async (id, status, resNotes = null) => {
         try {
-            const token = localStorage.getItem('token');
             const payload = { status };
             if (resNotes) payload.resolutionNotes = resNotes;
 
-            await axios.patch(`/api/technician/tickets/${id}/status`, payload, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            await axiosInstance.patch(`/technician/tickets/${id}/status`, payload);
             fetchTasks(); // refresh
             setShowResolutionModal(false);
             setResolutionNotes('');
@@ -103,11 +97,10 @@ const TechDashboard = () => {
     const addComment = async (id) => {
         if (!commentText.trim()) return;
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.post(`/api/technician/tickets/${id}/comments`,
-                { message: commentText, visibleToRequester },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const response = await axiosInstance.post(`/technician/tickets/${id}/comments`, {
+                message: commentText,
+                visibleToRequester,
+            });
             setSelectedTask(response.data);
             setCommentText('');
             fetchTasks();
@@ -119,10 +112,7 @@ const TechDashboard = () => {
     const deleteComment = async (taskId, commentId) => {
         if (!window.confirm("Are you sure you want to delete this comment?")) return;
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.delete(`/api/technician/tickets/${taskId}/comments/${commentId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await axiosInstance.delete(`/technician/tickets/${taskId}/comments/${commentId}`);
             setSelectedTask(response.data);
             fetchTasks();
         } catch (error) {
@@ -133,11 +123,10 @@ const TechDashboard = () => {
     const editComment = async (taskId, commentId) => {
         if (!commentText.trim()) return;
         try {
-            const token = localStorage.getItem('token');
-            const response = await axios.put(`/api/technician/tickets/${taskId}/comments/${commentId}`,
-                { message: commentText, visibleToRequester },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
+            const response = await axiosInstance.put(`/technician/tickets/${taskId}/comments/${commentId}`, {
+                message: commentText,
+                visibleToRequester,
+            });
             setSelectedTask(response.data);
             setCommentText('');
             setEditingCommentId(null);

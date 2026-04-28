@@ -3,6 +3,7 @@ import CONFIG from '../config';
 
 const api = axios.create({
   baseURL: CONFIG.API_BASE_URL,
+  timeout: 60_000,
 });
 
 api.interceptors.request.use((config) => {
@@ -14,5 +15,16 @@ api.interceptors.request.use((config) => {
 }, (error) => {
   return Promise.reject(error);
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

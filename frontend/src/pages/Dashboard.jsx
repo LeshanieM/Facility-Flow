@@ -15,7 +15,8 @@ import {
     buildStatusSegments,
 } from '../modules/maintenance/components/DashboardAnalytics';
 import { bookingService } from '../services/bookingService';
-import { getMyRequests, getResources } from '../modules/student-user-ui/api/studentMaintenanceApi';
+import { getMyRequests } from '../modules/student-user-ui/api/studentMaintenanceApi';
+import { facilityApi } from '../modules/facility-catalogue/api/facilityApi';
 
 const formatTime = (value) => {
     if (!value) return 'N/A';
@@ -36,26 +37,65 @@ const RequesterDashboard = () => {
     const [bookings, setBookings] = React.useState([]);
     const [resources, setResources] = React.useState([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [loadError, setLoadError] = React.useState('');
+    const requestSeqRef = React.useRef(0);
+
+    const withTimeout = React.useCallback((promise, ms, label) => {
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = window.setTimeout(() => {
+                reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`));
+            }, ms);
+        });
+        return Promise.race([promise, timeoutPromise]).finally(() => window.clearTimeout(timeoutId));
+    }, []);
 
     const loadDashboard = React.useCallback(async () => {
+        const seq = requestSeqRef.current + 1;
+        requestSeqRef.current = seq;
         setIsLoading(true);
+        setLoadError('');
         try {
-            const [requestsResponse, bookingsResponse, resourcesResponse] = await Promise.all([
-                getMyRequests(),
-                bookingService.getMyBookings(),
-                getResources(),
+            const results = await Promise.allSettled([
+                withTimeout(getMyRequests(), 25_000, 'Requests'),
+                withTimeout(bookingService.getMyBookings(), 25_000, 'Bookings'),
+                withTimeout(facilityApi.getAllResources().then((res) => res.data), 25_000, 'Facilities'),
             ]);
-            setRequests(Array.isArray(requestsResponse) ? requestsResponse : []);
-            setBookings(Array.isArray(bookingsResponse) ? bookingsResponse : []);
-            setResources(Array.isArray(resourcesResponse) ? resourcesResponse : []);
-        } catch (error) {
-            setRequests([]);
-            setBookings([]);
-            setResources([]);
+
+            if (requestSeqRef.current !== seq) return;
+
+            const [requestsResult, bookingsResult, resourcesResult] = results;
+
+            if (requestsResult.status === 'fulfilled') {
+                setRequests(Array.isArray(requestsResult.value) ? requestsResult.value : []);
+            } else {
+                setRequests([]);
+            }
+
+            if (bookingsResult.status === 'fulfilled') {
+                setBookings(Array.isArray(bookingsResult.value) ? bookingsResult.value : []);
+            } else {
+                setBookings([]);
+            }
+
+            if (resourcesResult.status === 'fulfilled') {
+                setResources(Array.isArray(resourcesResult.value) ? resourcesResult.value : []);
+            } else {
+                setResources([]);
+            }
+
+            const failed = results
+                .filter((r) => r.status === 'rejected')
+                .map((r) => r.reason?.message || 'Request failed');
+
+            if (failed.length > 0) {
+                setLoadError('Some dashboard data could not be loaded. Please refresh.');
+            }
         } finally {
+            if (requestSeqRef.current !== seq) return;
             setIsLoading(false);
         }
-    }, []);
+    }, [withTimeout]);
 
     React.useEffect(() => {
         loadDashboard();
@@ -207,6 +247,12 @@ const RequesterDashboard = () => {
                     <RefreshCw size={16} /> Refresh
                 </button>
             </div>
+
+            {loadError && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                    {loadError}
+                </div>
+            )}
 
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
                 <KpiCard icon={<FolderKanban size={18} />} label="Total Requests" value={analytics.requestTotal} accent="blue" />
