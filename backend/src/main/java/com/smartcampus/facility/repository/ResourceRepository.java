@@ -17,12 +17,10 @@ public interface ResourceRepository extends MongoRepository<Resource, String> {
     List<Resource> findByStatus(ResourceStatus status);
     Page<Resource> findByStatus(ResourceStatus status, Pageable pageable);
     
-    // Keep list endpoint lightweight: exclude large fields (e.g. imageUrl).
-    @Query(value = "{}", fields = "{ '_id': 1, 'name': 1, 'type': 1, 'capacity': 1, 'location': 1, 'rating': 1, 'numReviews': 1, 'status': 1 }")
+    @Query(value = "{}", fields = "{ '_id': 1, 'name': 1, 'type': 1, 'capacity': 1, 'location': 1, 'imageUrl': 1, 'rating': 1, 'numReviews': 1, 'status': 1 }")
     Page<ResourceListProjection> findAllListItems(Pageable pageable);
 
-    // Keep list endpoint lightweight: exclude large fields (e.g. imageUrl).
-    @Query(value = "{ 'status': ?0 }", fields = "{ '_id': 1, 'name': 1, 'type': 1, 'capacity': 1, 'location': 1, 'rating': 1, 'numReviews': 1, 'status': 1 }")
+    @Query(value = "{ 'status': ?0 }", fields = "{ '_id': 1, 'name': 1, 'type': 1, 'capacity': 1, 'location': 1, 'imageUrl': 1, 'rating': 1, 'numReviews': 1, 'status': 1 }")
     Page<ResourceListProjection> findListItemsByStatus(ResourceStatus status, Pageable pageable);
 
     List<Resource> findByLocation(String location);
@@ -46,13 +44,12 @@ public interface ResourceRepository extends MongoRepository<Resource, String> {
            "}")
     Page<Resource> searchResources(ResourceType type, String location, Integer capacity, Pageable pageable);
 
-    // Keep list endpoint lightweight: exclude large fields (e.g. imageUrl).
     @Query(value = "{ " +
            "  $and: [ " +
            "    { 'type': ?#{ [0] == null ? { $exists: true } : [0] } }, " +
            "    { 'location': ?#{ [1] == null ? { $exists: true } : [1] } }, " +
            "    { 'capacity': ?#{ [2] == null ? { $exists: true } : { $gte: [2] } } } " +
            "  ] " +
-           "}", fields = "{ '_id': 1, 'name': 1, 'type': 1, 'capacity': 1, 'location': 1, 'rating': 1, 'numReviews': 1, 'status': 1 }")
+           "}", fields = "{ '_id': 1, 'name': 1, 'type': 1, 'capacity': 1, 'location': 1, 'imageUrl': 1, 'rating': 1, 'numReviews': 1, 'status': 1 }")
     Page<ResourceListProjection> searchResourceListItems(ResourceType type, String location, Integer capacity, Pageable pageable);
 }

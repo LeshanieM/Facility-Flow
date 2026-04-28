@@ -16,6 +16,8 @@ import com.smartcampus.facility.repository.ResourceReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import com.smartcampus.service.CloudinaryService;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,8 +32,18 @@ public class ResourceService {
 
     private final ResourceRepository resourceRepository;
     private final ResourceReviewRepository resourceReviewRepository;
+    private final CloudinaryService cloudinaryService;
 
-    public ResourceResponse createResource(CreateResourceRequest request, User admin) {
+    public ResourceResponse createResource(CreateResourceRequest request, MultipartFile image, User admin) {
+        String imageUrl = request.getImageUrl();
+        if (image != null && !image.isEmpty()) {
+            try {
+                imageUrl = cloudinaryService.uploadImage(image);
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Failed to upload image", e);
+            }
+        }
+
         Resource resource = Resource.builder()
                 .name(request.getName())
                 .type(request.getType())
@@ -40,7 +52,7 @@ public class ResourceService {
                 .description(request.getDescription())
                 .availabilityWindows(request.getAvailabilityWindows() != null ? request.getAvailabilityWindows() : List.of())
                 .amenities(request.getAmenities() != null ? request.getAmenities() : List.of())
-                .imageUrl(request.getImageUrl())
+                .imageUrl(imageUrl)
                 .status(ResourceStatus.ACTIVE)
                 .createdBy(admin)
                 .build();
@@ -88,7 +100,7 @@ public class ResourceService {
         return toResponse(findById(id), true);
     }
 
-    public ResourceResponse updateResource(String id, UpdateResourceRequest request) {
+    public ResourceResponse updateResource(String id, UpdateResourceRequest request, MultipartFile image) {
         Resource resource = findById(id);
         
         if (request.getName() != null) {
@@ -112,7 +124,14 @@ public class ResourceService {
         if (request.getAmenities() != null) {
             resource.setAmenities(request.getAmenities());
         }
-        if (request.getImageUrl() != null) {
+
+        if (image != null && !image.isEmpty()) {
+            try {
+                resource.setImageUrl(cloudinaryService.uploadImage(image));
+            } catch (java.io.IOException e) {
+                throw new RuntimeException("Failed to upload image", e);
+            }
+        } else if (request.getImageUrl() != null) {
             resource.setImageUrl(request.getImageUrl());
         }
 

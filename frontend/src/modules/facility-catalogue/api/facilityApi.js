@@ -25,11 +25,27 @@ export const facilityApi = {
       },
     });
   },
-  createResource: (data) => {
-    return api.post("/admin/resources", data);
+  createResource: (data, imageFile) => {
+    const formData = new FormData();
+    formData.append(
+      "resource",
+      new Blob([JSON.stringify(data)], { type: "application/json" })
+    );
+    if (imageFile) {
+      formData.append("image", imageFile);
+    }
+    return api.post("/admin/resources", formData);
   },
-  updateResource: (id, data) => {
-    return api.put(`/admin/resources/${id}`, data);
+  updateResource: (id, data, imageFile) => {
+    const formData = new FormData();
+    formData.append(
+      "resource",
+      new Blob([JSON.stringify(data)], { type: "application/json" })
+    );
+    if (imageFile) {
+      formData.append("image", imageFile);
+    }
+    return api.put(`/admin/resources/${id}`, formData);
   },
   updateResourceStatus: (id, status) => {
     return api.patch(`/admin/resources/${id}/status`, null, {

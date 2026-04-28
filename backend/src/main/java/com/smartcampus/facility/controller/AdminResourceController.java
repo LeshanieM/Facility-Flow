@@ -14,6 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.MediaType;
 
 import java.security.Principal;
 import java.util.List;
@@ -27,12 +29,13 @@ public class AdminResourceController {
     private final ResourceService resourceService;
     private final UserRepository userRepository;
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResourceResponse> createResource(
-            @Valid @RequestBody CreateResourceRequest request,
+            @Valid @RequestPart("resource") CreateResourceRequest request,
+            @RequestPart(value = "image", required = false) MultipartFile image,
             Principal principal) {
         User admin = getUser(principal);
-        return ResponseEntity.status(HttpStatus.CREATED).body(resourceService.createResource(request, admin));
+        return ResponseEntity.status(HttpStatus.CREATED).body(resourceService.createResource(request, image, admin));
     }
 
     @GetMapping
@@ -47,11 +50,12 @@ public class AdminResourceController {
         return ResponseEntity.ok(resourceService.getResourceById(id));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResourceResponse> updateResource(
             @PathVariable String id,
-            @Valid @RequestBody UpdateResourceRequest request) {
-        return ResponseEntity.ok(resourceService.updateResource(id, request));
+            @Valid @RequestPart("resource") UpdateResourceRequest request,
+            @RequestPart(value = "image", required = false) MultipartFile image) {
+        return ResponseEntity.ok(resourceService.updateResource(id, request, image));
     }
 
     @PatchMapping("/{id}/status")

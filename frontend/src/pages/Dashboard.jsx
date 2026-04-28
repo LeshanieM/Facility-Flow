@@ -248,13 +248,23 @@ const RequesterDashboard = () => {
                 </button>
             </div>
 
-            {loadError && (
+            {isLoading && (
+                <div className="rounded-[28px] border border-slate-100 bg-white/50 backdrop-blur-sm p-12 text-center shadow-sm">
+                    <RefreshCw size={30} className="mx-auto animate-spin text-blue-600" />
+                    <p className="mt-4 text-sm font-bold text-slate-600 tracking-tight">Syncing your service activity...</p>
+                </div>
+            )}
+
+            {!isLoading && loadError && (
                 <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
                     {loadError}
                 </div>
             )}
 
+            {!isLoading && (
+                <>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+
                 <KpiCard icon={<FolderKanban size={18} />} label="Total Requests" value={analytics.requestTotal} accent="blue" />
                 <KpiCard icon={<Clock3 size={18} />} label="Open Requests" value={analytics.requestStatusCounts.open} accent="amber" />
                 <KpiCard icon={<Wrench size={18} />} label="In Progress Requests" value={analytics.requestStatusCounts.inProgress} accent="orange" />
@@ -372,6 +382,8 @@ const RequesterDashboard = () => {
                     <DistributionBar title="Resource Types Available" segments={analytics.topResourceTypes} />
                 </div>
             </AnalyticsSection>
+                </>
+            )}
         </div>
     );
 };
@@ -469,7 +481,17 @@ const TechnicianDashboard = () => {
                 </button>
             </div>
 
+            {isLoading && (
+                <div className="rounded-[28px] border border-blue-50 bg-white/50 backdrop-blur-sm p-12 text-center shadow-sm">
+                    <RefreshCw size={30} className="mx-auto animate-spin text-indigo-600" />
+                    <p className="mt-4 text-sm font-bold text-slate-600 tracking-tight">Loading your assigned tickets...</p>
+                </div>
+            )}
+
+            {!isLoading && (
+                <>
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
+
                 <KpiCard icon={<FolderKanban size={18} />} label="Total Assigned Tickets" value={analytics.total} accent="blue" />
                 <KpiCard icon={<Clock3 size={18} />} label="Open / Not Started" value={analytics.openNotStarted} accent="amber" />
                 <KpiCard icon={<Wrench size={18} />} label="In Progress" value={analytics.inProgress} accent="orange" />
@@ -584,6 +606,8 @@ const TechnicianDashboard = () => {
                     )}
                 </SurfaceCard>
             </div>
+                </>
+            )}
         </div>
     );
 };
