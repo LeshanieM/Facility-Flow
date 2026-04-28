@@ -1,25 +1,14 @@
-import axios from 'axios';
+import axiosInstance from '../../../api/axiosInstance';
 
-const adminMaintenanceApi = axios.create({
-  baseURL: '/api/admin/tickets',
-  timeout: 60_000,
-});
-
-adminMaintenanceApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+const BASE_URL = '/admin/tickets';
 
 export const getAllTickets = async () => {
-  const response = await adminMaintenanceApi.get('');
+  const response = await axiosInstance.get(BASE_URL);
   return response.data;
 };
 
 export const getTicketDetails = async (id) => {
-  const response = await adminMaintenanceApi.get(`/${id}`);
+  const response = await axiosInstance.get(`${BASE_URL}/${id}`);
   return response.data;
 };
 
@@ -28,23 +17,23 @@ export const updateTicketStatus = async (id, statusOrPayload) => {
     ? { status: statusOrPayload }
     : statusOrPayload;
 
-  const response = await adminMaintenanceApi.patch(`/${id}/status`, payload);
+  const response = await axiosInstance.patch(`${BASE_URL}/${id}/status`, payload);
   return response.data;
 };
 
 export const assignTechnicianToTicket = async (id, technicianId) => {
-  const response = await adminMaintenanceApi.patch(`/${id}/assign`, { technicianId });
+  const response = await axiosInstance.patch(`${BASE_URL}/${id}/assign`, { technicianId });
   return response.data;
 };
 
 export const editAdminComment = async (ticketId, commentId, payload) => {
-  const response = await adminMaintenanceApi.put(`/${ticketId}/comments/${commentId}`, payload);
+  const response = await axiosInstance.put(`${BASE_URL}/${ticketId}/comments/${commentId}`, payload);
   return response.data;
 };
 
 export const deleteAdminComment = async (ticketId, commentId) => {
-  const response = await adminMaintenanceApi.delete(`/${ticketId}/comments/${commentId}`);
+  const response = await axiosInstance.delete(`${BASE_URL}/${ticketId}/comments/${commentId}`);
   return response.data;
 };
 
-export default adminMaintenanceApi;
+export default axiosInstance;
