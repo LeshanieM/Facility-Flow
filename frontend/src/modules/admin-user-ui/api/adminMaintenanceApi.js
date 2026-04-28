@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const adminMaintenanceApi = axios.create({
   baseURL: '/api/admin/tickets',
+  timeout: 60_000,
 });
 
 adminMaintenanceApi.interceptors.request.use((config) => {

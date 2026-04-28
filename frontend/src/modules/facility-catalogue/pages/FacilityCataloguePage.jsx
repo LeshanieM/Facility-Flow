@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { facilityApi } from "../api/facilityApi";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import ResourceCard from "../components/ResourceCard";
 import ResourceFilter from "../components/ResourceFilter";
 import ResourceDetailModal from "../components/ResourceDetailModal";
 import { Building2 } from "lucide-react";
 import Layout from "../../../components/Layout";
+import { facilityService } from "../../../services/facilityService";
 import axios from "axios";
 
 const RESOURCE_CACHE_TTL_MS = 2 * 60 * 1000;
@@ -28,8 +28,19 @@ const FacilityCataloguePage = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [selectedResource, setSelectedResource] = useState(null);
+  const hasExistingDataRef = useRef(false);
 
-  const loadResources = async () => {
+  const withTimeout = useCallback((promise, ms, label) => {
+    let timeoutId;
+    const timeoutPromise = new Promise((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`));
+      }, ms);
+    });
+    return Promise.race([promise, timeoutPromise]).finally(() => window.clearTimeout(timeoutId));
+  }, []);
+
+  const loadResources = useCallback(async () => {
     const cacheKey = buildCacheKey(filters);
     const cached = resourceQueryCache.get(cacheKey);
     const now = Date.now();
@@ -43,39 +54,56 @@ const FacilityCataloguePage = () => {
       return;
     }
 
-    const hasExistingData = resources.length > 0;
+    const hasExistingData = hasExistingDataRef.current;
     if (hasExistingData) {
       setIsRefreshing(true);
     } else {
       setLoading(true);
     }
     setError(null);
+
     try {
       const params = {};
       if (filters.type) params.type = filters.type;
       if (filters.location) params.location = filters.location;
       if (filters.minCapacity) params.minCapacity = filters.minCapacity;
+      // Keep the initial payload small so the page renders fast.
+      params.page = 0;
+      params.size = 20;
 
-      const res = await facilityApi.getAllResources(params);
-      const data = Array.isArray(res.data) ? res.data : [];
+      // Use same request pipeline as bookings (axiosInstance: /api + auth + timeout + 401 handling)
+      const resData = await withTimeout(
+        facilityService.getAllResources(params),
+        25_000,
+        "Facilities",
+      );
+      const data = Array.isArray(resData) ? resData : [];
       setResources(data);
       resourceQueryCache.set(cacheKey, { data, cachedAt: Date.now() });
     } catch (error) {
-      if (axios.isCancel(error) || error?.code === "ERR_CANCELED") {
-        return;
-      }
       console.error("Failed to load resources", error);
-      setError(
-        "We encountered an issue communicating with the server. Please check your connection and try again.",
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      const timedOut = String(error?.message || "").toLowerCase().includes("timed out");
+      const statusHint = status ? ` (HTTP ${status})` : "";
+      setError(timedOut
+        ? `Facilities are taking too long to load${statusHint}. Please try again.`
+        : `We encountered an issue communicating with the server${statusHint}. Please check your connection and try again.`
       );
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [filters, withTimeout]);
+
+  useEffect(() => {
+    // track current data presence without re-creating loadResources
+    hasExistingDataRef.current = resources.length > 0;
+  }, [resources.length]);
 
   useEffect(() => {
     loadResources();
+    // Intentionally load once on mount (like bookings page).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

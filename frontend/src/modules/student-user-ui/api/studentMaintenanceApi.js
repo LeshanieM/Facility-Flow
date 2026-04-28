@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const studentMaintenanceApi = axios.create({
   baseURL: '/api',
+  timeout: 60_000,
 });
 
 studentMaintenanceApi.interceptors.request.use((config) => {
