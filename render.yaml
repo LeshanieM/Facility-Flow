@@ -2,7 +2,7 @@ services:
   # Backend Web Service
   - type: web
     name: facility-flow-api
-    runtime: docker
+
     rootDir: backend
     plan: free
     envVars:
