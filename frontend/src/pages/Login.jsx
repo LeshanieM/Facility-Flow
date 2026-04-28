@@ -121,6 +121,13 @@ const Login = () => {
                     </div>
                 </div>
 
+                {/* Admin Setup Notice */}
+                <div className="mt-8 w-full max-w-md p-5 rounded-3xl bg-amber-500/10 backdrop-blur-md border border-amber-500/20 text-center animate-fade-in shadow-xl">
+                    <p className="text-[11px] font-bold text-amber-200/90 leading-relaxed uppercase tracking-wider">
+                        <span className="text-amber-400">Important:</span> The first admin user must have their role manually changed in the database. Once set, that admin will be able to manage the application and change roles for other users.
+                    </p>
+                </div>
+
                 {/* Footer Info */}
                 <div className="mt-12 text-center text-[10px] font-bold text-white/30 uppercase tracking-[0.3em] flex items-center gap-4">
                     <span className="hover:text-white/60 transition-colors cursor-pointer">Privacy Policy</span>

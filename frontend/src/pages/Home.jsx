@@ -55,6 +55,12 @@ export default function CampusPortal() {
 
   return (
     <div className="font-['DM_Sans',sans-serif] h-screen w-full overflow-hidden flex flex-col bg-slate-50">
+      {/* Admin Setup Notice Bar */}
+      <div className="bg-amber-500 py-1.5 px-4 text-center">
+        <p className="text-[10px] font-bold text-amber-950 uppercase tracking-widest">
+          Initial Setup: First admin must be assigned manually in DB to enable dashboard management
+        </p>
+      </div>
       {/* Header */}
       <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 px-4 sm:px-8 flex items-center justify-between shadow-sm flex-shrink-0">
         <div className="flex items-center gap-3">

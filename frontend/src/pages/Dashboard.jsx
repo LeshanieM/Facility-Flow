@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import AdminOverviewDashboard from '../modules/admin-user-ui/components/AdminOverviewDashboard';
 import api from '../services/api';
-import { AlertCircle, CalendarClock, CheckCircle2, Clock3, FolderKanban, RefreshCw, Wrench } from 'lucide-react';
+import { AlertCircle, CalendarClock, CheckCircle2, Clock3, FolderKanban, RefreshCw, ShieldCheck, Wrench } from 'lucide-react';
 import StatusBadge, { PriorityBadge, normalizeIncidentPriority, normalizeIncidentStatus } from '../modules/student-user-ui/components/StatusBadge';
 import SurfaceCard from '../modules/student-user-ui/components/SurfaceCard';
 import {
@@ -625,6 +625,19 @@ const Dashboard = () => {
     return (
         <Layout>
             <div className="space-y-8 animate-fade-in text-slate-900">
+                {/* Admin Setup Notice */}
+                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4 shadow-sm">
+                    <div className="p-2 bg-blue-600 rounded-xl text-white shadow-md shadow-blue-600/20">
+                        <ShieldCheck size={20} />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-bold text-blue-900 leading-snug">Initial System Setup Requirement</p>
+                        <p className="text-xs text-blue-700/80 mt-1 leading-relaxed font-medium">
+                            The first admin user must have their role manually changed in the database. Once this initial admin role is set, that admin will be able to log into the system and manage the application, including changing roles of other users through the admin dashboard.
+                        </p>
+                    </div>
+                </div>
+
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
