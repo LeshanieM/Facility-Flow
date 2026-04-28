@@ -68,9 +68,10 @@ To enable Google Login:
    cp application.yml.example application.yml
    ```
 2. Open **`application.yml`** and fill in your real credentials:
-   - **MongoDB URI**: Your connection string (with username/password).
-   - **Google OAuth**: Your Client ID and Secret.
-   - **JWT Secret**: Any secure, random string.
+   - **MongoDB URI**: Your connection string (Local or MongoDB Atlas).
+   - **Google OAuth**: Your Client ID and Secret (from Google Cloud Console).
+   - **JWT Secret**: A random secure string (e.g., generated via `openssl rand -hex 32`).
+   - **Cloudinary**: Your Cloudinary credentials for image storage.
 
 > [!IMPORTANT]
 > **Security First**: The `application.yml` file is already added to `.gitignore`. Your real secrets will **never** be committed to your repository. Only `application.yml.example` is shared.
@@ -88,8 +89,15 @@ To enable Google Login:
    cd frontend
    npm install
    ```
-2. Check your [src/config.js](file:///c:/Users/kevin/Downloads/Facility-Flow/frontend/src/config.js) to ensure it points to port `8092`.
-3. Start the application:
+2. Create your environment file:
+   ```powershell
+   cd frontend
+   cp .env.example .env
+   ```
+3. Open **`.env`** and configure:
+   - `VITE_API_BASE_URL`: Set to `http://localhost:8092/api` for local development.
+   - `VITE_AUTH_BASE_URL`: Set to `http://localhost:8092`.
+4. Start the application:
    ```powershell
    npm start
    ```

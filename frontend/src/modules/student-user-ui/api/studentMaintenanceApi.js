@@ -1,19 +1,7 @@
-import axios from 'axios';
+import axiosInstance from '../../../api/axiosInstance';
 
-const studentMaintenanceApi = axios.create({
-  baseURL: '/api',
-  timeout: 60_000,
-});
+const studentMaintenanceApi = axiosInstance;
 
-studentMaintenanceApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
-  return config;
-});
 
 export const getDashboardSummary = async () => {
   const response = await studentMaintenanceApi.get('/user/dashboard-summary');
