@@ -3,7 +3,7 @@ package com.smartcampus.config;
 import com.smartcampus.security.CustomOAuth2AuthorizationRequestResolver;
 import com.smartcampus.security.CustomOAuth2SuccessHandler;
 import com.smartcampus.security.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -25,12 +25,20 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOAuth2SuccessHandler customOAuth2SuccessHandler;
     private final ClientRegistrationRepository clientRegistrationRepository;
+
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            CustomOAuth2SuccessHandler customOAuth2SuccessHandler,
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.customOAuth2SuccessHandler = customOAuth2SuccessHandler;
+        this.clientRegistrationRepository = clientRegistrationRepositoryProvider.getIfAvailable();
+    }
 
     @Value("${app.frontend.url:http://localhost:3000}")
     private String frontendUrl;
@@ -48,12 +56,14 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .headers(headers -> headers.frameOptions(frame -> frame.disable()))
-            .oauth2Login(oauth2 -> oauth2
-                .authorizationEndpoint(auth -> auth
-                    .authorizationRequestResolver(new CustomOAuth2AuthorizationRequestResolver(clientRegistrationRepository))
-                )
-                .successHandler(customOAuth2SuccessHandler)
-            )
+            .oauth2Login(oauth2 -> {
+                if (clientRegistrationRepository != null) {
+                    oauth2.authorizationEndpoint(auth -> auth
+                        .authorizationRequestResolver(new CustomOAuth2AuthorizationRequestResolver(clientRegistrationRepository))
+                    )
+                    .successHandler(customOAuth2SuccessHandler);
+                }
+            })
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
